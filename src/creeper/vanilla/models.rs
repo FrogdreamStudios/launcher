@@ -42,12 +42,18 @@ pub struct AssetIndex {
 
 #[derive(Deserialize)]
 pub struct Library {
+    #[allow (dead_code)]
+    pub name: String,
     pub downloads: Option<LibraryDownloads>,
+    pub natives: Option<HashMap<String, String>>,
+    pub extract: Option<ExtractRule>,
+    pub rules: Option<Vec<Rule>>,
 }
 
 #[derive(Deserialize)]
 pub struct LibraryDownloads {
     pub artifact: Option<Artifact>,
+    pub classifiers: Option<HashMap<String, Artifact>>,
 }
 
 #[derive(Deserialize)]
@@ -65,4 +71,23 @@ pub struct AssetIndexManifest {
 pub struct AssetObject {
     pub hash: String,
     pub size: u64,
+}
+
+#[derive(Deserialize)]
+pub struct ExtractRule {
+    pub exclude: Option<Vec<String>>,
+}
+
+#[derive(Deserialize)]
+pub struct Rule {
+    pub action: String,
+    pub os: Option<OsRule>,
+}
+
+#[derive(Deserialize)]
+pub struct OsRule {
+    #[allow (dead_code)]
+    pub name: Option<String>,
+    pub version: Option<String>,
+    pub arch: Option<String>,
 }

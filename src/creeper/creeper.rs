@@ -1,15 +1,15 @@
-use std::error::Error;
-use std::io::{self, Write};
-use std::path::Path;
-use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::{Child, Command};
-use std::time::Instant;
-use tokio::try_join;
 use crate::creeper::java::java_config::JavaConfig;
+use crate::creeper::java::java_downloader::JavaManager;
 use crate::creeper::utils::file_manager::FileSystem;
 use crate::creeper::vanilla::downloader::Downloader;
 use crate::creeper::vanilla::models::{VersionDetails, VersionManifest};
-use crate::creeper::java::java_downloader::JavaManager;
+use std::error::Error;
+use std::io::{self, Write};
+use std::path::Path;
+use std::time::Instant;
+use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::process::{Child, Command};
+use tokio::try_join;
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn Error>> {
@@ -40,12 +40,18 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
                 if version.is_empty() {
                     println!("No version specified, using default 1.21.7");
                     let version = "1.21.7";
-                    if let Err(e) = start_minecraft(&downloader, &java_manager, &fs, &minecraft_dir, version).await {
+                    if let Err(e) =
+                        start_minecraft(&downloader, &java_manager, &fs, &minecraft_dir, version)
+                            .await
+                    {
                         eprintln!("Failed to start Minecraft: {}", e);
                     }
                 } else {
                     println!("Using version {}", version);
-                    if let Err(e) = start_minecraft(&downloader, &java_manager, &fs, &minecraft_dir, version).await {
+                    if let Err(e) =
+                        start_minecraft(&downloader, &java_manager, &fs, &minecraft_dir, version)
+                            .await
+                    {
                         eprintln!("Failed to start Minecraft: {}", e);
                     }
                 }
@@ -53,11 +59,11 @@ pub async fn main() -> Result<(), Box<dyn Error>> {
             "2" => {
                 println!("Fabric Minecraft is not implemented yet.");
                 break;
-            },
+            }
             "3" => {
                 println!("Forge Minecraft is not implemented yet.");
                 break;
-            },
+            }
             "4" => break,
             cmd => println!("Unknown command: {}", cmd),
         }
@@ -72,7 +78,6 @@ async fn start_minecraft(
     minecraft_dir: &Path,
     version: &str,
 ) -> Result<String, Box<dyn Error>> {
-
     // Start the timer to measure launch time
     let start_time = Instant::now();
 
@@ -107,8 +112,9 @@ async fn start_minecraft(
     println!("Version details fetched");
 
     let versions_dir = minecraft_dir.join("versions");
+    let version_dir = versions_dir.join(version);
     let libraries_dir = minecraft_dir.join("libraries");
-    let client_jar_path = versions_dir.join(format!("{}.jar", version));
+    let client_jar_path = version_dir.join(format!("{}.jar", version));
 
     let client_jar_fut = if !fs.exists(&client_jar_path) {
         Some(downloader.download_file_if_not_exists(
@@ -122,7 +128,8 @@ async fn start_minecraft(
         None
     };
 
-    let libs_fut = downloader.download_libraries(&version_details.libraries, &libraries_dir);
+    let libs_fut =
+        downloader.download_libraries(&version_details.libraries, &libraries_dir, &version_dir);
     let assets_fut = downloader.download_assets(&version_details.asset_index, minecraft_dir);
 
     if let Some(fut) = client_jar_fut {
@@ -136,8 +143,14 @@ async fn start_minecraft(
     let classpath = fs.build_classpath(&libraries_dir, &client_jar_path)?;
 
     // Use Java
-    let java_version = Command::new(&java_executable).arg("-version").output().await?;
-    println!("Using Java: {:?}", String::from_utf8_lossy(&java_version.stderr));
+    let java_version = Command::new(&java_executable)
+        .arg("-version")
+        .output()
+        .await?;
+    println!(
+        "Using Java: {:?}",
+        String::from_utf8_lossy(&java_version.stderr)
+    );
 
     println!("Starting Minecraft...");
 

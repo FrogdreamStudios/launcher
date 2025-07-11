@@ -3,15 +3,16 @@ use std::path::Path;
 use std::sync::Arc;
 
 use futures::StreamExt;
-use hyper::{Body, Client, Request, Uri};
-use hyper::client::HttpConnector;
-use hyper_rustls::HttpsConnectorBuilder;
 use hyper::body::HttpBody as _;
+use hyper::client::HttpConnector;
+use hyper::{Body, Client, Request, Uri};
+use hyper_rustls::HttpsConnectorBuilder;
 use serde::de::DeserializeOwned;
 use tokio::fs as tokio_fs;
+use tokio::process::Command;
 
-use crate::creeper::vanilla::models::{AssetIndex, AssetIndexManifest, Library};
 use crate::creeper::utils::progress_bar::ProgressBar;
+use crate::creeper::vanilla::models::{AssetIndex, AssetIndexManifest, Library};
 
 /// Handles downloading of Minecraft assets, libraries, and JSON data using HTTP.
 pub struct Downloader {
@@ -108,7 +109,7 @@ impl Downloader {
                     "Size mismatch for {}: expected {}, got {}",
                     url, size, total
                 )
-                    .into());
+                .into());
             }
         }
         if let Some(pb) = progress_bar {
@@ -182,8 +183,10 @@ impl Downloader {
                 async move {
                     let subdir = &hash[0..2];
                     let file_path = assets_objects_dir.join(subdir).join(&hash);
-                    let url =
-                        format!("https://resources.download.minecraft.net/{}/{}", subdir, hash);
+                    let url = format!(
+                        "https://resources.download.minecraft.net/{}/{}",
+                        subdir, hash
+                    );
                     downloader
                         .download_file_if_not_exists(
                             &url,
@@ -223,9 +226,27 @@ impl Downloader {
         &self,
         libraries: &[Library],
         libraries_dir: &Path,
+        version_dir: &Path,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        // Download regular libraries
+        self.download_regular_libraries(libraries, libraries_dir)
+            .await?;
+
+        // Download natives if needed
+        self.download_natives(libraries, version_dir).await?;
+
+        Ok(())
+    }
+
+    /// Downloads regular library JARs (not natives).
+    async fn download_regular_libraries(
+        &self,
+        libraries: &[Library],
+        libraries_dir: &Path,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let valid_libs: Vec<_> = libraries
             .iter()
+            .filter(|lib| self.should_use_library(lib))
             .filter_map(|lib| lib.downloads.as_ref().and_then(|d| d.artifact.as_ref()))
             .collect();
 
@@ -253,12 +274,7 @@ impl Downloader {
                 let progress_bar = progress_bar.clone();
                 async move {
                     downloader
-                        .download_file_if_not_exists(
-                            &url,
-                            &path,
-                            None,
-                            Some(progress_bar.as_ref()),
-                        )
+                        .download_file_if_not_exists(&url, &path, None, Some(progress_bar.as_ref()))
                         .await
                         .map_err(|e| format!("Failed to download library {}: {}", url, e))
                 }
@@ -276,6 +292,183 @@ impl Downloader {
         } else {
             println!("\nAll libraries downloaded successfully");
         }
+
         Ok(())
+    }
+
+    /// Downloads and extracts native libraries.
+    async fn download_natives(
+        &self,
+        libraries: &[Library],
+        version_dir: &Path,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let current_os = self.get_current_os();
+        let natives_dir = version_dir.join("natives");
+
+        tokio_fs::create_dir_all(&natives_dir).await?;
+
+        let natives_to_download: Vec<_> = libraries
+            .iter()
+            .filter(|lib| self.should_use_library(lib))
+            .filter_map(|lib| {
+                if let (Some(natives), Some(downloads)) = (&lib.natives, &lib.downloads) {
+                    if let Some(classifier) = natives.get(&current_os) {
+                        if let Some(classifiers) = &downloads.classifiers {
+                            if let Some(artifact) = classifiers.get(classifier) {
+                                return Some((lib, artifact));
+                            }
+                        }
+                    }
+                }
+                None
+            })
+            .collect();
+
+        if natives_to_download.is_empty() {
+            println!("No natives to download for current OS: {}", current_os);
+            return Ok(());
+        }
+
+        println!("Downloading {} native libraries", natives_to_download.len());
+        let progress_bar = Arc::new(ProgressBar::new(
+            natives_to_download.len(),
+            "Downloading natives".to_string(),
+        ));
+        tokio::spawn({
+            let progress_bar = progress_bar.clone();
+            async move { progress_bar.as_ref().start_periodic_update().await }
+        });
+
+        for (lib, artifact) in natives_to_download {
+            let temp_path =
+                natives_dir.join(format!("temp_{}.jar", artifact.path.replace("/", "_")));
+
+            // Download the native JAR
+            self.download_file_if_not_exists(
+                &artifact.url,
+                &temp_path,
+                None,
+                Some(progress_bar.as_ref()),
+            )
+            .await?;
+
+            // Extract the native JAR
+            self.extract_native_jar(&temp_path, &natives_dir, lib)
+                .await?;
+
+            // Clean up temporary file
+            if temp_path.exists() {
+                tokio_fs::remove_file(&temp_path).await?;
+            }
+        }
+
+        println!("\nAll natives downloaded and extracted successfully");
+        Ok(())
+    }
+
+    /// Extracts a native JAR file to the natives directory.
+    async fn extract_native_jar(
+        &self,
+        jar_path: &Path,
+        natives_dir: &Path,
+        library: &Library,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let jar_path_str = jar_path.to_string_lossy();
+        let natives_dir_str = natives_dir.to_string_lossy();
+
+        let output = if cfg!(target_os = "windows") {
+            // Use PowerShell on Windows
+            let mut cmd = Command::new("powershell");
+            cmd.arg("-Command")
+               .arg(format!(
+                   "Add-Type -AssemblyName System.IO.Compression.FileSystem; \
+                    $zip = [System.IO.Compression.ZipFile]::OpenRead('{}'); \
+                    foreach ($entry in $zip.Entries) {{ \
+                        if (-not $entry.Name.EndsWith('/') -and -not $entry.FullName.StartsWith('META-INF/')) {{ \
+                            $destinationPath = Join-Path '{}' $entry.FullName; \
+                            $destinationDir = Split-Path $destinationPath -Parent; \
+                            if (-not (Test-Path $destinationDir)) {{ \
+                                New-Item -ItemType Directory -Path $destinationDir -Force | Out-Null; \
+                            }}; \
+                            [System.IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $destinationPath, $true); \
+                        }} \
+                    }}; \
+                    $zip.Dispose();",
+                   jar_path_str, natives_dir_str
+               ));
+            cmd.output().await?
+        } else {
+            // Use unzip on Unix-like systems
+            let mut cmd = Command::new("unzip");
+            cmd.arg("-o") // Overwrite files without prompting
+                .arg("-j") // Flatten directory structure
+                .arg(jar_path_str.as_ref())
+                .arg("-d")
+                .arg(natives_dir_str.as_ref());
+
+            // Exclude META-INF if specified in extract rule
+            if let Some(extract) = &library.extract {
+                if let Some(exclude) = &extract.exclude {
+                    for pattern in exclude {
+                        cmd.arg("-x").arg(pattern);
+                    }
+                }
+            } else {
+                // Default exclude META-INF
+                cmd.arg("-x").arg("META-INF/*");
+            }
+
+            cmd.output().await?
+        };
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(
+                format!("Failed to extract native JAR {}: {}", jar_path_str, stderr).into(),
+            );
+        }
+
+        Ok(())
+    }
+
+    /// Determines if a library should be used based on OS rules.
+    fn should_use_library(&self, library: &Library) -> bool {
+        if let Some(rules) = &library.rules {
+            let current_os = self.get_current_os();
+            let mut should_use = false;
+
+            for rule in rules {
+                let matches_rule = if let Some(os_rule) = &rule.os {
+                    if let Some(name) = &os_rule.name {
+                        name == &current_os
+                    } else {
+                        true
+                    }
+                } else {
+                    true
+                };
+
+                if matches_rule {
+                    should_use = rule.action == "allow";
+                }
+            }
+
+            should_use
+        } else {
+            true // No rules means library applies to all platforms
+        }
+    }
+
+    /// Gets the current operating system name in Minecraft format.
+    fn get_current_os(&self) -> String {
+        if cfg!(target_os = "windows") {
+            "windows".to_string()
+        } else if cfg!(target_os = "linux") {
+            "linux".to_string()
+        } else if cfg!(target_os = "macos") {
+            "osx".to_string()
+        } else {
+            "unknown".to_string()
+        }
     }
 }
