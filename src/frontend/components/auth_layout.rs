@@ -14,7 +14,7 @@ pub fn AuthLayout(children: Element) -> Element {
 
     rsx! {
         style {
-            dangerous_inner_html: CssLoader::get_auth()
+            dangerous_inner_html: CssLoader::get_combined_auth()
         }
 
         div {
