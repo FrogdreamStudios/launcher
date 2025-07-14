@@ -8,12 +8,16 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, macos-14, windows-2022]
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: System dependencies
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-22.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -29,12 +33,42 @@ jobs:
             curl \
             xdotool
 
-      - name: Rust
+      - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
           override: true
           components: rustfmt, clippy
 
-      - name: Build
-        run: cargo build --release --locked
+      - name: Build project
+        shell: bash
+        run: |
+          if [[ "${{ runner.os }}" == "macOS" ]]; then
+            cargo build --release --locked --features "desktop,metal"
+          elif [[ "${{ runner.os }}" == "Windows" ]]; then
+            cargo build --release --locked --features "desktop,windows"
+          else
+            cargo build --release --locked --features "desktop,gnu"
+          fi
+
+      - name: Archive binary
+        shell: bash
+        run: |
+          mkdir dist
+          if [[ "${{ runner.os }}" == "macOS" ]]; then
+            cp target/release/DreamLauncher dist/
+            zip -j DreamLauncher-macos.zip dist/DreamLauncher
+          elif [[ "${{ runner.os }}" == "Windows" ]]; then
+            cp target/release/DreamLauncher.exe dist/
+            powershell -Command "Compress-Archive -Path dist/DreamLauncher.exe -DestinationPath DreamLauncher-windows.zip"
+          else
+            cp target/release/DreamLauncher dist/
+            zip -j DreamLauncher-linux.zip dist/DreamLauncher
+          fi
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DreamLauncher-${{ runner.os }}
+          path: |
+            DreamLauncher-*.zip
