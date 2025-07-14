@@ -35,3 +35,8 @@ debug-assertions = false
 opt-level = 1
 debug = true
 overflow-checks = true
+
+[features]
+default = ["gnu"]
+gnu = []
+metal = []
