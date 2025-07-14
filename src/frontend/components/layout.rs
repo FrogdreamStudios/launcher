@@ -17,7 +17,7 @@ pub fn Layout() -> Element {
 
     rsx! {
         style {
-            dangerous_inner_html: CssLoader::get_main()
+            dangerous_inner_html: CssLoader::get_combined_main()
         }
 
         div {

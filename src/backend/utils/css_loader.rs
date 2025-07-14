@@ -21,6 +21,10 @@ impl CssLoader {
             "chat",
             include_str!("../../../public/assets/styles/chat.css"),
         );
+        cache.insert(
+            "tailwind",
+            include_str!("../../../public/assets/styles/output.css"),
+        );
 
         CSS_CACHE.set(cache).expect("CSS cache already initialized");
     }
@@ -41,13 +45,34 @@ impl CssLoader {
         Self::get("chat").unwrap_or("")
     }
 
+    pub fn get_tailwind() -> &'static str {
+        Self::get("tailwind").unwrap_or("")
+    }
+
+    pub fn get_combined_main() -> String {
+        format!("{}\n{}", Self::get_main(), Self::get_tailwind())
+    }
+
+    pub fn get_combined_auth() -> String {
+        format!("{}\n{}", Self::get_auth(), Self::get_tailwind())
+    }
+
+    pub fn get_combined_chat() -> String {
+        format!("{}\n{}", Self::get_chat(), Self::get_tailwind())
+    }
+
     #[allow(dead_code)]
     pub fn load_styles(styles: &[&str]) -> String {
-        styles
+        let mut result = styles
             .iter()
             .filter_map(|&style| Self::get(style))
             .collect::<Vec<_>>()
-            .join("\n")
+            .join("\n");
+
+        // Add Tailwind utilities to any combination
+        result.push('\n');
+        result.push_str(Self::get_tailwind());
+        result
     }
 }
 
