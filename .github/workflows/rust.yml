@@ -11,7 +11,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-22.04, macos-14, windows-2022]
+        os: [ubuntu-22.04, macos-15, windows-2022]
 
     steps:
       - uses: actions/checkout@v4
@@ -42,33 +42,21 @@ jobs:
 
       - name: Build project
         shell: bash
-        run: |
-          if [[ "${{ runner.os }}" == "macOS" ]]; then
-            cargo build --release --locked --features "desktop,metal"
-          elif [[ "${{ runner.os }}" == "Windows" ]]; then
-            cargo build --release --locked --features "desktop,windows"
-          else
-            cargo build --release --locked --features "desktop,gnu"
-          fi
+        run: cargo build --release --locked --features "desktop"
 
       - name: Archive binary
         shell: bash
         run: |
           mkdir dist
-          if [[ "${{ runner.os }}" == "macOS" ]]; then
-            cp target/release/DreamLauncher dist/
-            zip -j DreamLauncher-macos.zip dist/DreamLauncher
-          elif [[ "${{ runner.os }}" == "Windows" ]]; then
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
             cp target/release/DreamLauncher.exe dist/
             powershell -Command "Compress-Archive -Path dist/DreamLauncher.exe -DestinationPath DreamLauncher-windows.zip"
           else
             cp target/release/DreamLauncher dist/
-            zip -j DreamLauncher-linux.zip dist/DreamLauncher
-          fi
+            zip -j DreamLauncher-${{ runner.os }}.zip dist/DreamLauncher
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: DreamLauncher-${{ runner.os }}
-          path: |
-            DreamLauncher-*.zip
+          path: DreamLauncher-*.zip
