@@ -1,16 +1,33 @@
-mod creeper;
-mod application;
-mod play_together;
-mod chats;
-mod route;
-use crate::route::Route;
-
-use dioxus::prelude::*;
-use dioxus_desktop::{use_window, Config, LogicalSize, WindowBuilder};
+mod backend;
+mod frontend;
+use crate::backend::utils::css_loader::ensure_css_loaded;
+use crate::backend::utils::route::Route;
 use dioxus::LaunchBuilder;
+use dioxus::prelude::*;
+use dioxus_desktop::{Config, LogicalSize, WindowBuilder, use_window};
 use dioxus_router::prelude::*;
+use std::sync::OnceLock;
+use tokio::runtime::Runtime;
+use tracing_subscriber::EnvFilter;
+
+static RUNTIME: OnceLock<Runtime> = OnceLock::new();
 
 fn main() {
+    // Logging setup
+    let _ = tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::new("warn,hyper=warn,h2=warn"))
+        .init();
+
+    ensure_css_loaded();
+
+    // Initialize runtime once
+    let _rt = RUNTIME.get_or_init(|| {
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .expect("Failed to create runtime")
+    });
+
     let size = LogicalSize::new(1280.0, 832.0);
 
     let config = Config::default().with_window(
@@ -21,9 +38,7 @@ fn main() {
             .with_resizable(false),
     );
 
-    LaunchBuilder::new()
-        .with_cfg(config)
-        .launch(ModeSelector);
+    LaunchBuilder::new().with_cfg(config).launch(ModeSelector);
 }
 
 #[component]
@@ -57,7 +72,7 @@ fn ModeSelector() -> Element {
                 let _window = window.clone();
                 move || {
                     std::thread::spawn(|| {
-                        let _ = creeper::creeper::main();
+                        let _ = backend::creeper::creeper::main();
                     });
                 }
             });
@@ -69,6 +84,8 @@ fn ModeSelector() -> Element {
 #[component]
 fn AppRoot() -> Element {
     let is_authenticated = use_signal(|| false);
-    provide_context(application::auth::auth_context::AuthState { is_authenticated: is_authenticated.clone() });
+    provide_context(frontend::ui::auth::auth_context::AuthState {
+        is_authenticated: is_authenticated.clone(),
+    });
     rsx! { Router::<Route> {} }
 }
