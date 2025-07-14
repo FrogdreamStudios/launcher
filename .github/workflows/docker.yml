@@ -32,4 +32,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/frogdreamstudios/launcher/axolotl:latest
+          tags: ghcr.io/frogdreamstudios/axolotl:latest
