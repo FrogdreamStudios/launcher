@@ -1,7 +1,7 @@
 use crate::frontend::components::layout::Layout;
 use crate::frontend::ui::auth::auth_context::AuthState;
 use dioxus::prelude::*;
-use dioxus_router::prelude::navigator;
+use dioxus_router::navigator;
 
 #[component]
 pub fn Main() -> Element {

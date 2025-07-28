@@ -8,7 +8,7 @@ use crate::frontend::ui::main::packs::Packs;
 use crate::frontend::ui::main::settings::Settings;
 
 use dioxus::prelude::*;
-use dioxus_router::prelude::*;
+use dioxus_router::Routable;
 
 #[derive(Clone, Routable, Debug, PartialEq)]
 pub enum Route {

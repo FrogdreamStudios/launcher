@@ -1,7 +1,7 @@
 use crate::backend::utils::route::Route;
 use crate::frontend::chats::manager::provide_chat_manager;
 use dioxus::prelude::*;
-use dioxus_router::prelude::*;
+use dioxus_router::{navigator, use_route};
 
 #[component]
 pub fn ChatSidebar() -> Element {

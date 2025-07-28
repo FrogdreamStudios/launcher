@@ -5,7 +5,7 @@ use crate::backend::utils::route::Route;
 use dioxus::LaunchBuilder;
 use dioxus::prelude::*;
 use dioxus_desktop::{Config, LogicalSize, WindowBuilder, use_window};
-use dioxus_router::prelude::*;
+use dioxus_router::{Router};
 use std::sync::OnceLock;
 use tokio::runtime::Runtime;
 use tracing_subscriber::EnvFilter;
