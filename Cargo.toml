@@ -25,6 +25,7 @@ reqwest = { version = "0.12.22", features = ["json", "stream"] }
 dirs = "6.0.0"
 dashmap = "7.0.0-rc2"
 lru = "0.16.0"
+version_check = "0.9.5"
 
 [features]
 default = ["desktop"]

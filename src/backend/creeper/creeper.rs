@@ -23,7 +23,6 @@ struct QuickLaunchCache {
     created_at: u64,
 }
 
-#[allow(dead_code)]
 pub fn main() -> Result<(), Box<dyn Error>> {
     tokio::runtime::Runtime::new()?.block_on(async_main())
 }
@@ -91,7 +90,6 @@ async fn async_main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-#[allow(dead_code)]
 async fn fetch_version_manifest(
     downloader: &Downloader,
     _fs: &FileSystem,
@@ -168,7 +166,6 @@ async fn clear_quick_launch_cache(minecraft_dir: &Path) {
     }
 }
 
-#[allow(dead_code)]
 async fn start_minecraft(
     downloader: &Downloader,
     java_manager: &JavaManager,

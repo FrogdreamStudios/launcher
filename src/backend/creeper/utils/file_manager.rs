@@ -5,13 +5,11 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::fs;
 
-#[allow(dead_code)]
 pub struct FileSystem {
     cache: Arc<DashMap<PathBuf, (String, Instant)>>,
 }
 
 impl FileSystem {
-    #[allow(dead_code)]
     pub fn build_classpath(
         &self,
         libraries_dir: &Path,
@@ -43,20 +41,13 @@ impl FileSystem {
         classpath.push_str(client_jar_path.to_str().ok_or("Invalid client jar path")?);
         Ok(classpath)
     }
-
-    #[allow(dead_code)]
+    
     pub fn new() -> Self {
         Self {
             cache: Arc::new(DashMap::new()),
         }
     }
-
-    #[allow(dead_code)]
-    pub async fn exists_async(&self, path: &Path) -> bool {
-        fs::metadata(path).await.is_ok()
-    }
-
-    #[allow(dead_code)]
+    
     pub fn exists(&self, path: &Path) -> bool {
         path.exists()
     }

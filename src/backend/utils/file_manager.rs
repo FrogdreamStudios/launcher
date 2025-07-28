@@ -11,7 +11,6 @@ pub struct FileManager {
 }
 
 impl FileManager {
-    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
             cache: Arc::new(DashMap::new()),
@@ -36,24 +35,21 @@ impl FileManager {
         self.cache
             .insert(path.to_path_buf(), (content, Instant::now()));
     }
-
-    #[allow(dead_code)]
+    
     pub fn ensure_dir_exists(path: &Path) -> io::Result<()> {
         if !path.exists() {
             fs::create_dir_all(path)?;
         }
         Ok(())
     }
-
-    #[allow(dead_code)]
+    
     pub async fn ensure_dir_exists_async(path: &Path) -> io::Result<()> {
         if !async_fs::try_exists(path).await? {
             async_fs::create_dir_all(path).await?;
         }
         Ok(())
     }
-
-    #[allow(dead_code)]
+    
     pub fn copy_file(from: &Path, to: &Path) -> io::Result<()> {
         if let Some(parent) = to.parent() {
             Self::ensure_dir_exists(parent)?;
@@ -61,8 +57,7 @@ impl FileManager {
         fs::copy(from, to)?;
         Ok(())
     }
-
-    #[allow(dead_code)]
+    
     pub fn read_file_to_string(&self, path: &Path) -> io::Result<String> {
         // Check cache first
         if let Some(cached_content) = self.get_cached(path) {
@@ -73,8 +68,7 @@ impl FileManager {
         self.store_cache(path, content.clone());
         Ok(content)
     }
-
-    #[allow(dead_code)]
+    
     pub fn write_string_to_file(&self, path: &Path, content: &str) -> io::Result<()> {
         if let Some(parent) = path.parent() {
             Self::ensure_dir_exists(parent)?;
@@ -85,18 +79,15 @@ impl FileManager {
         self.store_cache(path, content.to_string());
         Ok(())
     }
-
-    #[allow(dead_code)]
+    
     pub fn file_exists(path: &Path) -> bool {
         path.exists() && path.is_file()
     }
-
-    #[allow(dead_code)]
+    
     pub fn dir_exists(path: &Path) -> bool {
         path.exists() && path.is_dir()
     }
-
-    #[allow(dead_code)]
+    
     pub fn get_app_data_dir() -> Option<PathBuf> {
         dirs::data_dir()
     }

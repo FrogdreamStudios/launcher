@@ -1,34 +1,26 @@
 use dashmap::DashMap;
 use reqwest::Client;
 use std::fs;
-
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::fs as async_fs;
+use crate::backend::creeper::java::models::{VersionJson, VersionManifest};
 
 #[derive(Debug, Clone)]
 pub struct JavaVersion {
-    #[allow(dead_code)]
     pub major_version: u8,
-    #[allow(dead_code)]
     pub download_url: String,
-    #[allow(dead_code)]
     pub filename: String,
 }
 
 pub struct JavaManager {
-    #[allow(dead_code)]
-    version_map: std::collections::HashMap<String, JavaVersion>,
-    #[allow(dead_code)]
-    default_java: JavaVersion,
     client: Client,
     cache: Arc<DashMap<String, (Vec<u8>, Instant)>>,
 }
 
 impl JavaVersion {
-    #[allow(dead_code)]
     fn new(major_version: u8) -> Self {
         let (url, filename) = Self::get_download_info(major_version);
         Self {
@@ -48,14 +40,14 @@ impl JavaVersion {
         };
 
         let (version_str, build_str) = match major_version {
-            8 => ("8u392", "8.68.0.21"),
-            17 => ("17.0.9", "17.44.17"),
-            21 => ("21.0.1", "21.30.15"),
+            8 => ("8.0.362", "8.68.0.19"),
+            17 => ("17.0.16", "17.60.17"),
+            21 => ("21.0.8", "21.44.17"),
             _ => panic!("Unsupported Java version: {}", major_version),
         };
 
         let filename = format!(
-            "zulu{}-jdk{}_{}.{}",
+            "zulu{}-ca-jdk{}-{}.{}",
             build_str, version_str, os_part, extension
         );
 
@@ -66,74 +58,65 @@ impl JavaVersion {
 }
 
 impl JavaManager {
-    #[allow(dead_code)]
     pub fn new() -> Self {
-        let java_versions = [
-            (8, Self::get_java8_minecraft_versions()),
-            (17, Self::get_java17_minecraft_versions()),
-            (21, Self::get_java21_minecraft_versions()),
-        ];
-
-        let mut version_map = std::collections::HashMap::new();
-
-        for (java_major, minecraft_versions) in java_versions {
-            let java_version = JavaVersion::new(java_major);
-            for mc_version in minecraft_versions {
-                version_map.insert(mc_version.to_string(), java_version.clone());
-            }
-        }
-
         Self {
-            version_map,
-            default_java: JavaVersion::new(21),
             client: Client::new(),
             cache: Arc::new(DashMap::new()),
         }
     }
 
-    fn get_java8_minecraft_versions() -> Vec<&'static str> {
-        vec![
-            "1.0", "1.1", "1.2.1", "1.2.2", "1.2.3", "1.2.4", "1.2.5", "1.3.1", "1.3.2", "1.4.2",
-            "1.4.4", "1.4.5", "1.4.6", "1.4.7", "1.5", "1.5.1", "1.5.2", "1.6.1", "1.6.2", "1.6.4",
-            "1.7.2", "1.7.4", "1.7.5", "1.7.6", "1.7.7", "1.7.8", "1.7.9", "1.7.10", "1.8",
-            "1.8.1", "1.8.2", "1.8.3", "1.8.4", "1.8.5", "1.8.6", "1.8.7", "1.8.8", "1.8.9", "1.9",
-            "1.9.1", "1.9.2", "1.9.3", "1.9.4", "1.10", "1.10.1", "1.10.2", "1.11", "1.11.1",
-            "1.11.2", "1.12", "1.12.1", "1.12.2", "1.13", "1.13.1", "1.13.2", "1.14", "1.14.1",
-            "1.14.2", "1.14.3", "1.14.4", "1.15", "1.15.1", "1.15.2", "1.16", "1.16.1", "1.16.2",
-            "1.16.3", "1.16.4", "1.16.5",
-        ]
+    /// Get the major Java version for a specific Minecraft version using Mojang Meta.
+    pub async fn get_java_major(
+        &self,
+        mc_version: &str,
+    ) -> Result<u8, Box<dyn std::error::Error>> {
+        // 1. Available versions
+        let manifest: VersionManifest = self
+            .client
+            .get("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json")
+            .send()
+            .await?
+            .json()
+            .await?;
+
+        // 2. Find the version by ID
+        let version = manifest
+            .versions
+            .iter()
+            .find(|v| v.id == mc_version)
+            .ok_or("Version not found")?;
+
+        // 3. Get the version JSON
+        let version_json = self
+            .client
+            .get(&version.url)
+            .send()
+            .await?
+            .json::<VersionJson>()
+            .await?;
+
+        // 4. Return the major version, otherwise default to 8
+        Ok(version_json.java_version.map(|jv| jv.major_version).unwrap_or(8))
     }
 
-    #[allow(dead_code)]
-    fn get_java17_minecraft_versions() -> Vec<&'static str> {
-        vec![
-            "1.17", "1.17.1", "1.18", "1.18.1", "1.18.2", "1.19", "1.19.1", "1.19.2", "1.19.3",
-            "1.19.4", "1.20", "1.20.1", "1.20.2", "1.20.3", "1.20.4", "1.20.5", "1.20.6",
-        ]
+    /// JavaVersion using Mojang Meta.
+    pub async fn get_java_for_minecraft(
+        &self,
+        minecraft_version: Option<&str>,
+    ) -> Result<JavaVersion, Box<dyn std::error::Error>> {
+        let major_version = if let Some(version) = minecraft_version {
+            self.get_java_major(version).await?
+        } else {
+            21 // Default to Java 21 if no version specified
+        };
+        Ok(JavaVersion::new(major_version))
     }
-
-    #[allow(dead_code)]
-    fn get_java21_minecraft_versions() -> Vec<&'static str> {
-        vec![
-            "1.21", "1.21.1", "1.21.2", "1.21.3", "1.21.4", "1.21.5", "1.21.6", "1.21.7",
-        ]
-    }
-
-    #[allow(dead_code)]
-    pub fn get_java_for_minecraft(&self, minecraft_version: Option<&str>) -> &JavaVersion {
-        match minecraft_version {
-            Some(version) => self.version_map.get(version).unwrap_or(&self.default_java),
-            None => &self.default_java,
-        }
-    }
-
-    #[allow(dead_code)]
+    
     pub fn is_java_installed(&self, java_version: &JavaVersion) -> bool {
         let java_path = format!("java-{}", java_version.major_version);
         Path::new(&java_path).exists()
     }
 
-    #[allow(dead_code)]
     pub async fn download_java(
         &self,
         java_version: &JavaVersion,
@@ -176,8 +159,7 @@ impl JavaManager {
 
         Ok(bytes)
     }
-
-    #[allow(dead_code)]
+    
     fn extract_java(&self, java_version: &JavaVersion) -> Result<(), Box<dyn std::error::Error>> {
         println!("Extracting Java {}...", java_version.major_version);
 
@@ -216,8 +198,7 @@ impl JavaManager {
         );
         Ok(())
     }
-
-    #[allow(dead_code)]
+    
     pub fn get_java_path(
         &self,
         java_version: &JavaVersion,
@@ -247,8 +228,7 @@ impl JavaManager {
 
         Err(format!("Java executable not found in {}", java_dir).into())
     }
-
-    #[allow(dead_code)]
+    
     fn find_java_recursive(&self, dir: &Path, pattern: &str) -> Option<PathBuf> {
         let entries = fs::read_dir(dir).ok()?;
 
@@ -267,8 +247,7 @@ impl JavaManager {
         }
         None
     }
-
-    #[allow(dead_code)]
+    
     fn debug_directory_structure(&self, dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
         println!("Debugging directory structure for: {}", dir.display());
 
@@ -280,8 +259,7 @@ impl JavaManager {
         self.print_dir_structure(dir, 0)?;
         Ok(())
     }
-
-    #[allow(dead_code)]
+    
     fn print_dir_structure(
         &self,
         dir: &Path,
@@ -311,12 +289,12 @@ impl JavaManager {
         Ok(())
     }
 
-    #[allow(dead_code)]
-    async fn ensure_java(
+    // Guarantee that the correct Java version is installed for Minecraft
+    pub async fn ensure_java(
         &self,
         minecraft_version: Option<&str>,
     ) -> Result<PathBuf, Box<dyn std::error::Error>> {
-        let java_version = self.get_java_for_minecraft(minecraft_version);
+        let java_version = self.get_java_for_minecraft(minecraft_version).await?;
 
         println!(
             "Minecraft {} requires Java {}",
@@ -324,20 +302,20 @@ impl JavaManager {
             java_version.major_version
         );
 
-        if !self.is_java_installed(java_version) {
+        if !self.is_java_installed(&java_version) {
             println!(
-                "Java {} not found, downloading...",
+                "We don't have Java {}, downloading...",
                 java_version.major_version
             );
-            self.download_java(java_version).await?;
+            self.download_java(&java_version).await?;
         } else {
-            println!("Java {} already installed", java_version.major_version);
+            println!("Java {} already in use", java_version.major_version);
         }
 
-        self.get_java_path(java_version)
+        self.get_java_path(&java_version)
     }
 
-    #[allow(dead_code)]
+    // Receive the Java executable path, checking system Java first
     pub async fn get_java_executable(
         &self,
         minecraft_version: Option<&str>,
@@ -351,7 +329,7 @@ impl JavaManager {
                     version_output.lines().next().unwrap_or("")
                 );
 
-                let required_java = self.get_java_for_minecraft(minecraft_version);
+                let required_java = self.get_java_for_minecraft(minecraft_version).await?;
                 if self.is_system_java_compatible(&version_output, required_java.major_version) {
                     return Ok(PathBuf::from("java"));
                 } else {
@@ -368,7 +346,6 @@ impl JavaManager {
     }
 
     // Check if system Java is compatible with the required version
-    #[allow(dead_code)]
     fn is_system_java_compatible(&self, version_output: &str, required_major: u8) -> bool {
         if version_output.contains("1.8.") && required_major == 8 {
             return true;

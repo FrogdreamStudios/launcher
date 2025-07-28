@@ -237,11 +237,8 @@ impl ConfigManager {
 }*/
 
 #[derive(Debug)]
-#[allow(dead_code)]
 pub enum ConfigError {
-    #[allow(dead_code)]
     IoError(std::io::Error),
-    #[allow(dead_code)]
     SerdeError(serde_json::Error),
 }
 

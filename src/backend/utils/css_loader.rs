@@ -56,24 +56,6 @@ impl CssLoader {
     pub fn get_combined_auth() -> String {
         format!("{}\n{}", Self::get_auth(), Self::get_tailwind())
     }
-
-    pub fn get_combined_chat() -> String {
-        format!("{}\n{}", Self::get_chat(), Self::get_tailwind())
-    }
-
-    #[allow(dead_code)]
-    pub fn load_styles(styles: &[&str]) -> String {
-        let mut result = styles
-            .iter()
-            .filter_map(|&style| Self::get(style))
-            .collect::<Vec<_>>()
-            .join("\n");
-
-        // Add Tailwind utilities to any combination
-        result.push('\n');
-        result.push_str(Self::get_tailwind());
-        result
-    }
 }
 
 #[macro_export]
