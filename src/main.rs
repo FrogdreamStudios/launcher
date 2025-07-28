@@ -4,10 +4,11 @@ use crate::backend::utils::css_loader::ensure_css_loaded;
 use crate::backend::utils::route::Route;
 use dioxus::LaunchBuilder;
 use dioxus::prelude::*;
-use dioxus_desktop::{Config, LogicalSize, WindowBuilder, use_window};
+use dioxus_desktop::{use_window, Config, LogicalSize, WindowBuilder};
 use dioxus_router::{Router};
 use std::sync::OnceLock;
 use tokio::runtime::Runtime;
+use tokio::task;
 use tracing_subscriber::EnvFilter;
 
 static RUNTIME: OnceLock<Runtime> = OnceLock::new();
@@ -46,37 +47,50 @@ fn ModeSelector() -> Element {
     let mut mode = use_signal(|| None::<bool>);
     let window = use_window();
 
-    match *mode.read() {
-        None => rsx! {
-            div {
-                style: "display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;",
-                h2 { "What do you want to launch?" }
-                div {
-                    style: "display: flex; gap: 24px; margin-top: 24px;",
-                    button {
-                        style: "padding: 12px 32px; font-size: 1.1rem;",
-                        onclick: move |_| mode.set(Some(true)),
-                        "UI in dev"
-                    }
-                    button {
-                        style: "padding: 12px 32px; font-size: 1.1rem;",
-                        onclick: move |_| mode.set(Some(false)),
-                        "CLI in dev"
-                    }
-                }
-            }
-        },
-        Some(true) => rsx! { AppRoot {} },
-        Some(false) => {
-            use_effect({
-                let _window = window.clone();
-                move || {
-                    std::thread::spawn(|| {
+    // UI mode
+    if let Some(true) = *mode.read() {
+        return rsx! { AppRoot {} };
+    }
+
+    // CLI mode
+    if let Some(false) = *mode.read() {
+        use_future(move || {
+            let window = window.clone();
+            async move {
+                    task::spawn_blocking(|| {
                         let _ = backend::creeper::creeper::main();
                     });
+                    window.set_visible(false)
+            }
+        });
+
+        return rsx! {};
+    }
+
+    rsx! {
+        div {
+            style: "display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;",
+            h2 { "What do you want to launch?" }
+            div {
+                style: "display: flex; gap: 24px; margin-top: 24px;",
+                button {
+                    style: "padding: 12px 32px; font-size: 1.1rem;",
+                    onclick: move |_| mode.set(Some(true)),
+                    "UI in dev"
                 }
-            });
-            rsx!({})
+                button {
+                    style: "padding: 12px 32px; font-size: 1.1rem;",
+                    onclick: {
+                        let mut mode = mode.clone();
+                        let window = window.clone();
+                        move |_| {
+                            mode.set(Some(false));
+                            window.set_visible(false)
+                        }
+                    },
+                    "CLI in dev"
+                }
+            }
         }
     }
 }
