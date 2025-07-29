@@ -68,8 +68,12 @@ button:focus-visible {
     animation: logoFloat 2.5s ease-in-out infinite alternate;
 }
 @keyframes logoFloat {
-    from { transform: scale(0.98); }
-    to   { transform: scale(1.04); }
+    from {
+        transform: scale(375%);
+    }
+    to {
+        transform: scale(400%); /* 1.05 ??? */
+    }
 }
 
 .welcome-text {

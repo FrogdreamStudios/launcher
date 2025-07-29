@@ -81,7 +81,7 @@ html, body {
     border-radius: 8px;
     box-sizing: border-box;
     transform: translateY(-200px);
-    transition: transform 0.6s cubic-bezier(0.25,0.46,0.45,0.94) 0.2s;
+    transition: transform 0.6s cubic-bezier(0.27,0.46,0.45,0.94) 0.2s;
 }
 .logo-wrapper.logo-animate {
     transform: translateY(0);
@@ -180,12 +180,12 @@ html, body {
 /* Navigation item entrance animation */
 .nav-item-1, .nav-item-2, .nav-item-3, .nav-item-4, .nav-item-5 {
     transform: translateY(-300px);
-    transition: transform 0.5s cubic-bezier(0.25,0.46,0.45,0.94) 0.3s, transform 0.2s !important;
+    transition: transform 0.25s cubic-bezier(0.25,0.46,0.45,0.94) 0.1s, transform 0.05s !important;
 }
-.nav-item-2 { transition-delay: 0.4s, 0s; }
-.nav-item-3 { transition-delay: 0.5s, 0s; }
-.nav-item-4 { transition-delay: 0.6s, 0s; }
-.nav-item-5 { transition-delay: 0.7s, 0s; }
+.nav-item-2 { transition-delay: 0.5s, 0s; }
+.nav-item-3 { transition-delay: 0.25s, 0s; }
+.nav-item-4 { transition-delay: 0.25s, 0s; }
+.nav-item-5 { transition-delay: 0.5s, 0s; }
 .nav-items-animate .nav-item-1,
 .nav-items-animate .nav-item-2,
 .nav-items-animate .nav-item-3,
