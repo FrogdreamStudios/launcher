@@ -1,21 +1,17 @@
+use crate::backend::creeper::utils::progress_bar::ProgressBar;
+use crate::backend::creeper::vanilla::models::{AssetIndex, AssetIndexManifest, Library};
 use dashmap::DashMap;
+use futures::StreamExt;
 use lru::LruCache;
+use reqwest::{Client, RequestBuilder};
+use serde::de::DeserializeOwned;
 use std::collections::HashSet;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-
-use futures::StreamExt;
-use hyper::body::HttpBody as _;
-use hyper::client::HttpConnector;
-use hyper::{Body, Client, Request, Uri};
-use hyper_rustls::HttpsConnectorBuilder;
-use serde::de::DeserializeOwned;
 use tokio::fs as tokio_fs;
+use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
-
-use crate::backend::creeper::utils::progress_bar::ProgressBar;
-use crate::backend::creeper::vanilla::models::{AssetIndex, AssetIndexManifest, Library};
 
 #[derive(Clone)]
 struct CacheEntry {
@@ -26,24 +22,21 @@ struct CacheEntry {
 /// Handles downloading of Minecraft assets, libraries, and JSON data using HTTP.
 #[derive(Clone)]
 pub struct Downloader {
-    client: Client<hyper_rustls::HttpsConnector<HttpConnector>, Body>,
+    client: Client,
     cache: Arc<DashMap<String, CacheEntry>>,
     lru_cache: Arc<Mutex<LruCache<String, Vec<u8>>>>,
     max_concurrent: usize,
 }
 
 impl Downloader {
-    /// Creates a new `Downloader` with an HTTP/2 client configured for HTTPS requests.
+    /// Creates a new `Downloader` with a reqwest HTTP/2 client configured for HTTPS requests.
     pub fn new() -> Self {
-        let https = HttpsConnectorBuilder::new()
-            .with_native_roots()
-            .https_or_http()
-            .enable_http2()
-            .build();
         let client = Client::builder()
-            .http2_only(true)
-            .pool_max_idle_per_host(48)
-            .build(https);
+            .http2_adaptive_window(true)
+            .user_agent("Mozilla/5.0 (compatible; reqwest/0.11)")
+            .build()
+            .expect("Failed to build reqwest client");
+
         Self {
             client,
             cache: Arc::new(DashMap::new()),
@@ -61,14 +54,12 @@ impl Downloader {
 
     /// Get from cache if valid
     fn get_cached(&self, url: &str) -> Option<Vec<u8>> {
-        // Check DashMap cache first
         if let Some(entry) = self.cache.get(url) {
             if self.is_cache_valid(&entry) {
                 return Some(entry.data.clone());
             }
         }
 
-        // Check LRU cache for large files
         if let Ok(mut lru) = self.lru_cache.lock() {
             if let Some(data) = lru.get(url) {
                 return Some(data.clone());
@@ -79,13 +70,11 @@ impl Downloader {
 
     /// Store in cache
     fn store_cache(&self, url: &str, data: Vec<u8>) {
-        // For large files (>1MB), use LRU cache
         if data.len() > 1_048_576 {
             if let Ok(mut lru) = self.lru_cache.lock() {
                 lru.put(url.to_string(), data);
             }
         } else {
-            // For smaller files, use DashMap with TTL
             self.cache.insert(
                 url.to_string(),
                 CacheEntry {
@@ -96,37 +85,28 @@ impl Downloader {
         }
     }
 
-    /// Creates an HTTP request with proper headers.
-    fn create_request(&self, url: &str) -> Result<Request<Body>, Box<dyn std::error::Error>> {
-        let uri: Uri = url.parse()?;
-        let req = Request::get(uri)
-            .header("User-Agent", "Mozilla/5.0 (compatible; hyper/0.14)")
-            .body(Body::empty())?;
-        Ok(req)
+    /// Creates a reqwest request builder.
+    fn create_request(&self, url: &str) -> Result<RequestBuilder, Box<dyn std::error::Error>> {
+        Ok(self.client.get(url))
     }
 
     /// Executes HTTP request and returns response body as bytes with caching.
     async fn execute_request(
         &self,
-        req: Request<Body>,
+        req: RequestBuilder,
         url: &str,
     ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-        // Check cache first
         if let Some(cached_data) = self.get_cached(url) {
             return Ok(cached_data);
         }
 
-        let mut resp = self.client.request(req).await?;
+        let resp = req.send().await?;
         if !resp.status().is_success() {
             return Err(format!("HTTP {} error", resp.status()).into());
         }
 
-        let mut body_bytes = Vec::new();
-        while let Some(chunk) = resp.body_mut().data().await {
-            body_bytes.extend_from_slice(&chunk?);
-        }
+        let body_bytes = resp.bytes().await?.to_vec();
 
-        // Store in cache
         self.store_cache(url, body_bytes.clone());
         Ok(body_bytes)
     }
@@ -166,7 +146,7 @@ impl Downloader {
         }
 
         let req = self.create_request(url)?;
-        let mut resp = self.client.request(req).await?;
+        let resp = req.send().await?;
 
         if !resp.status().is_success() {
             return Err(format!("Failed to download {}: HTTP {}", url, resp.status()).into());
@@ -175,10 +155,12 @@ impl Downloader {
         let mut file = tokio_fs::File::create(path).await?;
         let mut total = 0u64;
 
-        while let Some(chunk) = resp.body_mut().data().await {
+        let mut stream = resp.bytes_stream();
+
+        while let Some(chunk) = stream.next().await {
             let chunk = chunk?;
             total += chunk.len() as u64;
-            tokio::io::AsyncWriteExt::write_all(&mut file, &chunk).await?;
+            file.write_all(&chunk).await?;
         }
 
         if let Some(size) = expected_size {
