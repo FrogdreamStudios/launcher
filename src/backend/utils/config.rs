@@ -1,4 +1,3 @@
-use crate::backend::utils::file_manager::FileManager;
 use serde::{Deserialize, Serialize};
 
 use std::path::PathBuf;
@@ -81,7 +80,7 @@ impl Default for LauncherConfig {
 
 impl Default for MinecraftConfig {
     fn default() -> Self {
-        let game_dir = FileManager::get_app_data_dir()
+        let game_dir = dirs::data_dir()
             .unwrap_or_else(|| PathBuf::from("."))
             .join("DreamLauncher")
             .join("minecraft");
