@@ -180,6 +180,7 @@ html, body {
 /* Navigation item entrance animation */
 .nav-item-1, .nav-item-2, .nav-item-3, .nav-item-4, .nav-item-5 {
     transform: translateY(-300px);
+  
     transition: transform 0.25s cubic-bezier(0.25,0.46,0.45,0.94) 0.1s, transform 0.05s !important;
 }
 .nav-item-2 { transition-delay: 0.5s, 0s; }
