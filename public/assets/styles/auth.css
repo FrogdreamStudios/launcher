@@ -1,10 +1,9 @@
 @font-face {
     font-family: "Gilroy";
     src: url("/public/assets/fonts/Gilroy/Gilroy-Medium.ttf") format("truetype");
-    font-weight: normal;
+    font-weight: 400;
     font-style: normal;
 }
-
 @font-face {
     font-family: "Gilroy";
     src: url("/public/assets/fonts/Gilroy/Gilroy-Bold.ttf") format("truetype");
@@ -13,41 +12,35 @@
 }
 
 * {
-    -webkit-font-smoothing: antialiased;
     box-sizing: border-box;
+    -webkit-font-smoothing: antialiased;
     user-select: none;
 }
-
-img {
-    user-drag: none;
-    pointer-events: none;
-}
-
-html,
-body {
+html, body {
     margin: 0;
     height: 100%;
     overflow: hidden;
 }
-
 body {
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    background-color: #1b1b1b;
+    background: #1b1b1b;
 }
-
 a {
     text-decoration: none;
 }
-
+img {
+    user-drag: none;
+    pointer-events: none;
+}
 button:focus-visible {
     outline: -webkit-focus-ring-color auto 5px !important;
 }
 
 .desktop {
-    background-color: #1b1b1b;
+    background: #1b1b1b;
     display: flex;
     flex-direction: row;
     justify-content: center;
@@ -55,7 +48,6 @@ button:focus-visible {
     height: 100vh;
     max-width: 1280px;
 }
-
 .content {
     display: flex;
     flex-direction: column;
@@ -72,18 +64,12 @@ button:focus-visible {
     object-fit: cover;
     margin-bottom: 2rem;
 }
-
-.logo.logo-animate {
+.logo-animate {
     animation: logoFloat 2.5s ease-in-out infinite alternate;
 }
-
 @keyframes logoFloat {
-    from {
-        transform: scale(0.98);
-    }
-    to {
-        transform: scale(1.04); /* 1.05 ??? */
-    }
+    from { transform: scale(0.98); }
+    to   { transform: scale(1.04); }
 }
 
 .welcome-text {
@@ -95,6 +81,7 @@ button:focus-visible {
     margin-bottom: 2rem;
 }
 
+/* login options */
 .login-options {
     display: flex;
     flex-direction: column;
@@ -102,7 +89,6 @@ button:focus-visible {
     width: 100%;
     max-width: 290px;
 }
-
 .login-button {
     display: flex;
     align-items: center;
@@ -115,43 +101,43 @@ button:focus-visible {
     font-size: 18px;
     cursor: pointer;
     border: none;
-    transition: background-color 0.3s ease;
+    transition: background 0.3s;
 }
-
 .microsoft-login {
-    background-color: #fff;
+    background: #fff;
     color: #000;
 }
-
 .microsoft-login:hover {
-    background-color: #f0f0f0;
+    background: #f0f0f0;
 }
-
-.offline-login {
-    background-color: #252525;
-    color: #707070;
-}
-
-.offline-login:hover {
-    background-color: #212121;
-}
-
 .microsoft-icon {
     width: 32px;
     height: 32px;
     margin-right: 1rem;
-    transition: transform 0.3s ease;
+    transition: transform 0.3s;
 }
-
 .microsoft-login:hover .microsoft-icon {
     transform: scale(1.1) rotate(5deg);
+}
+.offline-login {
+    background: #252525;
+    color: #707070;
+}
+.offline-login:hover {
+    background: #212121;
+}
+.login-button.offline-login .offline-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
 }
 
 .fade-out,
 .container.fade-out {
     opacity: 0;
     transform: translateY(-20px);
-    transition: all 0.5s ease-out;
+    transition: all 0.5s;
 }
 
 .button-wrapper {
@@ -160,9 +146,8 @@ button:focus-visible {
     align-items: center;
     height: 100%;
 }
-
 .offline-button {
-    background-color: #2a2a2a;
+    background: #2a2a2a;
     border: none;
     padding: 20px 40px;
     border-radius: 8px;
@@ -170,9 +155,8 @@ button:focus-visible {
     font-size: 1.2rem;
     cursor: pointer;
     position: relative;
-    transition: 0.3s;
+    transition: background 0.3s;
 }
-
 .button-content {
     display: flex;
     align-items: center;
@@ -188,18 +172,15 @@ button:focus-visible {
     width: 180px;
     text-align: left;
 }
-
 .username-input {
     font-size: 1.2rem;
     width: 200px;
 }
-
 .offline-label {
     text-align: center;
     width: 100%;
     display: block;
 }
-
 .inline-input {
     background: transparent;
     border: none;
@@ -211,23 +192,14 @@ button:focus-visible {
     text-align: center;
     color: #707070 !important;
 }
-
 .inline-input:focus,
 .inline-input:not(:placeholder-shown) {
     text-align: left;
     padding-left: 16px;
     color: #707070;
 }
-
 .inline-input:not(:focus):placeholder-shown {
     color: #787878;
     text-align: center;
     padding-left: 0;
-}
-
-.login-button.offline-login .offline-content {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
 }
