@@ -85,7 +85,7 @@ fn truncate_message(message: &str, max_length: usize) -> String {
         message.to_string()
     } else {
         let truncated: String = message.chars().take(max_length.saturating_sub(3)).collect();
-        format!("{}...", truncated)
+        format!("{truncated}...")
     }
 }
 

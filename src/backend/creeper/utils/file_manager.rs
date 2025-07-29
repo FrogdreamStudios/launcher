@@ -3,7 +3,6 @@ use glob::glob;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::fs;
 
 pub struct FileSystem {
     cache: Arc<DashMap<PathBuf, (String, Instant)>>,
@@ -21,7 +20,6 @@ impl FileSystem {
         if let Some(entry) = self.cache.get(&cache_key) {
             let (cached_classpath, timestamp) = entry.value();
             if timestamp.elapsed() < Duration::from_secs(300) {
-                // 5 min cache
                 let mut result = cached_classpath.clone();
                 result.push_str(client_jar_path.to_str().ok_or("Invalid client jar path")?);
                 return Ok(result);
@@ -41,13 +39,13 @@ impl FileSystem {
         classpath.push_str(client_jar_path.to_str().ok_or("Invalid client jar path")?);
         Ok(classpath)
     }
-    
+
     pub fn new() -> Self {
         Self {
             cache: Arc::new(DashMap::new()),
         }
     }
-    
+
     pub fn exists(&self, path: &Path) -> bool {
         path.exists()
     }

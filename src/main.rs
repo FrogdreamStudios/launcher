@@ -4,8 +4,8 @@ use crate::backend::utils::css_loader::ensure_css_loaded;
 use crate::backend::utils::route::Route;
 use dioxus::LaunchBuilder;
 use dioxus::prelude::*;
-use dioxus_desktop::{use_window, Config, LogicalSize, WindowBuilder};
-use dioxus_router::{Router};
+use dioxus_desktop::{Config, LogicalSize, WindowBuilder, use_window};
+use dioxus_router::Router;
 use std::sync::OnceLock;
 use tokio::runtime::Runtime;
 use tokio::task;
@@ -15,7 +15,7 @@ static RUNTIME: OnceLock<Runtime> = OnceLock::new();
 
 fn main() {
     // Logging setup
-    let _ = tracing_subscriber::fmt()
+    tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::new("warn,hyper=warn,h2=warn"))
         .init();
 
@@ -57,10 +57,10 @@ fn ModeSelector() -> Element {
         use_future(move || {
             let window = window.clone();
             async move {
-                    task::spawn_blocking(|| {
-                        let _ = backend::creeper::creeper::main();
-                    });
-                    window.set_visible(false)
+                task::spawn_blocking(|| {
+                    let _ = backend::creeper::main::main();
+                });
+                window.set_visible(false)
             }
         });
 
@@ -81,7 +81,7 @@ fn ModeSelector() -> Element {
                 button {
                     style: "padding: 12px 32px; font-size: 1.1rem;",
                     onclick: {
-                        let mut mode = mode.clone();
+                        let mut mode = mode;
                         let window = window.clone();
                         move |_| {
                             mode.set(Some(false));
@@ -98,8 +98,6 @@ fn ModeSelector() -> Element {
 #[component]
 fn AppRoot() -> Element {
     let is_authenticated = use_signal(|| false);
-    provide_context(frontend::ui::auth::auth_context::AuthState {
-        is_authenticated: is_authenticated.clone(),
-    });
+    provide_context(frontend::ui::auth::auth_context::AuthState { is_authenticated });
     rsx! { Router::<Route> {} }
 }

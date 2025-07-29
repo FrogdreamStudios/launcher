@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "DreamLauncher"
-version = "1.0.0-beta"
+version = "1.0.0-beta.1"
 dependencies = [
  "dashmap 7.0.0-rc2",
  "dioxus",
@@ -21,7 +21,6 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing-subscriber",
- "version_check",
 ]
 
 [[package]]

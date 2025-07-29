@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::sync::OnceLock;
-use std::path::PathBuf;
 
 static CSS_CACHE: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
 
@@ -8,24 +7,35 @@ pub struct CssLoader;
 
 impl CssLoader {
     pub fn init() {
-        let base = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("public/assets/styles");
         let mut cache = HashMap::new();
 
         cache.insert(
             "main",
-            include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/public/assets/styles/main.css")),
+            include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/public/assets/styles/main.css"
+            )),
         );
         cache.insert(
             "auth",
-            include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/public/assets/styles/auth.css")),
+            include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/public/assets/styles/auth.css"
+            )),
         );
         cache.insert(
             "chat",
-            include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/public/assets/styles/chat.css")),
+            include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/public/assets/styles/chat.css"
+            )),
         );
         cache.insert(
             "tailwind",
-            include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/public/assets/styles/output.css")),
+            include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/public/assets/styles/output.css"
+            )),
         );
 
         CSS_CACHE.set(cache).expect("CSS cache already initialized");
