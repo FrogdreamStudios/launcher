@@ -52,7 +52,7 @@ jobs:
       - name: Build
         shell: bash
         run: |
-          cargo build --release --features --locked "desktop" -j $(nproc)
+          cargo build --release --locked --features "desktop"
 
       - name: Package
         shell: bash
