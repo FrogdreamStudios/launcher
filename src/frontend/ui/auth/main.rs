@@ -3,7 +3,7 @@ use crate::frontend::ui::auth::auth_context::AuthState;
 use dioxus::events::KeyboardEvent;
 use dioxus::hooks::use_signal;
 use dioxus::prelude::*;
-use dioxus_router::{use_navigator};
+use dioxus_router::use_navigator;
 use std::time::Duration;
 use tokio::time::sleep;
 

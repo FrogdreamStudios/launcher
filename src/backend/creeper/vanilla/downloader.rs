@@ -140,10 +140,10 @@ impl Downloader {
         let body_bytes = self
             .execute_request(req, url)
             .await
-            .map_err(|e| format!("Failed to fetch {}: {}", url, e))?;
+            .map_err(|e| format!("Failed to fetch {url}: {e}"))?;
 
         serde_json::from_slice::<T>(&body_bytes)
-            .map_err(|e| format!("Failed to parse JSON from {}: {}", url, e).into())
+            .map_err(|e| format!("Failed to parse JSON from {url}: {e}").into())
     }
 
     /// Downloads a file from a URL to the specified path if it doesn't exist.
@@ -183,11 +183,9 @@ impl Downloader {
 
         if let Some(size) = expected_size {
             if total != size {
-                return Err(format!(
-                    "Size mismatch for {}: expected {}, got {}",
-                    url, size, total
-                )
-                .into());
+                return Err(
+                    format!("Size mismatch for {url}: expected {size}, got {total}").into(),
+                );
             }
         }
 
@@ -217,7 +215,7 @@ impl Downloader {
         println!("Downloading {} {}", items.len(), task_name);
         let progress_bar = Arc::new(ProgressBar::new(
             items.len(),
-            format!("Downloading {}", task_name),
+            format!("Downloading {task_name}"),
         ));
 
         tokio::spawn({
@@ -246,11 +244,11 @@ impl Downloader {
         let errors: Vec<_> = results.into_iter().filter_map(|r| r.err()).collect();
         if !errors.is_empty() {
             for error in &errors {
-                eprintln!("Error: {}", error);
+                eprintln!("Error: {error}");
             }
             eprintln!("Warning: {} {} failed to download", errors.len(), task_name);
         } else {
-            println!("\nAll {} downloaded successfully", task_name);
+            println!("\nAll {task_name} downloaded successfully");
         }
 
         Ok(())
@@ -270,7 +268,7 @@ impl Downloader {
         let asset_index_manifest: AssetIndexManifest = if index_path.exists() {
             println!("Using cached asset index: {}", index_path.display());
             serde_json::from_str(&tokio_fs::read_to_string(&index_path).await?)
-                .map_err(|e| format!("Failed to parse asset index: {}", e))?
+                .map_err(|e| format!("Failed to parse asset index: {e}"))?
         } else {
             let manifest: AssetIndexManifest = self.get_json(&asset_index.url).await?;
             tokio_fs::write(&index_path, serde_json::to_string(&manifest)?).await?;
@@ -306,10 +304,7 @@ impl Downloader {
                     let hash = &asset.hash;
                     let subdir = &hash[0..2];
                     let file_path = assets_objects_dir.join(subdir).join(hash);
-                    let url = format!(
-                        "https://resources.download.minecraft.net/{}/{}",
-                        subdir, hash
-                    );
+                    let url = format!("https://resources.download.minecraft.net/{subdir}/{hash}");
 
                     downloader
                         .download_file_if_not_exists(
@@ -319,7 +314,7 @@ impl Downloader {
                             Some(progress_bar.as_ref()),
                         )
                         .await
-                        .map_err(|e| format!("Failed to download asset {}: {}", url, e))
+                        .map_err(|e| format!("Failed to download asset {url}: {e}"))
                 }
             },
         )
@@ -417,7 +412,7 @@ impl Downloader {
             .collect();
 
         if natives_to_download.is_empty() {
-            println!("No natives to download for current OS: {}", current_os);
+            println!("No natives to download for current OS: {current_os}");
             return Ok(());
         }
 
@@ -491,9 +486,7 @@ impl Downloader {
         let output = cmd.output().await?;
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(
-                format!("Failed to extract native JAR {}: {}", jar_path_str, stderr).into(),
-            );
+            return Err(format!("Failed to extract native JAR {jar_path_str}: {stderr}").into());
         }
 
         Ok(())
@@ -505,10 +498,10 @@ impl Downloader {
         cmd.arg("-Command")
            .arg(format!(
                "Add-Type -AssemblyName System.IO.Compression.FileSystem; \
-                $zip = [System.IO.Compression.ZipFile]::OpenRead('{}'); \
+                $zip = [System.IO.Compression.ZipFile]::OpenRead('{jar_path}'); \
                 foreach ($entry in $zip.Entries) {{ \
                     if (-not $entry.Name.EndsWith('/') -and -not $entry.FullName.StartsWith('META-INF/')) {{ \
-                        $destinationPath = Join-Path '{}' $entry.FullName; \
+                        $destinationPath = Join-Path '{natives_dir}' $entry.FullName; \
                         $destinationDir = Split-Path $destinationPath -Parent; \
                         if (-not (Test-Path $destinationDir)) {{ \
                             New-Item -ItemType Directory -Path $destinationDir -Force | Out-Null; \
@@ -516,8 +509,7 @@ impl Downloader {
                         [System.IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $destinationPath, $true); \
                     }} \
                 }}; \
-                $zip.Dispose();",
-               jar_path, natives_dir
+                $zip.Dispose();"
            ));
         cmd
     }

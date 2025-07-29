@@ -1,6 +1,6 @@
 use std::io::{self, Write};
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::time;
 
 /// A simple progress bar for tracking the completion of tasks.
@@ -29,7 +29,10 @@ impl ProgressBar {
         let bar_width = 40;
         let filled = (percentage * bar_width) / 100;
         let bar = "█".repeat(filled) + &"░".repeat(bar_width - filled);
-        print!("\r{}: [{}] {}/{} ({}%)", self.title, bar, current, self.total, percentage);
+        print!(
+            "\r{}: [{}] {}/{} ({}%)",
+            self.title, bar, current, self.total, percentage
+        );
         io::stdout().flush().unwrap();
         if current >= self.total {
             println!();

@@ -1,4 +1,4 @@
-pub mod chat;
+pub mod main;
 mod interractions;
 pub mod manager;
 mod messages;

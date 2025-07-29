@@ -1,3 +1,4 @@
+use crate::backend::creeper::java::utils::models::{VersionJson, VersionManifest};
 use dashmap::DashMap;
 use reqwest::Client;
 use std::fs;
@@ -6,7 +7,6 @@ use std::process::Command;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::fs as async_fs;
-use crate::backend::creeper::java::models::{VersionJson, VersionManifest};
 
 #[derive(Debug, Clone)]
 pub struct JavaVersion {
@@ -43,15 +43,11 @@ impl JavaVersion {
             8 => ("8.0.362", "8.68.0.19"),
             17 => ("17.0.16", "17.60.17"),
             21 => ("21.0.8", "21.44.17"),
-            _ => panic!("Unsupported Java version: {}", major_version),
+            _ => panic!("Unsupported Java version: {major_version}"),
         };
 
-        let filename = format!(
-            "zulu{}-ca-jdk{}-{}.{}",
-            build_str, version_str, os_part, extension
-        );
-
-        let url = format!("https://cdn.azul.com/zulu/bin/{}", filename);
+        let filename = format!("zulu{build_str}-ca-jdk{version_str}-{os_part}.{extension}");
+        let url = format!("https://cdn.azul.com/zulu/bin/{filename}");
 
         (url, filename)
     }
@@ -66,10 +62,7 @@ impl JavaManager {
     }
 
     /// Get the major Java version for a specific Minecraft version using Mojang Meta.
-    pub async fn get_java_major(
-        &self,
-        mc_version: &str,
-    ) -> Result<u8, Box<dyn std::error::Error>> {
+    pub async fn get_java_major(&self, mc_version: &str) -> Result<u8, Box<dyn std::error::Error>> {
         // 1. Available versions
         let manifest: VersionManifest = self
             .client
@@ -96,7 +89,10 @@ impl JavaManager {
             .await?;
 
         // 4. Return the major version, otherwise default to 8
-        Ok(version_json.java_version.map(|jv| jv.major_version).unwrap_or(8))
+        Ok(version_json
+            .java_version
+            .map(|jv| jv.major_version)
+            .unwrap_or(8))
     }
 
     /// JavaVersion using Mojang Meta.
@@ -111,7 +107,7 @@ impl JavaManager {
         };
         Ok(JavaVersion::new(major_version))
     }
-    
+
     pub fn is_java_installed(&self, java_version: &JavaVersion) -> bool {
         let java_path = format!("java-{}", java_version.major_version);
         Path::new(&java_path).exists()
@@ -159,7 +155,7 @@ impl JavaManager {
 
         Ok(bytes)
     }
-    
+
     fn extract_java(&self, java_version: &JavaVersion) -> Result<(), Box<dyn std::error::Error>> {
         println!("Extracting Java {}...", java_version.major_version);
 
@@ -168,7 +164,7 @@ impl JavaManager {
             // Windows PowerShit extraction
             Command::new("powershell")
                 .arg("-Command")
-                .arg(&format!(
+                .arg(format!(
                     "Expand-Archive -Path '{}' -DestinationPath '{}' -Force",
                     java_version.filename, java_dir
                 ))
@@ -198,7 +194,7 @@ impl JavaManager {
         );
         Ok(())
     }
-    
+
     pub fn get_java_path(
         &self,
         java_version: &JavaVersion,
@@ -226,9 +222,9 @@ impl JavaManager {
         println!("Java executable not found. Directory structure:");
         self.debug_directory_structure(Path::new(&java_dir))?;
 
-        Err(format!("Java executable not found in {}", java_dir).into())
+        Err(format!("Java executable not found in {java_dir}").into())
     }
-    
+
     fn find_java_recursive(&self, dir: &Path, pattern: &str) -> Option<PathBuf> {
         let entries = fs::read_dir(dir).ok()?;
 
@@ -247,7 +243,7 @@ impl JavaManager {
         }
         None
     }
-    
+
     fn debug_directory_structure(&self, dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
         println!("Debugging directory structure for: {}", dir.display());
 
@@ -259,7 +255,7 @@ impl JavaManager {
         self.print_dir_structure(dir, 0)?;
         Ok(())
     }
-    
+
     fn print_dir_structure(
         &self,
         dir: &Path,
@@ -279,10 +275,10 @@ impl JavaManager {
             let name = path.file_name().unwrap().to_string_lossy();
 
             if path.is_dir() {
-                println!("{}DIR: {}", indent, name);
+                println!("{indent}DIR: {name}");
                 self.print_dir_structure(&path, depth + 1)?;
             } else {
-                println!("{}FILE: {}", indent, name);
+                println!("{indent}FILE: {name}");
             }
         }
 

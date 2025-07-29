@@ -51,7 +51,7 @@ pub fn Chat(username: String) -> Element {
 fn get_chat_data(username: &str) -> ChatData {
     ChatData {
         username: username.to_string(),
-        avatar_url: format!("https://example.com/avatar/{}", username),
+        avatar_url: format!("https://example.com/avatar/{username}"),
         status: "Online".to_string(),
         messages: vec![
             Message {

@@ -56,7 +56,7 @@ pub fn ChatSidebar() -> Element {
                         onclick: {
                             let username = user.username.clone();
                             move |_| {
-                                nav.push(format!("/chat/{}", username));
+                                nav.push(format!("/chat/{username}"));
                             }
                         },
                         div { class: "chat-avatar",

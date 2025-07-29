@@ -3,7 +3,7 @@ name = "DreamLauncher"
 authors = ["Frogdream Studios <"]
 description = "A powerful and lightweight Minecraft launcher that will be perfect for every player."
 license = "LGPL-3.0-only"
-version = "1.0.0-beta"
+version = "1.0.0-beta.1"
 edition = "2024"
 
 [dependencies]
@@ -25,7 +25,6 @@ reqwest = { version = "0.12.22", features = ["json", "stream"] }
 dirs = "6.0.0"
 dashmap = "7.0.0-rc2"
 lru = "0.16.0"
-version_check = "0.9.5"
 
 [features]
 default = ["desktop"]
