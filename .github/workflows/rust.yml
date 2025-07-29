@@ -36,39 +36,23 @@ jobs:
             xdotool
           version: 1
 
-      - name: Cache Cargo registry
+      - name: Cache Rust
         uses: actions/cache@v4
         with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          path: |
+            ~/.rustup
+            ~/.cargo/bin
+          key: ${{ runner.os }}-rustup-${{ hashFiles('rust-toolchain.toml') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-registry-
+            ${{ runner.os }}-rustup-
 
-      - name: Cache Cargo git
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-git-
-
-      - name: Cache target dir
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-target-
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: nightly
-          components: rustfmt
+      - name: Setup Rust (from rust-toolchain.toml)
+        run: rustup show
 
       - name: Build
         shell: bash
-        run: cargo build --release --locked --features "desktop"
+        run: |
+          cargo build --release --features --locked "desktop" -j $(nproc)
 
       - name: Package
         shell: bash
