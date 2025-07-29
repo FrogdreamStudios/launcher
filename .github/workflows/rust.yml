@@ -46,37 +46,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-rustup-
 
-      - name: Cache Cargo Registry
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-registry-
-
-      - name: Cache Cargo Git
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-git-
-
-      - name: Cache Target Dir
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}-desktop
-          restore-keys: |
-            ${{ runner.os }}-target-
-
-      - name: Setup Rust
+      - name: Setup Rust (from rust-toolchain.toml)
         run: rustup show
 
       - name: Build
         shell: bash
         run: |
-          cargo build --release --locked --features "desktop"
+          cargo build --release --features --locked "desktop" -j $(nproc)
 
       - name: Package
         shell: bash
