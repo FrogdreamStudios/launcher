@@ -1,11 +1,10 @@
 use crate::backend::creeper::java::utils::models::{VersionJson, VersionManifest};
-use dashmap::DashMap;
+use crate::backend::creeper::utils::cache_manager::CacheManager;
+use crate::backend::creeper::utils::system_info::SystemInfo;
 use reqwest::Client;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::Arc;
-use std::time::{Duration, Instant};
 use tokio::fs as async_fs;
 
 #[derive(Debug, Clone)]
@@ -17,7 +16,7 @@ pub struct JavaVersion {
 
 pub struct JavaManager {
     client: Client,
-    cache: Arc<DashMap<String, (Vec<u8>, Instant)>>,
+    cache_manager: CacheManager,
 }
 
 impl JavaVersion {
@@ -31,13 +30,8 @@ impl JavaVersion {
     }
 
     fn get_download_info(major_version: u8) -> (String, String) {
-        let (os_part, extension) = if cfg!(target_os = "windows") {
-            ("win_x64", "zip")
-        } else if cfg!(target_os = "linux") {
-            ("linux_x64", "tar.gz")
-        } else {
-            ("macosx_x64", "tar.gz")
-        };
+        let os_part = SystemInfo::get_java_os();
+        let extension = SystemInfo::get_java_extension();
 
         let (version_str, build_str) = match major_version {
             8 => ("8.0.362", "8.68.0.19"),
@@ -57,7 +51,7 @@ impl JavaManager {
     pub fn new() -> Self {
         Self {
             client: Client::new(),
-            cache: Arc::new(DashMap::new()),
+            cache_manager: CacheManager::new_default(),
         }
     }
 
@@ -124,13 +118,8 @@ impl JavaManager {
 
         // Check cache first
         let cache_key = java_version.download_url.clone();
-        let bytes = if let Some(entry) = self.cache.get(&cache_key) {
-            let (cached_bytes, timestamp) = entry.value();
-            if timestamp.elapsed() < Duration::from_secs(86400) {
-                cached_bytes.clone()
-            } else {
-                self.fetch_and_cache(&cache_key).await?
-            }
+        let bytes = if let Some(cached_bytes) = self.cache_manager.get(&cache_key) {
+            cached_bytes
         } else {
             self.fetch_and_cache(&cache_key).await?
         };
@@ -150,8 +139,7 @@ impl JavaManager {
         let response = self.client.get(url).send().await?;
         let bytes = response.bytes().await?.to_vec();
 
-        self.cache
-            .insert(url.to_string(), (bytes.clone(), Instant::now()));
+        self.cache_manager.store(url, bytes.clone());
 
         Ok(bytes)
     }

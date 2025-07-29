@@ -1,16 +1,17 @@
 use crate::backend::creeper::java::java_config::JavaConfig;
 use crate::backend::creeper::java::utils::java_downloader::JavaManager;
+use crate::backend::creeper::utils::cache_manager::FileCacheManager;
+use crate::backend::creeper::utils::directory_manager::MinecraftDirectories;
 use crate::backend::creeper::utils::file_manager::FileSystem;
+use crate::backend::creeper::utils::process_manager::ProcessManager;
 use crate::backend::creeper::vanilla::downloader::Downloader;
 use crate::backend::creeper::vanilla::models::{VersionDetails, VersionManifest};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
-use std::time::Instant;
 use tokio::fs;
-use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::{Child, Command};
+use tokio::process::Child;
 use tokio::try_join;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -94,21 +95,21 @@ async fn fetch_version_manifest(
     downloader: &Downloader,
     _fs: &FileSystem,
 ) -> Result<VersionManifest, Box<dyn Error>> {
-    let cache_path = Path::new(".cache/version_manifest.json");
-    if cache_path.exists() {
-        let content = fs::read_to_string(&cache_path).await?;
-        let manifest: VersionManifest = serde_json::from_str(&content)?;
+    let cache_manager = FileCacheManager::new_default(PathBuf::from(".cache"));
+
+    if let Some(manifest) = cache_manager.get_json("version_manifest").await? {
         println!("Loaded version manifest from cache");
-        Ok(manifest)
-    } else {
-        let manifest_url = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
-        println!("Fetching version manifest from {manifest_url}");
-        let manifest: VersionManifest = downloader.get_json(manifest_url).await?;
-        println!("Version manifest fetched, caching it...");
-        fs::create_dir_all(".cache").await.ok();
-        fs::write(&cache_path, serde_json::to_string(&manifest)?).await?;
-        Ok(manifest)
+        return Ok(manifest);
     }
+
+    let manifest_url = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
+    println!("Fetching version manifest from {manifest_url}");
+    let manifest: VersionManifest = downloader.get_json(manifest_url).await?;
+    println!("Version manifest fetched, caching it...");
+    cache_manager
+        .store_json("version_manifest", &manifest)
+        .await?;
+    Ok(manifest)
 }
 
 async fn try_quick_launch(minecraft_dir: &Path, version: &str) -> Option<QuickLaunchCache> {
@@ -151,7 +152,6 @@ async fn save_quick_launch_cache(
     Ok(())
 }
 
-// TODO: debug function, delete it later
 async fn clear_quick_launch_cache(minecraft_dir: &Path) {
     let quick_launch_path = minecraft_dir.join("quick_launch.json");
     if quick_launch_path.exists() {
@@ -171,8 +171,6 @@ async fn start_minecraft(
     minecraft_dir: &Path,
     version: &str,
 ) -> Result<String, Box<dyn Error>> {
-    // Start the timer to measure launch time
-    let start_time = Instant::now();
 
     // Check if quick launch is possible
     if let Some(cache) = try_quick_launch(minecraft_dir, version).await {
@@ -188,55 +186,14 @@ async fn start_minecraft(
             &cache.asset_index_id,
         );
 
-        command.stdout(std::process::Stdio::piped());
-        command.stderr(std::process::Stdio::piped());
+        let child: Child = command.spawn()?;
 
-        let mut child: Child = command.spawn()?;
+        let (success, message) = ProcessManager::monitor_minecraft_process(child).await?;
 
-        let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
-        let stderr = child.stderr.take().ok_or("Failed to capture stderr")?;
-        let mut stdout_reader = BufReader::new(stdout).lines();
-        let mut stderr_reader = BufReader::new(stderr).lines();
-
-        let mut sound_engine_started = false;
-        while !sound_engine_started {
-            tokio::select! {
-                line = stdout_reader.next_line() => {
-                    if let Some(line) = line? {
-                        println!("{line}");
-                        if line.contains("Sound engine started") {
-                            sound_engine_started = true;
-                            let elapsed_time = start_time.elapsed();
-                            println!(
-                                "Time to launch Minecraft: {:.2} seconds",
-                                elapsed_time.as_secs_f64()
-                            );
-                        }
-                    }
-                }
-                line = stderr_reader.next_line() => {
-                    if let Some(line) = line? {
-                        println!("{line}");
-                        if line.contains("Sound engine started") {
-                            sound_engine_started = true;
-                            let elapsed_time = start_time.elapsed();
-                            println!(
-                                "Time to launch Minecraft: {:.2} seconds",
-                                elapsed_time.as_secs_f64()
-                            );
-                        }
-                    }
-                }
-                status = child.wait() => {
-                    let status = status?;
-                    println!("Minecraft exited with code: {}", status.code().unwrap_or(-1));
-                    break;
-                }
-            }
-        }
-
-        if !sound_engine_started {
-            println!("Sound engine started not detected before process exit");
+        if success {
+            println!("Minecraft started successfully");
+        } else {
+            println!("Minecraft process: {message}");
         }
 
         return Ok("Minecraft started successfully".to_string());
@@ -244,14 +201,10 @@ async fn start_minecraft(
 
     // If a quick launch is not possible, proceed with the full launch procedure
     println!("Full launch procedure: downloading and checking files...");
-    // Create unnecessary directories asynchronously
-    fs::create_dir_all(&minecraft_dir.join("versions"))
-        .await
-        .ok();
-    fs::create_dir_all(&minecraft_dir.join("libraries"))
-        .await
-        .ok();
-    fs::create_dir_all(".cache").await.ok();
+
+    // Create all necessary directories
+    let minecraft_dirs = MinecraftDirectories::new(minecraft_dir.to_path_buf());
+    minecraft_dirs.create_all().await?;
 
     // Check for Java
     println!("Checking Java compatibility for Minecraft {version}...");
@@ -277,21 +230,25 @@ async fn start_minecraft(
     println!("Found version {version}");
 
     // Cache version details
-    let version_cache_path = format!(".cache/version_{version}.json");
-    let version_details: VersionDetails = if fs::metadata(&version_cache_path).await.is_ok() {
-        let content = fs::read_to_string(&version_cache_path).await?;
-        serde_json::from_str(&content)?
-    } else {
-        let details: VersionDetails = downloader.get_json(&version_info.url).await?;
-        fs::write(&version_cache_path, serde_json::to_string(&details)?).await?;
-        details
-    };
+    let cache_manager = FileCacheManager::new_default(PathBuf::from(".cache"));
+    let version_cache_key = format!("version_{version}");
+
+    let version_details: VersionDetails =
+        if let Some(details) = cache_manager.get_json(&version_cache_key).await? {
+            details
+        } else {
+            let details: VersionDetails = downloader.get_json(&version_info.url).await?;
+            cache_manager
+                .store_json(&version_cache_key, &details)
+                .await?;
+            details
+        };
     println!("Version details fetched");
 
-    let versions_dir = minecraft_dir.join("versions");
-    let version_dir = versions_dir.join(version);
-    let libraries_dir = minecraft_dir.join("libraries");
-    let client_jar_path = version_dir.join(format!("{version}.jar"));
+    let minecraft_dirs = MinecraftDirectories::new(minecraft_dir.to_path_buf());
+    let version_dir = minecraft_dirs.get_version_dir(version);
+    let libraries_dir = minecraft_dirs.libraries.clone();
+    let client_jar_path = minecraft_dirs.get_client_jar_path(version);
 
     let client_jar_needed = !fs.exists(&client_jar_path);
 
@@ -330,7 +287,7 @@ async fn start_minecraft(
     let classpath = fs.build_classpath(&libraries_dir, &client_jar_path)?;
 
     // Use Java
-    let java_version = Command::new(&java_executable)
+    let java_version = tokio::process::Command::new(&java_executable)
         .arg("-version")
         .output()
         .await?;
@@ -353,86 +310,32 @@ async fn start_minecraft(
         &version_details.asset_index.id,
     );
 
-    command.stdout(std::process::Stdio::piped());
-    command.stderr(std::process::Stdio::piped());
-
-    let mut child: Child = command.spawn()?;
+    let child: Child = command.spawn()?;
     println!("Java command: {command:?}");
 
-    let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
-    let stderr = child.stderr.take().ok_or("Failed to capture stderr")?;
-    let mut stdout_reader = BufReader::new(stdout).lines();
-    let mut stderr_reader = BufReader::new(stderr).lines();
+    let (success, message) = ProcessManager::monitor_minecraft_process(child).await?;
 
-    let mut sound_engine_started = false;
-    while !sound_engine_started {
-        tokio::select! {
-            line = stdout_reader.next_line() => {
-                if let Some(line) = line? {
-                    println!("{line}");
-                    if line.contains("Sound engine started") {
-                        sound_engine_started = true;
-                        let elapsed_time = start_time.elapsed();
-                        println!(
-                            "Time to launch Minecraft: {:.2} seconds",
-                            elapsed_time.as_secs_f64()
-                        );
+    if success {
+        println!("Minecraft started successfully");
 
-                        // Save cache for quick launch on a successful start
-                        println!("Saving quick launch cache for future runs...");
-                        if let Err(e) = save_quick_launch_cache(
-                            minecraft_dir,
-                            version,
-                            &java_executable,
-                            &classpath,
-                            &version_details.main_class,
-                            &version_details.asset_index.id,
-                        ).await {
-                            eprintln!("Failed to save quick launch cache: {e}");
-                        } else {
-                            println!("Quick launch cache saved");
-                        }
-                    }
-                }
-            }
-            line = stderr_reader.next_line() => {
-                if let Some(line) = line? {
-                    println!("{line}");
-                    if line.contains("Sound engine started") {
-                        sound_engine_started = true;
-                        let elapsed_time = start_time.elapsed();
-                        println!(
-                            "Time to launch Minecraft: {:.2} seconds",
-                            elapsed_time.as_secs_f64()
-                        );
-
-                        // Save cache for quick launch on a successful start
-                        println!("Saving quick launch cache for future runs...");
-                        if let Err(e) = save_quick_launch_cache(
-                            minecraft_dir,
-                            version,
-                            &java_executable,
-                            &classpath,
-                            &version_details.main_class,
-                            &version_details.asset_index.id,
-                        ).await {
-                            eprintln!("Failed to save quick launch cache: {e}");
-                        } else {
-                            println!("Quick launch cache saved");
-                        }
-                    }
-                }
-            }
-            status = child.wait() => {
-                let status = status?;
-                println!("Minecraft exited with code: {}", status.code().unwrap_or(-1));
-                break;
-            }
+        // Save cache for quick launch on a successful start
+        println!("Saving quick launch cache for future runs...");
+        if let Err(e) = save_quick_launch_cache(
+            minecraft_dir,
+            version,
+            &java_executable,
+            &classpath,
+            &version_details.main_class,
+            &version_details.asset_index.id,
+        )
+        .await
+        {
+            eprintln!("Failed to save quick launch cache: {e}");
+        } else {
+            println!("Quick launch cache saved");
         }
-    }
-
-    if !sound_engine_started {
-        println!("Sound engine started not detected before process exit");
+    } else {
+        println!("Minecraft process: {message}");
     }
 
     Ok("Minecraft started successfully".to_string())

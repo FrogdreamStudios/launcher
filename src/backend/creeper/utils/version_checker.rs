@@ -1,4 +1,4 @@
-/// Parses a version string into a tuple (major, minor, patch)
+/// Parses a version string into a tuple (major, minor, patch).
 pub fn parse_version_number(version: &str) -> Option<(u32, u32, u32)> {
     if version.contains('w')
         || version.contains("pre")
@@ -22,7 +22,7 @@ pub fn parse_version_number(version: &str) -> Option<(u32, u32, u32)> {
     None
 }
 
-/// Determines whether `--userProperties` should be passed based on the version
+/// Determines whether `--userProperties` should be passed based on the version.
 pub fn needs_user_properties(version: &str) -> bool {
     if let Some((major, minor, _)) = parse_version_number(version) {
         if major == 1 && minor <= 8 {
@@ -41,7 +41,7 @@ pub fn needs_user_properties(version: &str) -> bool {
     matches!(version, "1.6.4" | "1.7.2" | "1.7.10")
 }
 
-/// Determines whether legacy macOS arguments are needed
+/// Determines whether legacy macOS arguments are needed.
 pub fn needs_legacy_macos_args(version: &str) -> bool {
     if let Some((major, minor, _)) = parse_version_number(version) {
         if major == 1 && minor <= 12 {

@@ -1,30 +1,23 @@
+use crate::backend::creeper::utils::cache_manager::CacheManager;
+use crate::backend::creeper::utils::directory_manager::DirectoryManager;
 use crate::backend::creeper::utils::progress_bar::ProgressBar;
+use crate::backend::creeper::utils::system_info::SystemInfo;
 use crate::backend::creeper::vanilla::models::{AssetIndex, AssetIndexManifest, Library};
-use dashmap::DashMap;
 use futures::StreamExt;
-use lru::LruCache;
 use reqwest::{Client, RequestBuilder};
 use serde::de::DeserializeOwned;
 use std::collections::HashSet;
 use std::path::Path;
-use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::sync::Arc;
 use tokio::fs as tokio_fs;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
-
-#[derive(Clone)]
-struct CacheEntry {
-    data: Vec<u8>,
-    timestamp: Instant,
-}
 
 /// Handles downloading of Minecraft assets, libraries, and JSON data using HTTP.
 #[derive(Clone)]
 pub struct Downloader {
     client: Client,
-    cache: Arc<DashMap<String, CacheEntry>>,
-    lru_cache: Arc<Mutex<LruCache<String, Vec<u8>>>>,
+    cache_manager: CacheManager,
     max_concurrent: usize,
 }
 
@@ -39,50 +32,19 @@ impl Downloader {
 
         Self {
             client,
-            cache: Arc::new(DashMap::new()),
-            lru_cache: Arc::new(Mutex::new(LruCache::new(
-                std::num::NonZeroUsize::new(64).unwrap(),
-            ))),
+            cache_manager: CacheManager::new_default(),
             max_concurrent: 96,
         }
     }
 
-    /// Check if the cached entry is still valid (1-hour TTL)
-    fn is_cache_valid(&self, entry: &CacheEntry) -> bool {
-        entry.timestamp.elapsed() < Duration::from_secs(3600)
-    }
-
     /// Get from cache if valid
     fn get_cached(&self, url: &str) -> Option<Vec<u8>> {
-        if let Some(entry) = self.cache.get(url) {
-            if self.is_cache_valid(&entry) {
-                return Some(entry.data.clone());
-            }
-        }
-
-        if let Ok(mut lru) = self.lru_cache.lock() {
-            if let Some(data) = lru.get(url) {
-                return Some(data.clone());
-            }
-        }
-        None
+        self.cache_manager.get(url)
     }
 
     /// Store in cache
     fn store_cache(&self, url: &str, data: Vec<u8>) {
-        if data.len() > 1_048_576 {
-            if let Ok(mut lru) = self.lru_cache.lock() {
-                lru.put(url.to_string(), data);
-            }
-        } else {
-            self.cache.insert(
-                url.to_string(),
-                CacheEntry {
-                    data,
-                    timestamp: Instant::now(),
-                },
-            );
-        }
+        self.cache_manager.store(url, data);
     }
 
     /// Creates a reqwest request builder.
@@ -141,9 +103,7 @@ impl Downloader {
             return Ok(());
         }
 
-        if let Some(parent) = path.parent() {
-            tokio_fs::create_dir_all(parent).await?;
-        }
+        DirectoryManager::ensure_parent_dir(path).await?;
 
         let req = self.create_request(url)?;
         let resp = req.send().await?;
@@ -210,8 +170,7 @@ impl Downloader {
             .map(|item| {
                 let downloader = Downloader {
                     client: self.client.clone(),
-                    cache: self.cache.clone(),
-                    lru_cache: self.lru_cache.clone(),
+                    cache_manager: self.cache_manager.clone(),
                     max_concurrent: self.max_concurrent,
                 };
                 let progress_bar = progress_bar.clone();
@@ -244,7 +203,7 @@ impl Downloader {
     ) -> Result<(), Box<dyn std::error::Error>> {
         println!("Downloading asset index from {}", asset_index.url);
         let indexes_dir = minecraft_dir.join("assets/indexes");
-        tokio_fs::create_dir_all(&indexes_dir).await?;
+        DirectoryManager::ensure_dir(&indexes_dir).await?;
         let index_path = indexes_dir.join(format!("{}.json", asset_index.id));
 
         let asset_index_manifest: AssetIndexManifest = if index_path.exists() {
@@ -259,7 +218,7 @@ impl Downloader {
         };
 
         let assets_objects_dir = minecraft_dir.join("assets/objects");
-        tokio_fs::create_dir_all(&assets_objects_dir).await?;
+        DirectoryManager::ensure_dir(&assets_objects_dir).await?;
 
         let unique_assets: Vec<_> = {
             let mut downloaded_hashes = HashSet::new();
@@ -365,10 +324,10 @@ impl Downloader {
         libraries: &[Library],
         version_dir: &Path,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let current_os = self.get_current_os();
+        let current_os = SystemInfo::get_minecraft_os();
         let natives_dir = version_dir.join("natives");
 
-        tokio_fs::create_dir_all(&natives_dir).await?;
+        DirectoryManager::ensure_dir(&natives_dir).await?;
 
         let natives_to_download: Vec<(
             Library,
@@ -531,7 +490,7 @@ impl Downloader {
     /// Determines if a library should be used based on OS rules.
     fn should_use_library(&self, library: &Library) -> bool {
         if let Some(rules) = &library.rules {
-            let current_os = self.get_current_os();
+            let current_os = SystemInfo::get_minecraft_os();
             let mut should_use = false;
 
             for rule in rules {
@@ -555,17 +514,6 @@ impl Downloader {
         } else {
             true // No rules mean the library applies to all platforms
         }
-    }
-
-    /// Gets the current operating system name in Minecraft format.
-    fn get_current_os(&self) -> String {
-        match std::env::consts::OS {
-            "windows" => "windows",
-            "linux" => "linux",
-            "macos" => "osx",
-            _ => "unknown",
-        }
-        .to_string()
     }
 }
 
