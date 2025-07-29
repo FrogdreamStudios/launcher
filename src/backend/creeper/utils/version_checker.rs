@@ -1,15 +1,20 @@
 /// Parses a version string into a tuple (major, minor, patch)
 pub fn parse_version_number(version: &str) -> Option<(u32, u32, u32)> {
-    if version.contains('w') || version.contains("pre") || version.contains("rc") {
-        if version.starts_with("24w") || version.starts_with("25w") {
-            return Some((1, 21, 0));
-        }
+    if version.contains('w')
+        || version.contains("pre")
+        || version.contains("rc") && version.starts_with("24w")
+        || version.starts_with("25w")
+    {
+        return Some((1, 21, 0));
     }
 
     let parts: Vec<&str> = version.split('.').collect();
     if parts.len() >= 2 {
         if let (Ok(major), Ok(minor)) = (parts[0].parse::<u32>(), parts[1].parse::<u32>()) {
-            let patch = parts.get(2).and_then(|s| s.parse::<u32>().ok()).unwrap_or(0);
+            let patch = parts
+                .get(2)
+                .and_then(|s| s.parse::<u32>().ok())
+                .unwrap_or(0);
             return Some((major, minor, patch));
         }
     }
@@ -25,7 +30,11 @@ pub fn needs_user_properties(version: &str) -> bool {
         }
     }
 
-    if version.contains("w") || version.contains("pre") || version.contains("rc") || version.len() < 3 {
+    if version.contains("w")
+        || version.contains("pre")
+        || version.contains("rc")
+        || version.len() < 3
+    {
         return true;
     }
 

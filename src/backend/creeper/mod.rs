@@ -1,6 +1,6 @@
-pub mod creeper;
-mod vanilla;
 mod fabric;
 mod forge;
-mod utils;
 mod java;
+pub mod main;
+mod utils;
+mod vanilla;

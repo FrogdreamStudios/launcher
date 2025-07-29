@@ -21,7 +21,6 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing-subscriber",
- "version_check",
 ]
 
 [[package]]
