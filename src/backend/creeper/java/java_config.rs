@@ -1,10 +1,10 @@
-use std::path::Path;
-use std::process::Stdio;
-use tokio::process::Command;
-
+use crate::backend::creeper::utils::system_info::SystemInfo;
 use crate::backend::creeper::utils::version_checker::{
     needs_legacy_macos_args, needs_user_properties, parse_version_number,
 };
+use std::path::Path;
+use std::process::Stdio;
+use tokio::process::Command;
 
 /// Configuration for the Java command to launch Minecraft.
 #[allow(dead_code)]
@@ -40,16 +40,11 @@ impl JavaConfig {
 
         let mut game_args = JavaConfig::get_version_specific_args(version);
 
-        #[cfg(target_os = "macos")]
-        {
-            if needs_legacy_macos_args(version) {
-                game_args.extend([
-                    ("--width".to_string(), "854".to_string()),
-                    ("--height".to_string(), "480".to_string()),
-                ]);
-
-                jvm_args.push("-Dorg.lwjgl.opengl.Display.allowSoftwareOpenGL=true".to_string());
-            }
+        if SystemInfo::is_macos() && needs_legacy_macos_args(version) {
+            game_args.extend([
+                ("--width".to_string(), "854".to_string()),
+                ("--height".to_string(), "480".to_string()),
+            ]);
         }
 
         Self {
