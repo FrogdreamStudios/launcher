@@ -1,3 +1,4 @@
+use tokio::io;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child};
 
@@ -24,31 +25,19 @@ impl Default for ProcessConfig {
 pub struct ProcessManager;
 
 impl ProcessManager {
-    /// Monitor a process and wait for a success pattern.
+    /// Monitor a process and wait for a success pattern (без проверки на ошибки).
     pub async fn monitor_process_with_pattern(
         mut child: Child,
         config: ProcessConfig,
     ) -> Result<(bool, String), Box<dyn std::error::Error>> {
-        let stdout = child.stdout.take().unwrap_or_else(|| {
-            tokio::process::Command::new("echo")
-                .arg("")
-                .stdout(std::process::Stdio::piped())
-                .spawn()
-                .unwrap()
-                .stdout
-                .take()
-                .unwrap()
-        });
-        let stderr = child.stderr.take().unwrap_or_else(|| {
-            tokio::process::Command::new("echo")
-                .arg("")
-                .stderr(std::process::Stdio::piped())
-                .spawn()
-                .unwrap()
-                .stderr
-                .take()
-                .unwrap()
-        });
+        let stdout = match child.stdout.take() {
+            Some(s) => Box::new(s) as Box<dyn tokio::io::AsyncRead + Unpin + Send>,
+            None => Box::new(io::empty()) as Box<dyn tokio::io::AsyncRead + Unpin + Send>,
+        };
+        let stderr = match child.stderr.take() {
+            Some(s) => Box::new(s) as Box<dyn tokio::io::AsyncRead + Unpin + Send>,
+            None => Box::new(io::empty()) as Box<dyn tokio::io::AsyncRead + Unpin + Send>,
+        };
 
         let mut stdout_reader = BufReader::new(stdout).lines();
         let mut stderr_reader = BufReader::new(stderr).lines();
@@ -58,49 +47,35 @@ impl ProcessManager {
 
         while !success_detected {
             tokio::select! {
-                line = stdout_reader.next_line() => {
-                    if let Some(line) = line? {
-                        println!("{line}");
-                        last_output = line.clone();
+            line = stdout_reader.next_line() => {
+                if let Some(line) = line? {
+                    println!("{line}");
+                    last_output = line.clone();
 
-                        if line.contains(&config.success_pattern) {
-                            success_detected = true;
-                        }
-
-                        // Check for error patterns
-                        for error_pattern in &config.error_patterns {
-                            if line.contains(error_pattern) {
-                                return Ok((false, format!("Error detected: {line}")));
-                            }
-                        }
+                    if line.contains(&config.success_pattern) {
+                        success_detected = true;
                     }
-                }
-                line = stderr_reader.next_line() => {
-                    if let Some(line) = line? {
-                        println!("{line}");
-                        last_output = line.clone();
-
-                        if line.contains(&config.success_pattern) {
-                            success_detected = true;
-                        }
-
-                        // Check for error patterns
-                        for error_pattern in &config.error_patterns {
-                            if line.contains(error_pattern) {
-                                return Ok((false, format!("Error detected: {line}")));
-                            }
-                        }
-                    }
-                }
-                status = child.wait() => {
-                    let status = status?;
-                    let exit_code = status.code().unwrap_or(-1);
-                    return Ok((
-                        success_detected,
-                        format!("Process exited with code: {exit_code}")
-                    ));
                 }
             }
+            line = stderr_reader.next_line() => {
+                if let Some(line) = line? {
+                    println!("{line}");
+                    last_output = line.clone();
+
+                    if line.contains(&config.success_pattern) {
+                        success_detected = true;
+                    }
+                }
+            }
+            status = child.wait() => {
+                let status = status?;
+                let exit_code = status.code().unwrap_or(-1);
+                return Ok((
+                    success_detected,
+                    format!("Process exited with code: {exit_code}")
+                ));
+            }
+        }
         }
 
         Ok((success_detected, last_output))
