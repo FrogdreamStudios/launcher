@@ -58,7 +58,7 @@ fn ModeSelector() -> Element {
             let window = window.clone();
             async move {
                 task::spawn_blocking(|| {
-                    let _ = backend::creeper::main::main();
+                    // let _ = backend::creeper::main::main();
                 });
                 window.set_visible(false)
             }

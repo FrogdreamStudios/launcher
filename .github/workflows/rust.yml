@@ -2,9 +2,9 @@ name: Rust CI
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main, new-version-downloader]
   pull_request:
-    branches: [main, dev]
+    branches: [main, new-version-downloader]
 
 jobs:
   build:
