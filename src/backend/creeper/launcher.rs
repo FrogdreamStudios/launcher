@@ -1111,33 +1111,6 @@ impl MinecraftLauncher {
             info!("Created {} virtual assets", created_count);
         }
 
-        // For pre-1.6 versions, create symlinks for icons at the expected location
-        if version_details.assets == "pre-1.6" {
-            let icons_src = virtual_dir.join("resources").join("icons");
-            let icons_dst = virtual_dir.join("icons");
-
-            if icons_src.exists() && !icons_dst.exists() {
-                #[cfg(unix)]
-                {
-                    if let Err(e) = std::os::unix::fs::symlink(&icons_src, &icons_dst) {
-                        warn!("Failed to create icons symlink for pre-1.6: {}", e);
-                    } else {
-                        debug!("Created icons symlink for pre-1.6 version");
-                    }
-                }
-
-                #[cfg(windows)]
-                {
-                    // On Windows, copy the directory instead of symlinking
-                    if let Err(e) = copy_dir_all(&icons_src, &icons_dst).await {
-                        warn!("Failed to copy icons directory for pre-1.6: {}", e);
-                    } else {
-                        debug!("Copied icons directory for pre-1.6 version");
-                    }
-                }
-            }
-        }
-
         Ok(())
     }
 

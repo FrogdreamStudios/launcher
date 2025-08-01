@@ -88,6 +88,8 @@ wait $JAVA_PID
 
             let script_path = std::env::temp_dir().join("minecraft_launcher.sh");
             std::fs::write(&script_path, script_content)?;
+
+            #[cfg(unix)]
             std::fs::set_permissions(&script_path, std::fs::Permissions::from_mode(0o755))?;
 
             let cmd = Command::new(&script_path);
