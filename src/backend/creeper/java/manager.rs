@@ -1,0 +1,648 @@
+use anyhow::Result;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use tokio::fs;
+use tracing::{debug, error, info};
+
+use super::runtime::{AzulJavaManifest, AzulPackage, JavaRuntime};
+use crate::backend::creeper::downloader::{HttpDownloader, ProgressTracker};
+use crate::backend::utils::paths::get_java_dir;
+
+pub struct JavaManager {
+    downloader: HttpDownloader,
+    java_dir: PathBuf,
+    installed_runtimes: HashMap<u8, JavaRuntime>,
+    // For Rosetta compatibility
+    x86_64_runtimes: HashMap<u8, JavaRuntime>,
+}
+
+impl JavaManager {
+    pub async fn new() -> Result<Self> {
+        let java_dir = get_java_dir()?;
+        fs::create_dir_all(&java_dir).await?;
+
+        let mut manager = Self {
+            downloader: HttpDownloader::new()?,
+            java_dir,
+            installed_runtimes: HashMap::new(),
+            x86_64_runtimes: HashMap::new(),
+        };
+
+        manager.scan_installed_runtimes().await?;
+        Ok(manager)
+    }
+
+    pub async fn get_java_for_version(
+        &mut self,
+        minecraft_version: &str,
+    ) -> Result<(PathBuf, bool)> {
+        let required_java = JavaRuntime::get_required_java_version(minecraft_version);
+        let needs_x86_64 = self.needs_x86_64_java(minecraft_version);
+
+        info!(
+            "Minecraft version {} requires Java {} (x86_64: {})",
+            minecraft_version, required_java, needs_x86_64
+        );
+
+        // Check if we already have a compatible runtime
+        let invalid_runtime_version = if needs_x86_64 {
+            if let Some(runtime) = self.get_compatible_x86_64_runtime(required_java) {
+                info!(
+                    "Using existing x86_64 Java {} runtime",
+                    runtime.major_version
+                );
+                let exe_path = runtime.get_executable_path();
+                if exe_path.exists() {
+                    return Ok((exe_path, true));
+                } else {
+                    info!(
+                        "Installed x86_64 Java runtime not found at {:?}, removing from cache",
+                        exe_path
+                    );
+                    Some(runtime.major_version)
+                }
+            } else {
+                None
+            }
+        } else if let Some(runtime) = self.get_compatible_runtime(required_java) {
+                info!("Using existing Java {} runtime", runtime.major_version);
+                let exe_path = runtime.get_executable_path();
+                if exe_path.exists() {
+                    return Ok((exe_path, false));
+                } else {
+                    info!(
+                        "Installed Java runtime not found at {:?}, removing from cache",
+                        exe_path
+                    );
+                    Some(runtime.major_version)
+                }
+            } else {
+                None
+            };
+
+        // Remove invalid runtime from cache if needed
+        if let Some(version) = invalid_runtime_version {
+            if needs_x86_64 {
+                self.x86_64_runtimes.remove(&version);
+            } else {
+                self.installed_runtimes.remove(&version);
+            }
+        }
+
+        // Check system Java (skip for x86_64 requirement as system Java might be ARM64)
+        if !needs_x86_64 {
+            if let Some(mut system_java) = JavaRuntime::detect_system_java()? {
+                if system_java.is_compatible_with_minecraft(required_java) {
+                    info!("Using system Java {} runtime", system_java.major_version);
+                    // Set the correct path for system Java
+                    if system_java.path.as_os_str().is_empty() {
+                        system_java.path = which::which("java").unwrap_or_else(|_| "java".into());
+                    }
+                    return Ok((system_java.get_executable_path(), false));
+                }
+            }
+        }
+
+        // Download and install required Java
+        if needs_x86_64 {
+            info!(
+                "Downloading x86_64 Java {} runtime for Minecraft {}",
+                required_java, minecraft_version
+            );
+            self.install_x86_64_java_runtime(required_java).await?;
+
+            // Get the newly installed runtime
+            if let Some(runtime) = self.x86_64_runtimes.get(&required_java) {
+                Ok((runtime.get_executable_path(), true))
+            } else {
+                Err(anyhow::anyhow!(
+                    "Failed to install x86_64 Java {} runtime",
+                    required_java
+                ))
+            }
+        } else {
+            info!(
+                "Downloading Java {} runtime for Minecraft {}",
+                required_java, minecraft_version
+            );
+            self.install_java_runtime(required_java).await?;
+
+            // Get the newly installed runtime
+            if let Some(runtime) = self.installed_runtimes.get(&required_java) {
+                Ok((runtime.get_executable_path(), false))
+            } else {
+                Err(anyhow::anyhow!(
+                    "Failed to install Java {} runtime",
+                    required_java
+                ))
+            }
+        }
+    }
+
+    pub fn get_compatible_runtime(&self, min_version: u8) -> Option<&JavaRuntime> {
+        self.installed_runtimes
+            .values()
+            .filter(|runtime| runtime.major_version >= min_version)
+            .min_by_key(|runtime| runtime.major_version)
+    }
+
+    pub fn get_compatible_x86_64_runtime(&self, min_version: u8) -> Option<&JavaRuntime> {
+        self.x86_64_runtimes
+            .values()
+            .filter(|runtime| runtime.major_version >= min_version)
+            .min_by_key(|runtime| runtime.major_version)
+    }
+
+    /// Determines if a Minecraft version needs x86_64 Java on Apple Silicon
+    /// due to incompatible native libraries.
+    fn needs_x86_64_java(&self, minecraft_version: &str) -> bool {
+        // Only applies to Apple Silicon (ARM64) systems
+        if std::env::consts::ARCH != "aarch64" || std::env::consts::OS != "macos" {
+            return false;
+        }
+
+        // Parse Minecraft version
+        if let Ok((major, minor, _patch)) = self.parse_minecraft_version(minecraft_version) {
+            // Versions before 1.19 typically have x86_64-only natives
+            // This is a conservative approach - some versions between 1.16-1.19 might work
+            match (major, minor) {
+                (1, m) if m < 19 => true,
+                _ => false,
+            }
+        } else {
+            // x86_64 for safety?
+            true
+        }
+    }
+
+    fn parse_minecraft_version(&self, version: &str) -> Result<(u8, u8, u8)> {
+        let parts: Vec<&str> = version.split('.').collect();
+
+        if parts.len() >= 2 {
+            let major = parts[0].parse::<u8>()?;
+            let minor = parts[1].parse::<u8>()?;
+            let patch = if parts.len() > 2 {
+                parts[2].parse::<u8>().unwrap_or(0)
+            } else {
+                0
+            };
+
+            Ok((major, minor, patch))
+        } else {
+            Err(anyhow::anyhow!(
+                "Invalid Minecraft version format: {}",
+                version
+            ))
+        }
+    }
+
+    pub async fn install_java_runtime(&mut self, java_version: u8) -> Result<()> {
+        let manifest = self.fetch_azul_manifest().await?;
+
+        let os = AzulPackage::get_os_name();
+        let arch = AzulPackage::get_arch_name();
+
+        let package = manifest
+            .packages
+            .iter()
+            .find(|pkg| pkg.matches_requirements(java_version, os, arch))
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "No Azul x86_64 Java {} package found for {} {}",
+                    java_version,
+                    os,
+                    arch
+                )
+            })?;
+
+        info!(
+            "Found Java {} package: {} ({} MB)",
+            java_version,
+            package.name,
+            package.size / 1024 / 1024
+        );
+
+        let download_path = self
+            .java_dir
+            .join(format!("java-{}-download.tar.gz", java_version));
+        let extract_path = self.java_dir.join(format!("java-{java_version}"));
+
+        // Download the package
+        let mut progress = ProgressTracker::new(format!("Java {java_version}"));
+        self.downloader
+            .download_file(
+                &package.download_url,
+                &download_path,
+                None, // Disable hash verification for now
+                Some(&mut progress),
+            )
+            .await?;
+
+        // Extract the package
+        info!("Extracting Java {java_version} runtime...");
+        self.extract_java_archive(&download_path, &extract_path)
+            .await?;
+
+        // Clean up download file
+        if download_path.exists() {
+            fs::remove_file(&download_path).await?;
+        }
+
+        // Detect the extracted runtime
+        let java_executable = self.find_java_executable(&extract_path)?;
+        if let Some(runtime) = JavaRuntime::from_path(&java_executable)? {
+            self.installed_runtimes.insert(java_version, runtime);
+            info!("Successfully installed Java {} runtime", java_version);
+        } else {
+            error!("Failed to detect installed Java {} runtime", java_version);
+        }
+
+        Ok(())
+    }
+
+    pub async fn install_x86_64_java_runtime(&mut self, java_version: u8) -> Result<()> {
+        let manifest = self.fetch_azul_manifest().await?;
+
+        let os = AzulPackage::get_os_name();
+        let arch = "x64"; // Force x86_64 architecture
+
+        let package = manifest
+            .packages
+            .iter()
+            .find(|pkg| pkg.matches_requirements(java_version, os, arch))
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "No Azul x86_64 Java {} package found for {} {}",
+                    java_version,
+                    os,
+                    arch
+                )
+            })?;
+
+        info!(
+            "Found x86_64 Java {} package: {} ({} MB)",
+            java_version,
+            package.name,
+            package.size / 1024 / 1024
+        );
+
+        let download_path = self
+            .java_dir
+            .join(format!("java-{}-x64-download.tar.gz", java_version));
+        let extract_path = self.java_dir.join(format!("java-{java_version}-x64"));
+
+        // Download the package
+        let mut progress = ProgressTracker::new(format!("x86_64 Java {java_version}"));
+        self.downloader
+            .download_file(
+                &package.download_url,
+                &download_path,
+                None, // Disable hash verification for now
+                // TODO: add hash verification
+                Some(&mut progress),
+            )
+            .await?;
+
+        // Extract the package
+        info!("Extracting x86_64 Java {java_version} runtime...");
+        self.extract_java_archive(&download_path, &extract_path)
+            .await?;
+
+        // Clean up download file
+        if download_path.exists() {
+            fs::remove_file(&download_path).await?;
+        }
+
+        // Detect the extracted runtime
+        let java_executable = self.find_java_executable(&extract_path)?;
+        if let Some(runtime) = JavaRuntime::from_path(&java_executable)? {
+            self.x86_64_runtimes.insert(java_version, runtime);
+            info!(
+                "Successfully installed x86_64 Java {} runtime",
+                java_version
+            );
+        } else {
+            error!(
+                "Failed to detect installed x86_64 Java {} runtime",
+                java_version
+            );
+        }
+
+        Ok(())
+    }
+
+    async fn scan_installed_runtimes(&mut self) -> Result<()> {
+        if !self.java_dir.exists() {
+            return Ok(());
+        }
+
+        let mut entries = fs::read_dir(&self.java_dir).await?;
+
+        while let Some(entry) = entries.next_entry().await? {
+            let path = entry.path();
+            if path.is_dir()
+                && path
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .starts_with("java-")
+            {
+                if let Ok(java_executable) = self.find_java_executable(&path) {
+                    if let Some(runtime) = JavaRuntime::from_path(&java_executable)? {
+                        let is_x86_64 =
+                            path.file_name().unwrap().to_str().unwrap().contains("-x64");
+
+                        debug!(
+                            "Found installed {} Java {} runtime at {:?}",
+                            if is_x86_64 { "x86_64" } else { "native" },
+                            runtime.major_version,
+                            path
+                        );
+
+                        if is_x86_64 {
+                            self.x86_64_runtimes.insert(runtime.major_version, runtime);
+                        } else {
+                            self.installed_runtimes
+                                .insert(runtime.major_version, runtime);
+                        }
+                    }
+                }
+            }
+        }
+
+        info!(
+            "Found {} native and {} x86_64 installed Java runtimes",
+            self.installed_runtimes.len(),
+            self.x86_64_runtimes.len()
+        );
+        Ok(())
+    }
+
+    async fn fetch_azul_manifest(&self) -> Result<AzulJavaManifest> {
+        let _manifest_url = "https://api.azul.com/zulu/download/community/v1.0/bundles/";
+
+        Ok(self.create_fallback_manifest())
+    }
+
+    fn create_fallback_manifest(&self) -> AzulJavaManifest {
+        let packages = vec![
+            // Java 8 packages
+            AzulPackage {
+                id: "zulu8-windows-x64".to_string(),
+                name: "Zulu 8 Windows x64".to_string(),
+                java_version: vec![8],
+                os: "windows".to_string(),
+                arch: "x64".to_string(),
+                download_url: "https://cdn.azul.com/zulu/bin/zulu8.62.0.19-ca-jdk8.0.332-win_x64.zip".to_string(),
+                sha256_hash: "".to_string(),
+                size: 104857600,
+            },
+            AzulPackage {
+                id: "zulu8-macos-x64".to_string(),
+                name: "Zulu 8 macOS x64".to_string(),
+                java_version: vec![8],
+                os: "macos".to_string(),
+                arch: "x64".to_string(),
+                download_url: "https://cdn.azul.com/zulu/bin/zulu8.62.0.19-ca-jdk8.0.332-macosx_x64.tar.gz".to_string(),
+                sha256_hash: "".to_string(),
+                size: 104857600,
+            },
+            AzulPackage {
+                id: "zulu8-macos-arm64".to_string(),
+                name: "Zulu 8 macOS ARM64".to_string(),
+                java_version: vec![8],
+                os: "macos".to_string(),
+                arch: "arm64".to_string(),
+                download_url: "https://cdn.azul.com/zulu/bin/zulu8.62.0.19-ca-jdk8.0.332-macosx_aarch64.tar.gz".to_string(),
+                sha256_hash: "".to_string(),
+                size: 104857600,
+            },
+            AzulPackage {
+                id: "zulu8-linux-x64".to_string(),
+                name: "Zulu 8 Linux x64".to_string(),
+                java_version: vec![8],
+                os: "linux".to_string(),
+                arch: "x64".to_string(),
+                download_url: "https://cdn.azul.com/zulu/bin/zulu8.62.0.19-ca-jdk8.0.332-linux_x64.tar.gz".to_string(),
+                sha256_hash: "".to_string(),
+                size: 104857600,
+            },
+            // Java 17 packages
+            AzulPackage {
+                id: "zulu17-windows-x64".to_string(),
+                name: "Zulu 17 Windows x64".to_string(),
+                java_version: vec![17],
+                os: "windows".to_string(),
+                arch: "x64".to_string(),
+                download_url: "https://cdn.azul.com/zulu/bin/zulu17.34.19-ca-jdk17.0.3-win_x64.zip".to_string(),
+                sha256_hash: "".to_string(),
+                size: 183500800,
+            },
+            AzulPackage {
+                id: "zulu17-macos-x64".to_string(),
+                name: "Zulu 17 macOS x64".to_string(),
+                java_version: vec![17],
+                os: "macos".to_string(),
+                arch: "x64".to_string(),
+                download_url: "https://cdn.azul.com/zulu/bin/zulu17.34.19-ca-jdk17.0.3-macosx_x64.tar.gz".to_string(),
+                sha256_hash: "".to_string(),
+                size: 183500800,
+            },
+            AzulPackage {
+                id: "zulu17-macos-arm64".to_string(),
+                name: "Zulu 17 macOS ARM64".to_string(),
+                java_version: vec![17],
+                os: "macos".to_string(),
+                arch: "arm64".to_string(),
+                download_url: "https://cdn.azul.com/zulu/bin/zulu17.34.19-ca-jdk17.0.3-macosx_aarch64.tar.gz".to_string(),
+                sha256_hash: "".to_string(),
+                size: 183500800,
+            },
+            AzulPackage {
+                id: "zulu17-linux-x64".to_string(),
+                name: "Zulu 17 Linux x64".to_string(),
+                java_version: vec![17],
+                os: "linux".to_string(),
+                arch: "x64".to_string(),
+                download_url: "https://cdn.azul.com/zulu/bin/zulu17.34.19-ca-jdk17.0.3-linux_x64.tar.gz".to_string(),
+                sha256_hash: "".to_string(),
+                size: 183500800,
+            },
+        ];
+
+        AzulJavaManifest { packages }
+    }
+
+    async fn extract_java_archive(&self, archive_path: &Path, extract_path: &Path) -> Result<()> {
+        fs::create_dir_all(extract_path).await?;
+
+        let extension = archive_path
+            .extension()
+            .and_then(|s| s.to_str())
+            .unwrap_or("");
+
+        match extension {
+            "zip" => self.extract_zip(archive_path, extract_path).await,
+            "gz" => self.extract_tar_gz(archive_path, extract_path).await,
+            _ => Err(anyhow::anyhow!("Unsupported archive format: {}", extension)),
+        }
+    }
+
+    async fn extract_zip(&self, archive_path: &Path, extract_path: &Path) -> Result<()> {
+        use std::io::Read;
+
+        let file = std::fs::File::open(archive_path)?;
+        let mut archive = zip::ZipArchive::new(file)?;
+
+        for i in 0..archive.len() {
+            let mut file = archive.by_index(i)?;
+            let outpath = extract_path.join(file.mangled_name());
+
+            if file.name().ends_with('/') {
+                fs::create_dir_all(&outpath).await?;
+            } else {
+                if let Some(p) = outpath.parent() {
+                    fs::create_dir_all(p).await?;
+                }
+
+                let mut outfile = fs::File::create(&outpath).await?;
+                let mut buffer = Vec::new();
+                file.read_to_end(&mut buffer)?;
+
+                use tokio::io::AsyncWriteExt;
+                outfile.write_all(&buffer).await?;
+
+                // Set executable permissions on Unix systems
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    if file.unix_mode().unwrap_or(0) & 0o111 != 0 {
+                        let metadata = std::fs::metadata(&outpath)?;
+                        let mut perms = metadata.permissions();
+                        perms.set_mode(0o755);
+                        std::fs::set_permissions(&outpath, perms)?;
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn extract_tar_gz(&self, archive_path: &Path, extract_path: &Path) -> Result<()> {
+        use flate2::read::GzDecoder;
+        use tar::Archive;
+
+        let file = std::fs::File::open(archive_path)?;
+        let gz = GzDecoder::new(file);
+        let mut archive = Archive::new(gz);
+
+        for entry in archive.entries()? {
+            let mut entry = entry?;
+            let path = entry.path()?;
+            let target_path = extract_path.join(&*path);
+
+            if let Some(parent) = target_path.parent() {
+                fs::create_dir_all(parent).await?;
+            }
+
+            entry.unpack(&target_path)?;
+        }
+
+        Ok(())
+    }
+
+    fn find_java_executable(&self, java_dir: &Path) -> Result<PathBuf> {
+        let executable_name = if cfg!(windows) { "java.exe" } else { "java" };
+
+        // Look in common locations within the Java installation
+        let possible_paths = vec![
+            java_dir.join("bin").join(executable_name),
+            java_dir
+                .join("Contents")
+                .join("Home")
+                .join("bin")
+                .join(executable_name),
+        ];
+
+        for path in possible_paths {
+            if path.exists() {
+                return Ok(path);
+            }
+        }
+
+        // If not found in common locations, search recursively
+        self.find_java_recursive(java_dir, executable_name)
+    }
+
+    fn find_java_recursive(&self, dir: &Path, executable_name: &str) -> Result<PathBuf> {
+        use std::fs;
+
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            let path = entry.path();
+
+            if path.is_file() && path.file_name().unwrap() == executable_name {
+                return Ok(path);
+            } else if path.is_dir() {
+                if let Ok(result) = self.find_java_recursive(&path, executable_name) {
+                    return Ok(result);
+                }
+            }
+        }
+
+        Err(anyhow::anyhow!(
+            "Java executable not found in {}",
+            dir.display()
+        ))
+    }
+
+    #[allow(dead_code)]
+    pub fn list_installed_runtimes(&self) -> &HashMap<u8, JavaRuntime> {
+        &self.installed_runtimes
+    }
+
+    #[allow(dead_code)]
+    pub async fn remove_runtime(&mut self, java_version: u8) -> Result<()> {
+        let runtime_dir = self.java_dir.join(format!("java-{java_version}"));
+        let x64_runtime_dir = self.java_dir.join(format!("java-{java_version}-x64"));
+
+        if runtime_dir.exists() {
+            fs::remove_dir_all(&runtime_dir).await?;
+            self.installed_runtimes.remove(&java_version);
+            info!("Removed Java {java_version} runtime");
+        }
+
+        if x64_runtime_dir.exists() {
+            fs::remove_dir_all(&x64_runtime_dir).await?;
+            self.x86_64_runtimes.remove(&java_version);
+            info!("Removed x86_64 Java {} runtime", java_version);
+        }
+
+        Ok(())
+    }
+
+    pub fn is_java_available(&self, minecraft_version: &str) -> bool {
+        let required_java = JavaRuntime::get_required_java_version(minecraft_version);
+        let needs_x86_64 = self.needs_x86_64_java(minecraft_version);
+
+        // Check installed runtimes
+        if needs_x86_64 {
+            if self.get_compatible_x86_64_runtime(required_java).is_some() {
+                return true;
+            }
+        } else {
+            if self.get_compatible_runtime(required_java).is_some() {
+                return true;
+            }
+
+            // Check system Java (only for non-x86_64 requirements)
+            if let Ok(Some(system_java)) = JavaRuntime::detect_system_java() {
+                return system_java.is_compatible_with_minecraft(required_java);
+            }
+        }
+
+        false
+    }
+}

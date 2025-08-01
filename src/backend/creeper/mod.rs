@@ -1,6 +1,5 @@
-mod fabric;
-mod forge;
-mod java;
-pub mod main;
-mod utils;
-mod vanilla;
+pub mod cli;
+pub mod downloader;
+pub mod java;
+pub mod launcher;
+pub mod model;
