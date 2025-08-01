@@ -1,0 +1,72 @@
+[build]
+rustflags = [
+    "-C", "target-cpu=native",
+    "-C", "opt-level=z",
+    "-C", "codegen-units=1",
+    "-C", "panic=abort",
+    "-C", "debug-assertions=off",
+    "-C", "overflow-checks=off",
+    "-C", "debuginfo=0",
+]
+
+[target.x86_64-pc-windows-msvc]
+rustflags = [
+    "-C", "target-cpu=native",
+    "-C", "opt-level=z",
+    "-C", "codegen-units=1",
+    "-C", "panic=abort",
+    "-C", "debug-assertions=off",
+    "-C", "overflow-checks=off",
+    "-C", "debuginfo=0",
+    "-C", "link-arg=/OPT:REF",
+    "-C", "link-arg=/OPT:ICF",
+    "-C", "link-arg=/DEBUG:NONE",
+]
+
+[target.x86_64-unknown-linux-gnu]
+rustflags = [
+    "-C", "target-cpu=native",
+    "-C", "opt-level=z",
+    "-C", "codegen-units=1",
+    "-C", "panic=abort",
+    "-C", "debug-assertions=off",
+    "-C", "overflow-checks=off",
+    "-C", "debuginfo=0",
+    "-C", "link-arg=-Wl,--gc-sections",
+    "-C", "link-arg=-Wl,--strip-all",
+    "-C", "link-arg=-Wl,--as-needed",
+]
+
+[target.x86_64-apple-darwin]
+rustflags = [
+    "-C", "target-cpu=native",
+    "-C", "opt-level=z",
+    "-C", "codegen-units=1",
+    "-C", "panic=abort",
+    "-C", "debug-assertions=off",
+    "-C", "overflow-checks=off",
+    "-C", "debuginfo=0",
+    "-C", "link-arg=-Wl,-dead_strip",
+    "-C", "link-arg=-Wl,-x",
+]
+
+[target.aarch64-apple-darwin]
+rustflags = [
+    "-C", "target-cpu=native",
+    "-C", "opt-level=z",
+    "-C", "codegen-units=1",
+    "-C", "panic=abort",
+    "-C", "debug-assertions=off",
+    "-C", "overflow-checks=off",
+    "-C", "debuginfo=0",
+    "-C", "target-feature=+neon",
+    "-C", "link-arg=-Wl,-dead_strip",
+    "-C", "link-arg=-Wl,-x",
+]
+
+[registries.crates-io]
+protocol = "sparse"
+
+[profile.dev.package."*"]
+opt-level = "z"
+debug = false

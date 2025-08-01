@@ -34,12 +34,16 @@ default = ["desktop"]
 desktop = ["dioxus/desktop"]
 
 [profile.release]
-opt-level = 3
+opt-level = "z"
 lto = "fat"
 codegen-units = 1
 debug = false
 strip = "symbols"
 panic = "abort"
+overflow-checks = false
+debug-assertions = false
+rpath = false
+incremental = false
 
 [profile.release-small]
 inherits = "release"
@@ -49,7 +53,13 @@ codegen-units = 1
 panic = "abort"
 strip = "symbols"
 debug = false
+overflow-checks = false
+debug-assertions = false
+rpath = false
+incremental = false
+split-debuginfo = "off"
 
+# Профиль для экстремально маленького размера
 [profile.tiny]
 inherits = "release"
 opt-level = "z"
@@ -61,12 +71,18 @@ debug = false
 overflow-checks = false
 debug-assertions = false
 rpath = false
+incremental = false
+split-debuginfo = "off"
 
 [profile.dev]
 opt-level = 1
 lto = "off"
 debug = true
 codegen-units = 256
+overflow-checks = false
+debug-assertions = false
+incremental = true
 
 [profile.dev.package."*"]
-opt-level = 3
+opt-level = "z"
+debug = false
