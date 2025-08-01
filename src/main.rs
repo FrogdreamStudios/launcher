@@ -8,7 +8,7 @@ use dioxus_desktop::{Config, LogicalSize, WindowBuilder, use_window};
 use dioxus_router::Router;
 use std::sync::OnceLock;
 use tokio::runtime::Runtime;
-use tokio::task;
+
 use tracing_subscriber::EnvFilter;
 
 static RUNTIME: OnceLock<Runtime> = OnceLock::new();
@@ -57,10 +57,10 @@ fn ModeSelector() -> Element {
         use_future(move || {
             let window = window.clone();
             async move {
-                task::spawn_blocking(|| {
-                    // let _ = backend::creeper::main::main();
-                });
-                window.set_visible(false)
+                if let Err(e) = backend::creeper::cli::run_interactive().await {
+                    eprintln!("CLI error: {e}");
+                }
+                window.close();
             }
         });
 

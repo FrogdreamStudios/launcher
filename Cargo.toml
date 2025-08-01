@@ -1,6 +1,6 @@
 [package]
 name = "DreamLauncher"
-authors = ["Frogdream Studios <"]
+authors = ["Frogdream Studios"]
 description = "A powerful and lightweight Minecraft launcher that will be perfect for every player."
 license = "LGPL-3.0-only"
 version = "1.0.0-beta.1"
@@ -10,8 +10,32 @@ edition = "2024"
 dioxus = { version = "0.7.0-alpha.3", features = ["desktop"] }
 dioxus-router = "0.7.0-alpha.3"
 dioxus-desktop = { version = "0.7.0-alpha.3", default-features = true }
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.141"
 tokio = { version = "1.47.0", features = ["full"] }
+glob = "0.3.2"
+futures = "0.3.31"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+reqwest = { version = "0.12.22", features = ["json", "stream", "rustls-tls"] }
+dirs = "6.0.0"
+dashmap = "7.0.0-rc2"
+lru = "0.16.0"
+tokio-util = { version = "0.7", features = ["io"] }
+futures-util = "0.3.31"
+zip = "4.3.0"
+flate2 = "1.1.2"
+tar = "0.4.44"
+clap = { version = "4.4.42", features = ["derive"] }
+dialoguer = "0.11.0"
+console = "0.16.0"
+sha1 = "0.11.0-rc.0"
+hex = "0.4.3"
+which = "8.0.0"
+tracing = "0.1.41"
+anyhow = "1.0.98"
+thiserror = "2.0.12"
+url = "2.5.4"
+os_info = "3.12.0"
 
 [features]
 default = ["desktop"]
