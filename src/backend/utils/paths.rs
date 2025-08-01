@@ -1,12 +1,12 @@
 use anyhow::Result;
 use dirs;
 use sha1::{Digest, Sha1};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Get the base launcher directory.
 pub fn get_launcher_dir() -> Result<PathBuf> {
     let base_dir = dirs::data_local_dir()
-        .or_else(|| dirs::data_dir())
+        .or_else(dirs::data_dir)
         .ok_or_else(|| anyhow::anyhow!("Could not determine data directory"))?;
 
     Ok(base_dir.join("DreamLauncher"))
@@ -36,17 +36,17 @@ pub fn get_game_dir(custom_path: Option<PathBuf>) -> Result<PathBuf> {
 }
 
 /// Get the versions directory.
-pub fn get_versions_dir(game_dir: &PathBuf) -> PathBuf {
+pub fn get_versions_dir(game_dir: &Path) -> PathBuf {
     game_dir.join("versions")
 }
 
 /// Get the libraries directory.
-pub fn get_libraries_dir(game_dir: &PathBuf) -> PathBuf {
+pub fn get_libraries_dir(game_dir: &Path) -> PathBuf {
     game_dir.join("libraries")
 }
 
 /// Get the assets directory.
-pub fn get_assets_dir(game_dir: &PathBuf) -> PathBuf {
+pub fn get_assets_dir(game_dir: &Path) -> PathBuf {
     game_dir.join("assets")
 }
 
@@ -61,36 +61,36 @@ pub fn get_cache_dir() -> Result<PathBuf> {
 }
 
 /// Get the logs directory.
-pub fn get_logs_dir(game_dir: &PathBuf) -> PathBuf {
+pub fn get_logs_dir(game_dir: &Path) -> PathBuf {
     game_dir.join("logs")
 }
 
 /// Get the natives directory for a specific version.
-pub fn get_natives_dir(game_dir: &PathBuf, version: &str) -> PathBuf {
+pub fn get_natives_dir(game_dir: &Path, version: &str) -> PathBuf {
     get_versions_dir(game_dir).join(version).join("natives")
 }
 
 /// Get the version jar file path.
-pub fn get_version_jar_path(game_dir: &PathBuf, version: &str) -> PathBuf {
+pub fn get_version_jar_path(game_dir: &Path, version: &str) -> PathBuf {
     get_versions_dir(game_dir)
         .join(version)
         .join(format!("{version}.jar"))
 }
 
 /// Get the version JSON file path.
-pub fn get_version_json_path(game_dir: &PathBuf, version: &str) -> PathBuf {
+pub fn get_version_json_path(game_dir: &Path, version: &str) -> PathBuf {
     get_versions_dir(game_dir)
         .join(version)
         .join(format!("{version}.json"))
 }
 
 /// Get the asset objects directory.
-pub fn get_asset_objects_dir(game_dir: &PathBuf) -> PathBuf {
+pub fn get_asset_objects_dir(game_dir: &Path) -> PathBuf {
     get_assets_dir(game_dir).join("objects")
 }
 
 /// Get the asset indexes directory.
-pub fn get_asset_indexes_dir(game_dir: &PathBuf) -> PathBuf {
+pub fn get_asset_indexes_dir(game_dir: &Path) -> PathBuf {
     get_assets_dir(game_dir).join("indexes")
 }
 
@@ -128,7 +128,7 @@ pub fn get_classpath_separator() -> &'static str {
 }
 
 /// Get the full library path in the libraries directory.
-pub fn get_library_path(game_dir: &PathBuf, library_path: &str) -> PathBuf {
+pub fn get_library_path(game_dir: &Path, library_path: &str) -> PathBuf {
     get_libraries_dir(game_dir).join(library_path)
 }
 

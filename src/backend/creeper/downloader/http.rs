@@ -1,3 +1,5 @@
+use super::progress::ProgressTracker;
+use crate::backend::creeper::downloader::models::DownloadTask;
 use anyhow::Result;
 use futures_util::StreamExt;
 use reqwest::Client;
@@ -7,8 +9,6 @@ use std::time::Duration;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tracing::{debug, warn};
-
-use super::progress::ProgressTracker;
 
 pub struct HttpDownloader {
     client: Client,
@@ -181,22 +181,19 @@ impl HttpDownloader {
                     retries += 1;
                     if retries > MAX_RETRIES {
                         return Err(anyhow::anyhow!(
-                            "Failed to fetch {} after {} retries: HTTP 429 Too Many Requests",
-                            url,
-                            MAX_RETRIES
+                            "Failed to fetch {url} after {MAX_RETRIES} retries: HTTP 429 Too Many Requests"
                         ));
                     }
 
                     let wait_time = Duration::from_secs(1 + (retries as u64));
                     warn!(
-                        "Rate limited, waiting {:?} before retry {}/{}",
-                        wait_time, retries, MAX_RETRIES
+                        "Rate limited, waiting {wait_time:?} before retry {retries}/{MAX_RETRIES}"
                     );
                     tokio::time::sleep(wait_time).await;
                     continue;
                 }
                 status => {
-                    return Err(anyhow::anyhow!("Failed to fetch {}: HTTP {}", url, status));
+                    return Err(anyhow::anyhow!("Failed to fetch {url}: HTTP {status}"));
                 }
             }
         }
@@ -213,13 +210,6 @@ impl Default for HttpDownloader {
     fn default() -> Self {
         Self::new().expect("Failed to create HTTP client")
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct DownloadTask {
-    pub url: String,
-    pub destination: std::path::PathBuf,
-    pub expected_sha1: Option<String>,
 }
 
 impl DownloadTask {

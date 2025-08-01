@@ -2,7 +2,7 @@ use anyhow::Result;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use tokio::fs;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 use super::runtime::{AzulJavaManifest, AzulPackage, JavaRuntime};
 use crate::backend::creeper::downloader::{HttpDownloader, ProgressTracker};
@@ -65,20 +65,20 @@ impl JavaManager {
                 None
             }
         } else if let Some(runtime) = self.get_compatible_runtime(required_java) {
-                info!("Using existing Java {} runtime", runtime.major_version);
-                let exe_path = runtime.get_executable_path();
-                if exe_path.exists() {
-                    return Ok((exe_path, false));
-                } else {
-                    info!(
-                        "Installed Java runtime not found at {:?}, removing from cache",
-                        exe_path
-                    );
-                    Some(runtime.major_version)
-                }
+            info!("Using existing Java {} runtime", runtime.major_version);
+            let exe_path = runtime.get_executable_path();
+            if exe_path.exists() {
+                return Ok((exe_path, false));
             } else {
-                None
-            };
+                info!(
+                    "Installed Java runtime not found at {:?}, removing from cache",
+                    exe_path
+                );
+                Some(runtime.major_version)
+            }
+        } else {
+            None
+        };
 
         // Remove invalid runtime from cache if needed
         if let Some(version) = invalid_runtime_version {
@@ -109,32 +109,119 @@ impl JavaManager {
                 "Downloading x86_64 Java {} runtime for Minecraft {}",
                 required_java, minecraft_version
             );
-            self.install_x86_64_java_runtime(required_java).await?;
 
-            // Get the newly installed runtime
-            if let Some(runtime) = self.x86_64_runtimes.get(&required_java) {
-                Ok((runtime.get_executable_path(), true))
-            } else {
-                Err(anyhow::anyhow!(
-                    "Failed to install x86_64 Java {} runtime",
-                    required_java
-                ))
+            match self.install_x86_64_java_runtime(required_java).await {
+                Ok(()) => {
+                    // Get the newly installed runtime
+                    if let Some(runtime) = self.x86_64_runtimes.get(&required_java) {
+                        Ok((runtime.get_executable_path(), true))
+                    } else {
+                        Err(anyhow::anyhow!(
+                            "Failed to install x86_64 Java {} runtime",
+                            required_java
+                        ))
+                    }
+                }
+                Err(e) => {
+                    warn!("Failed to download x86_64 Java {}: {}", required_java, e);
+                    warn!("Attempting to use system Java as fallback...");
+
+                    // Try system Java as fallback
+                    if let Some(mut system_java) = JavaRuntime::detect_system_java()? {
+                        if system_java.is_compatible_with_minecraft(required_java) {
+                            info!(
+                                "Using system Java {} as fallback",
+                                system_java.major_version
+                            );
+                            if system_java.path.as_os_str().is_empty() {
+                                system_java.path =
+                                    which::which("java").unwrap_or_else(|_| "java".into());
+                            }
+                            return Ok((system_java.get_executable_path(), false));
+                        } else {
+                            warn!(
+                                "System Java {} is not compatible with required Java {}",
+                                system_java.major_version, required_java
+                            );
+                        }
+                    }
+
+                    Err(anyhow::anyhow!(
+                        "Failed to install x86_64 Java {} and no compatible system Java found",
+                        required_java
+                    ))
+                }
             }
         } else {
             info!(
                 "Downloading Java {} runtime for Minecraft {}",
                 required_java, minecraft_version
             );
-            self.install_java_runtime(required_java).await?;
 
-            // Get the newly installed runtime
-            if let Some(runtime) = self.installed_runtimes.get(&required_java) {
-                Ok((runtime.get_executable_path(), false))
-            } else {
-                Err(anyhow::anyhow!(
-                    "Failed to install Java {} runtime",
-                    required_java
-                ))
+            match self.install_java_runtime(required_java).await {
+                Ok(()) => {
+                    // Get the newly installed runtime
+                    if let Some(runtime) = self.installed_runtimes.get(&required_java) {
+                        Ok((runtime.get_executable_path(), false))
+                    } else {
+                        Err(anyhow::anyhow!(
+                            "Failed to install Java {} runtime",
+                            required_java
+                        ))
+                    }
+                }
+                Err(e) => {
+                    warn!("Failed to download native Java {}: {}", required_java, e);
+
+                    // For modern versions requiring Java 21, try x86_64 as fallback
+                    if required_java >= 21 {
+                        warn!(
+                            "Attempting to download x86_64 Java {} as fallback...",
+                            required_java
+                        );
+                        match self.install_x86_64_java_runtime(required_java).await {
+                            Ok(()) => {
+                                if let Some(runtime) = self.x86_64_runtimes.get(&required_java) {
+                                    info!(
+                                        "Successfully installed x86_64 Java {} as fallback",
+                                        required_java
+                                    );
+                                    return Ok((runtime.get_executable_path(), true));
+                                }
+                            }
+                            Err(x86_err) => {
+                                warn!("x86_64 fallback also failed: {}", x86_err);
+                            }
+                        }
+                    }
+
+                    warn!("Attempting to use system Java as fallback...");
+
+                    // Try system Java as fallback
+                    if let Some(mut system_java) = JavaRuntime::detect_system_java()? {
+                        if system_java.is_compatible_with_minecraft(required_java) {
+                            info!(
+                                "Using system Java {} as fallback",
+                                system_java.major_version
+                            );
+                            if system_java.path.as_os_str().is_empty() {
+                                system_java.path =
+                                    which::which("java").unwrap_or_else(|_| "java".into());
+                            }
+                            return Ok((system_java.get_executable_path(), false));
+                        } else {
+                            warn!(
+                                "System Java {} is not compatible with required Java {}",
+                                system_java.major_version, required_java
+                            );
+                        }
+                    }
+
+                    Err(anyhow::anyhow!(
+                        "Failed to install Java {} and no compatible system Java found",
+                        required_java
+                    ))
+                }
             }
         }
     }
@@ -161,6 +248,11 @@ impl JavaManager {
             return false;
         }
 
+        // Handle snapshots and special versions first
+        if self.is_modern_snapshot_or_version(minecraft_version) {
+            return false; // Modern snapshots support ARM64 natively
+        }
+
         // Parse Minecraft version
         if let Ok((major, minor, _patch)) = self.parse_minecraft_version(minecraft_version) {
             // Versions before 1.19 typically have x86_64-only natives
@@ -170,9 +262,46 @@ impl JavaManager {
                 _ => false,
             }
         } else {
-            // x86_64 for safety?
-            true
+            // For unknown versions, assume modern (ARM64 native support)
+            false
         }
+    }
+
+    /// Check if this is a modern snapshot or version that supports ARM64 natively
+    fn is_modern_snapshot_or_version(&self, version: &str) -> bool {
+        let version_lower = version.to_lowercase();
+
+        // Handle snapshots (e.g., "25w31a", "24w44a", "23w31a")
+        if version_lower.contains('w') && version_lower.len() >= 5 {
+            if let Some(year_str) = version_lower.get(0..2) {
+                if let Ok(year) = year_str.parse::<u32>() {
+                    // Snapshots from 2021 (21w) onwards support ARM64
+                    return year >= 21;
+                }
+            }
+        }
+
+        // Handle pre-releases and release candidates
+        if version_lower.contains("-pre") || version_lower.contains("-rc") {
+            if let Ok(parsed) =
+                self.parse_minecraft_version(version_lower.split('-').next().unwrap_or(version))
+            {
+                return parsed >= (1, 19, 0); // 1.19+ support ARM64
+            }
+        }
+
+        // Handle experimental and special versions
+        if version_lower.contains("experimental") || version_lower.contains("snapshot") {
+            return true; // Assume modern experimental versions support ARM64
+        }
+
+        // Check if it's a regular version that supports ARM64
+        if let Ok(parsed) = self.parse_minecraft_version(version) {
+            return parsed >= (1, 19, 0);
+        }
+
+        // Default to modern for unknown versions
+        true
     }
 
     fn parse_minecraft_version(&self, version: &str) -> Result<(u8, u8, u8)> {
@@ -208,7 +337,8 @@ impl JavaManager {
             .find(|pkg| pkg.matches_requirements(java_version, os, arch))
             .ok_or_else(|| {
                 anyhow::anyhow!(
-                    "No Azul x86_64 Java {} package found for {} {}",
+                    "No Azul {} Java {} package found for {} {}",
+                    arch,
                     java_version,
                     os,
                     arch
@@ -224,7 +354,7 @@ impl JavaManager {
 
         let download_path = self
             .java_dir
-            .join(format!("java-{}-download.tar.gz", java_version));
+            .join(format!("java-{java_version}-download.tar.gz"));
         let extract_path = self.java_dir.join(format!("java-{java_version}"));
 
         // Download the package
@@ -264,18 +394,17 @@ impl JavaManager {
         let manifest = self.fetch_azul_manifest().await?;
 
         let os = AzulPackage::get_os_name();
-        let arch = "x64"; // Force x86_64 architecture
+        let _arch = "x64"; // Force x86_64 architecture
 
         let package = manifest
             .packages
             .iter()
-            .find(|pkg| pkg.matches_requirements(java_version, os, arch))
+            .find(|pkg| pkg.matches_requirements(java_version, os, "x64"))
             .ok_or_else(|| {
                 anyhow::anyhow!(
-                    "No Azul x86_64 Java {} package found for {} {}",
+                    "No Azul x64 Java {} package found for {} x64",
                     java_version,
-                    os,
-                    arch
+                    os
                 )
             })?;
 
@@ -288,7 +417,7 @@ impl JavaManager {
 
         let download_path = self
             .java_dir
-            .join(format!("java-{}-x64-download.tar.gz", java_version));
+            .join(format!("java-{java_version}-x64-download.tar.gz"));
         let extract_path = self.java_dir.join(format!("java-{java_version}-x64"));
 
         // Download the package
@@ -469,6 +598,47 @@ impl JavaManager {
                 sha256_hash: "".to_string(),
                 size: 183500800,
             },
+            // Java 21 packages
+            AzulPackage {
+                id: "zulu21-windows-x64".to_string(),
+                name: "Zulu 21 Windows x64".to_string(),
+                java_version: vec![21],
+                os: "windows".to_string(),
+                arch: "x64".to_string(),
+                download_url: "https://cdn.azul.com/zulu/bin/zulu21.44.17-ca-jre21.0.8-win_x64.zip".to_string(),
+                sha256_hash: "".to_string(),
+                size: 200000000,
+            },
+            AzulPackage {
+                id: "zulu21-macos-x64".to_string(),
+                name: "Zulu 21 macOS x64".to_string(),
+                java_version: vec![21],
+                os: "macos".to_string(),
+                arch: "x64".to_string(),
+                download_url: "https://cdn.azul.com/zulu/bin/zulu21.44.17-ca-jre21.0.8-macosx_x64.tar.gz".to_string(),
+                sha256_hash: "".to_string(),
+                size: 200000000,
+            },
+            AzulPackage {
+                id: "zulu21-macos-arm64".to_string(),
+                name: "Zulu 21 macOS ARM64".to_string(),
+                java_version: vec![21],
+                os: "macos".to_string(),
+                arch: "arm64".to_string(),
+                download_url: "https://cdn.azul.com/zulu/bin/zulu21.44.17-ca-jre21.0.8-macosx_aarch64.tar.gz".to_string(),
+                sha256_hash: "".to_string(),
+                size: 200000000,
+            },
+            AzulPackage {
+                id: "zulu21-linux-x64".to_string(),
+                name: "Zulu 21 Linux x64".to_string(),
+                java_version: vec![21],
+                os: "linux".to_string(),
+                arch: "x64".to_string(),
+                download_url: "https://cdn.azul.com/zulu/bin/zulu21.44.17-ca-jre21.0.8-linux_x64.tar.gz".to_string(),
+                sha256_hash: "".to_string(),
+                size: 200000000,
+            },
         ];
 
         AzulJavaManifest { packages }
@@ -627,7 +797,18 @@ impl JavaManager {
         let required_java = JavaRuntime::get_required_java_version(minecraft_version);
         let needs_x86_64 = self.needs_x86_64_java(minecraft_version);
 
-        // Check installed runtimes
+        // For modern snapshots requiring Java 21, always prefer downloading managed Java
+        // instead of using system Java to ensure compatibility
+        if required_java >= 21 {
+            // Only check managed runtimes, not system Java
+            if needs_x86_64 {
+                return self.get_compatible_x86_64_runtime(required_java).is_some();
+            } else {
+                return self.get_compatible_runtime(required_java).is_some();
+            }
+        }
+
+        // For older versions (Java 8, 17), allow system Java as fallback
         if needs_x86_64 {
             if self.get_compatible_x86_64_runtime(required_java).is_some() {
                 return true;
@@ -637,7 +818,7 @@ impl JavaManager {
                 return true;
             }
 
-            // Check system Java (only for non-x86_64 requirements)
+            // Check system Java (only for non-x86_64 requirements and older versions)
             if let Ok(Some(system_java)) = JavaRuntime::detect_system_java() {
                 return system_java.is_compatible_with_minecraft(required_java);
             }

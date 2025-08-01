@@ -2,7 +2,7 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use tracing::debug;
+use tracing::{debug, info, warn};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JavaRuntime {
@@ -135,9 +135,7 @@ impl JavaRuntime {
             version_line
         ))
     }
-    
-    
-    
+
     /// Extract the major version from a Java version string.
     fn get_major_version(version: &str) -> u8 {
         if version.starts_with("1.") {
@@ -184,9 +182,19 @@ impl JavaRuntime {
         // Java compatibility ranges for Minecraft versions
         match required_major {
             8 => self.major_version >= 8 && self.major_version <= 21, // Java 8-21 for older versions
-            17 => self.major_version >= 17 && self.major_version <= 21, // Java 17-21 for newer versions
-            21 => self.major_version >= 21 && self.major_version <= 25, // Java 21+ for latest versions
-            _ => self.major_version >= required_major && self.major_version <= 21, // Default range
+            17 => self.major_version >= 17 && self.major_version <= 30, // Java 17+ for newer versions (more lenient)
+            21 => self.major_version >= 21, // Java 21+ for latest versions (no upper limit)
+            _ => {
+                // For other Java versions, use a more flexible range
+                if required_major <= 8 {
+                    self.major_version >= 8 && self.major_version <= 21
+                } else if required_major <= 17 {
+                    self.major_version >= required_major && self.major_version <= 30
+                } else {
+                    // For very modern requirements, allow any newer Java version
+                    self.major_version >= required_major
+                }
+            }
         }
     }
 
@@ -208,35 +216,165 @@ impl JavaRuntime {
 
     /// Get required Java version for Minecraft version.
     pub fn get_required_java_version(minecraft_version: &str) -> u8 {
+        info!(
+            "Determining Java version for Minecraft {}",
+            minecraft_version
+        );
+
+        // Handle snapshots and pre-releases first
+        if Self::is_modern_snapshot_or_prerelease(minecraft_version) {
+            info!(
+                "Detected modern snapshot/pre-release: {} -> Java 21",
+                minecraft_version
+            );
+            return 21; // Modern snapshots require Java 21
+        }
+
         // Parse version to determine required Java
         if let Ok(version) = Self::parse_minecraft_version(minecraft_version) {
-            match version {
+            let java_version = match version {
                 // Minecraft 1.21+ requires Java 21
-                v if v >= (1, 21, 0) => 21,
+                v if v >= (1, 21, 0) => {
+                    info!("Minecraft {}.{}.{} (≥1.21.0) -> Java 21", v.0, v.1, v.2);
+                    21
+                }
                 // Minecraft 1.20.5+ requires Java 21
-                v if v >= (1, 20, 5) => 21,
+                v if v >= (1, 20, 5) => {
+                    info!("Minecraft {}.{}.{} (≥1.20.5) -> Java 21", v.0, v.1, v.2);
+                    21
+                }
                 // Minecraft 1.18+ requires Java 17
-                v if v >= (1, 18, 0) => 17,
-                // Minecraft 1.17+ requires Java 16/17
-                v if v >= (1, 17, 0) => 17,
+                v if v >= (1, 18, 0) => {
+                    info!("Minecraft {}.{}.{} (≥1.18.0) -> Java 17", v.0, v.1, v.2);
+                    17
+                }
+                // Minecraft 1.17+ requires Java 17
+                v if v >= (1, 17, 0) => {
+                    info!("Minecraft {}.{}.{} (≥1.17.0) -> Java 17", v.0, v.1, v.2);
+                    17
+                }
                 // Minecraft 1.12-1.16 works with Java 8
-                v if v >= (1, 12, 0) => 8,
+                v if v >= (1, 12, 0) => {
+                    info!("Minecraft {}.{}.{} (≥1.12.0) -> Java 8", v.0, v.1, v.2);
+                    8
+                }
                 // Older versions (1.11 and below) use Java 8
-                _ => 8,
-            }
+                _ => {
+                    info!(
+                        "Minecraft {}.{}.{} (legacy) -> Java 8",
+                        version.0, version.1, version.2
+                    );
+                    8
+                }
+            };
+            java_version
         } else {
-            8 // Default to Java 8 for unknown versions
+            // For unknown versions, assume modern (Java 21)
+            // This handles cases where version parsing fails but it's likely a newer version
+            warn!(
+                "Failed to parse Minecraft version '{minecraft_version}', defaulting to Java 21"
+            );
+            21
         }
     }
 
+    /// Check if version is a modern snapshot or pre-release that requires Java 21
+    fn is_modern_snapshot_or_prerelease(version: &str) -> bool {
+        let version_lower = version.to_lowercase();
+
+        // Handle snapshots (e.g., "24w44a", "23w31a", "1.21.2-pre1")
+        if version_lower.contains('w') && version_lower.len() >= 5 {
+            if let Some(year_str) = version_lower.get(0..2) {
+                if let Ok(year) = year_str.parse::<u32>() {
+                    // Snapshots from 2023 (23w) onwards typically require Java 21
+                    return year >= 23;
+                }
+            }
+        }
+
+        // Handle pre-releases and release candidates (e.g., "1.21.3-pre1", "1.21-rc1")
+        if version_lower.contains("-pre") || version_lower.contains("-rc") {
+            if let Ok(parsed) =
+                Self::parse_minecraft_version(version_lower.split('-').next().unwrap_or(version))
+            {
+                // 1.20.5+ and 1.21+ pre-releases need Java 21
+                return parsed >= (1, 20, 5);
+            }
+        }
+
+        // Handle experimental snapshots (e.g., "1.21_experimental-snapshot-1")
+        if version_lower.contains("experimental") || version_lower.contains("snapshot") {
+            // Most experimental versions are modern and need Java 21
+            return true;
+        }
+
+        // Handle combat test versions (e.g., "1.16_combat-6")
+        if version_lower.contains("combat") {
+            if let Ok(parsed) =
+                Self::parse_minecraft_version(version_lower.split('_').next().unwrap_or(version))
+            {
+                return parsed >= (1, 20, 5); // Modern combat tests need Java 21
+            }
+        }
+
+        // Handle versions with suffixes like "1.21.2 Pre-Release 1"
+        if version_lower.contains("pre-release") || version_lower.contains("release candidate") {
+            let base_version = version_lower.split_whitespace().next().unwrap_or(version);
+            if let Ok(parsed) = Self::parse_minecraft_version(base_version) {
+                return parsed >= (1, 20, 5);
+            }
+        }
+
+        false
+    }
+
     fn parse_minecraft_version(version: &str) -> Result<(u8, u8, u8)> {
-        let parts: Vec<&str> = version.split('.').collect();
+        // Clean version string (remove various suffixes and prefixes)
+        let mut clean_version = version.to_lowercase();
+
+        // Remove common prefixes
+        if clean_version.starts_with("minecraft ") {
+            clean_version = clean_version
+                .strip_prefix("minecraft ")
+                .unwrap()
+                .to_string();
+        }
+
+        // Remove various suffixes
+        let suffixes = [
+            "-pre",
+            "-rc",
+            "_experimental",
+            "_combat",
+            " pre-release",
+            " release candidate",
+        ];
+        for suffix in &suffixes {
+            if let Some(pos) = clean_version.find(suffix) {
+                clean_version = clean_version[..pos].to_string();
+                break;
+            }
+        }
+
+        // Split by dots and parse
+        let parts: Vec<&str> = clean_version.split('.').collect();
 
         if parts.len() >= 2 {
             let major = parts[0].parse::<u8>()?;
             let minor = parts[1].parse::<u8>()?;
             let patch = if parts.len() > 2 {
-                parts[2].parse::<u8>().unwrap_or(0)
+                // Handle patch versions that might have non-numeric suffixes
+                let patch_part = parts[2];
+                // Extract only numeric part at the beginning
+                let mut numeric_part = String::new();
+                for ch in patch_part.chars() {
+                    if ch.is_ascii_digit() {
+                        numeric_part.push(ch);
+                    } else {
+                        break;
+                    }
+                }
+                numeric_part.parse::<u8>().unwrap_or(0)
             } else {
                 0
             };

@@ -57,7 +57,7 @@ fn ModeSelector() -> Element {
         use_future(move || {
             let window = window.clone();
             async move {
-                if let Err(e) = backend::creeper::cli::run_interactive().await {
+                if let Err(e) = backend::creeper::cli::main::run_interactive().await {
                     eprintln!("CLI error: {e}");
                 }
                 window.close();
