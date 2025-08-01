@@ -1,3 +1,5 @@
+use super::progress::ProgressTracker;
+use crate::backend::creeper::downloader::models::DownloadTask;
 use anyhow::Result;
 use futures_util::StreamExt;
 use reqwest::Client;
@@ -7,8 +9,6 @@ use std::time::Duration;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tracing::{debug, warn};
-
-use super::progress::ProgressTracker;
 
 pub struct HttpDownloader {
     client: Client,
@@ -213,13 +213,6 @@ impl Default for HttpDownloader {
     fn default() -> Self {
         Self::new().expect("Failed to create HTTP client")
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct DownloadTask {
-    pub url: String,
-    pub destination: std::path::PathBuf,
-    pub expected_sha1: Option<String>,
 }
 
 impl DownloadTask {

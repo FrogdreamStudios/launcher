@@ -1,4 +1,4 @@
-use console::{style};
+use console::style;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
@@ -148,13 +148,11 @@ impl Drop for ProgressTracker {
     }
 }
 
-pub struct MultiProgressTracker {
-}
+pub struct MultiProgressTracker {}
 
 impl MultiProgressTracker {
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 }
 

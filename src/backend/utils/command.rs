@@ -2,7 +2,7 @@ use anyhow::Result;
 use std::path::PathBuf;
 use std::process::Command;
 
-use crate::backend::creeper::model::{ArgumentValue, ArgumentValueInner, VersionDetails};
+use crate::backend::creeper::models::{ArgumentValue, ArgumentValueInner, VersionDetails};
 use crate::backend::utils::os::{get_minecraft_arch, get_minecraft_os_name, get_os_features};
 use crate::backend::utils::paths::{get_classpath_separator, get_natives_dir};
 
@@ -92,8 +92,7 @@ wait $JAVA_PID
             #[cfg(unix)]
             std::fs::set_permissions(&script_path, std::fs::Permissions::from_mode(0o755))?;
 
-            let cmd = Command::new(&script_path);
-            cmd
+            Command::new(&script_path)
         } else {
             Command::new(&self.java_path)
         };
@@ -191,9 +190,9 @@ wait $JAVA_PID
             // Parse arguments while preserving quoted strings
             let mut current_arg = String::new();
             let mut in_quotes = false;
-            let mut chars = args.chars().peekable();
+            let chars = args.chars().peekable();
 
-            while let Some(ch) = chars.next() {
+            for ch in chars {
                 match ch {
                     '"' => {
                         in_quotes = !in_quotes;
@@ -252,7 +251,7 @@ wait $JAVA_PID
         Ok(())
     }
 
-    fn evaluate_rules(&self, rules: &[crate::backend::creeper::model::Rule]) -> bool {
+    fn evaluate_rules(&self, rules: &[crate::backend::creeper::models::Rule]) -> bool {
         let os_name = get_minecraft_os_name();
         let os_arch = get_minecraft_arch();
         let features = get_os_features();

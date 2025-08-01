@@ -65,20 +65,20 @@ impl JavaManager {
                 None
             }
         } else if let Some(runtime) = self.get_compatible_runtime(required_java) {
-                info!("Using existing Java {} runtime", runtime.major_version);
-                let exe_path = runtime.get_executable_path();
-                if exe_path.exists() {
-                    return Ok((exe_path, false));
-                } else {
-                    info!(
-                        "Installed Java runtime not found at {:?}, removing from cache",
-                        exe_path
-                    );
-                    Some(runtime.major_version)
-                }
+            info!("Using existing Java {} runtime", runtime.major_version);
+            let exe_path = runtime.get_executable_path();
+            if exe_path.exists() {
+                return Ok((exe_path, false));
             } else {
-                None
-            };
+                info!(
+                    "Installed Java runtime not found at {:?}, removing from cache",
+                    exe_path
+                );
+                Some(runtime.major_version)
+            }
+        } else {
+            None
+        };
 
         // Remove invalid runtime from cache if needed
         if let Some(version) = invalid_runtime_version {
@@ -224,7 +224,7 @@ impl JavaManager {
 
         let download_path = self
             .java_dir
-            .join(format!("java-{}-download.tar.gz", java_version));
+            .join(format!("java-{java_version}-download.tar.gz"));
         let extract_path = self.java_dir.join(format!("java-{java_version}"));
 
         // Download the package
@@ -288,7 +288,7 @@ impl JavaManager {
 
         let download_path = self
             .java_dir
-            .join(format!("java-{}-x64-download.tar.gz", java_version));
+            .join(format!("java-{java_version}-x64-download.tar.gz"));
         let extract_path = self.java_dir.join(format!("java-{java_version}-x64"));
 
         // Download the package

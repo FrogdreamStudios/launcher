@@ -4,9 +4,10 @@ use std::path::PathBuf;
 use std::process::Stdio;
 use tracing::{debug, error, info, warn};
 
-use super::downloader::{DownloadTask, HttpDownloader, ProgressTracker};
+use super::downloader::{HttpDownloader, ProgressTracker};
 use super::java::JavaManager;
-use super::model::{AssetManifest, AssetObject, VersionDetails, VersionInfo, VersionManifest};
+use super::models::{AssetManifest, AssetObject, VersionDetails, VersionInfo, VersionManifest};
+use crate::backend::creeper::downloader::models::DownloadTask;
 use crate::backend::utils::command::CommandBuilder;
 use crate::backend::utils::os::{
     get_all_native_classifiers, get_minecraft_arch, get_minecraft_os_name, get_os_features,
@@ -116,7 +117,7 @@ impl MinecraftLauncher {
         }
 
         let version_info = self.get_version_info(version_id)?;
-        let version_details = match self.get_version_details(&version_info).await {
+        let version_details = match self.get_version_details(version_info).await {
             Ok(details) => details,
             Err(e) => {
                 warn!(
@@ -174,7 +175,7 @@ impl MinecraftLauncher {
 
         let version_info = self.get_version_info(version_id)?;
         let version_type = version_info.version_type.clone();
-        let version_details = self.get_version_details(&version_info).await?;
+        let version_details = self.get_version_details(version_info).await?;
 
         info!(
             "Version details loaded: main_class = {}",
@@ -303,15 +304,13 @@ impl MinecraftLauncher {
             let reader = std::io::BufReader::new(stdout);
             tokio::spawn(async move {
                 use std::io::BufRead;
-                for line in reader.lines() {
-                    if let Ok(line) = line {
-                        if line.contains("ERROR") || line.contains("FATAL") {
-                            error!("MC: {}", line);
-                        } else if line.contains("WARN") {
-                            warn!("MC: {}", line);
-                        } else {
-                            debug!("MC: {}", line);
-                        }
+                for line in reader.lines().flatten() {
+                    if line.contains("ERROR") || line.contains("FATAL") {
+                        error!("MC: {}", line);
+                    } else if line.contains("WARN") {
+                        warn!("MC: {}", line);
+                    } else {
+                        debug!("MC: {}", line);
                     }
                 }
             });
@@ -321,18 +320,16 @@ impl MinecraftLauncher {
             let reader = std::io::BufReader::new(stderr);
             tokio::spawn(async move {
                 use std::io::BufRead;
-                for line in reader.lines() {
-                    if let Ok(line) = line {
-                        // Look for specific macOS/window related errors
-                        if line.contains("NSWindow")
-                            || line.contains("display")
-                            || line.contains("OpenGL")
-                            || line.contains("LWJGL")
-                        {
-                            error!("MC Window Error: {}", line);
-                        } else {
-                            error!("MC Error: {}", line);
-                        }
+                for line in reader.lines().flatten() {
+                    // Look for specific macOS/window related errors
+                    if line.contains("NSWindow")
+                        || line.contains("display")
+                        || line.contains("OpenGL")
+                        || line.contains("LWJGL")
+                    {
+                        error!("MC Window Error: {}", line);
+                    } else {
+                        error!("MC Error: {}", line);
                     }
                 }
             });
@@ -379,7 +376,6 @@ impl MinecraftLauncher {
                             info!("Attempted to bring Java to front: {}", String::from_utf8_lossy(&output.stdout));
                         });
                 }
-                
 
                 return Ok(());
             }
@@ -663,14 +659,12 @@ impl MinecraftLauncher {
         } else {
             // List extracted files for verification
             info!("Extracted native files:");
-            for entry in std::fs::read_dir(&natives_dir)? {
-                if let Ok(entry) = entry {
-                    let path = entry.path();
-                    if path.is_file() {
-                        let name = path.file_name().unwrap_or_default().to_string_lossy();
-                        let size = std::fs::metadata(&path)?.len();
-                        info!("  - {} ({} bytes)", name, size);
-                    }
+            for entry in std::fs::read_dir(&natives_dir)?.flatten() {
+                let path = entry.path();
+                if path.is_file() {
+                    let name = path.file_name().unwrap_or_default().to_string_lossy();
+                    let size = std::fs::metadata(&path)?.len();
+                    info!("  - {} ({} bytes)", name, size);
                 }
             }
         }
@@ -767,14 +761,13 @@ impl MinecraftLauncher {
                                         found_and_extracted = true;
                                         info!(
                                             "Successfully extracted native library for {}",
-                                                library.name
+                                            library.name
                                         );
                                     }
                                     Err(e) => {
                                         error!(
                                             "Failed to extract native library for {}: {}",
-                                                library.name,
-                                            e
+                                            library.name, e
                                         );
                                     }
                                 }
@@ -812,7 +805,7 @@ impl MinecraftLauncher {
         &self,
         archive_path: &PathBuf,
         extract_dir: &PathBuf,
-        extract_rules: &Option<crate::backend::creeper::model::ExtractRules>,
+        extract_rules: &Option<crate::backend::creeper::models::ExtractRules>,
     ) -> Result<()> {
         use std::io::{Read, Write};
 
@@ -1207,7 +1200,7 @@ impl MinecraftLauncher {
                 if !java_processes.is_empty() {
                     warn!("Existing Java/Minecraft processes found:");
                     for process in java_processes {
-                        warn!("  {}", process);
+                        warn!("  {process}");
                     }
                 }
             }
@@ -1230,7 +1223,7 @@ impl MinecraftLauncher {
             .map_err(|e| anyhow::anyhow!("Failed to run Java: {}", e))?;
 
         let version_info = String::from_utf8_lossy(&output.stderr);
-        info!("Java version info: {}", version_info);
+        info!("Java version info: {version_info}");
 
         // Check if Java version is compatible with Minecraft 1.20.1
         if !version_info.contains("17.") && !version_info.contains("1.8.") {
