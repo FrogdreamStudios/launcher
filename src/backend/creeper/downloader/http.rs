@@ -181,22 +181,19 @@ impl HttpDownloader {
                     retries += 1;
                     if retries > MAX_RETRIES {
                         return Err(anyhow::anyhow!(
-                            "Failed to fetch {} after {} retries: HTTP 429 Too Many Requests",
-                            url,
-                            MAX_RETRIES
+                            "Failed to fetch {url} after {MAX_RETRIES} retries: HTTP 429 Too Many Requests"
                         ));
                     }
 
                     let wait_time = Duration::from_secs(1 + (retries as u64));
                     warn!(
-                        "Rate limited, waiting {:?} before retry {}/{}",
-                        wait_time, retries, MAX_RETRIES
+                        "Rate limited, waiting {wait_time:?} before retry {retries}/{MAX_RETRIES}"
                     );
                     tokio::time::sleep(wait_time).await;
                     continue;
                 }
                 status => {
-                    return Err(anyhow::anyhow!("Failed to fetch {}: HTTP {}", url, status));
+                    return Err(anyhow::anyhow!("Failed to fetch {url}: HTTP {status}"));
                 }
             }
         }

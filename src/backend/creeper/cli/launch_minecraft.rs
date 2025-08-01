@@ -37,8 +37,7 @@ pub async fn launch_minecraft(
         if !launcher.is_java_available(&version).await? {
             if Confirm::new()
                 .with_prompt(format!(
-                    "Java runtime not found for {}. Install it?",
-                    version
+                    "Java runtime not found for {version}. Install it?"
                 ))
                 .interact()?
             {
@@ -49,7 +48,7 @@ pub async fn launch_minecraft(
             }
         }
         if let Err(e) = launcher.prepare_version(&version).await {
-            error!("Failed to prepare version: {}", e);
+            error!("Failed to prepare version: {e}");
             println!("Trying to launch...");
         }
     }

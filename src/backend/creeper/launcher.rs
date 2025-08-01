@@ -104,7 +104,48 @@ impl MinecraftLauncher {
     pub async fn install_java(&mut self, version: &str) -> Result<()> {
         let required_java =
             crate::backend::creeper::java::runtime::JavaRuntime::get_required_java_version(version);
-        self.java_manager.install_java_runtime(required_java).await
+
+        // Try to install native Java first
+        match self.java_manager.install_java_runtime(required_java).await {
+            Ok(()) => Ok(()),
+            Err(e) => {
+                // For modern versions requiring Java 21+, try x86_64 as fallback
+                if required_java >= 21 {
+                    warn!("Native Java {} installation failed: {}", required_java, e);
+                    warn!(
+                        "Attempting to install x86_64 Java {} as fallback...",
+                        required_java
+                    );
+
+                    match self
+                        .java_manager
+                        .install_x86_64_java_runtime(required_java)
+                        .await
+                    {
+                        Ok(()) => {
+                            info!(
+                                "Successfully installed x86_64 Java {} as fallback",
+                                required_java
+                            );
+                            Ok(())
+                        }
+                        Err(x86_err) => {
+                            error!("Both native and x86_64 Java installation failed");
+                            error!("Native error: {}", e);
+                            error!("x86_64 error: {}", x86_err);
+                            Err(anyhow::anyhow!(
+                                "Failed to install Java {}: native installation failed ({}), x86_64 fallback also failed ({})",
+                                required_java,
+                                e,
+                                x86_err
+                            ))
+                        }
+                    }
+                } else {
+                    Err(e)
+                }
+            }
+        }
     }
 
     pub async fn prepare_version(&self, version_id: &str) -> Result<()> {
@@ -304,7 +345,7 @@ impl MinecraftLauncher {
             let reader = std::io::BufReader::new(stdout);
             tokio::spawn(async move {
                 use std::io::BufRead;
-                for line in reader.lines().flatten() {
+                for line in reader.lines().map_while(Result::ok) {
                     if line.contains("ERROR") || line.contains("FATAL") {
                         error!("MC: {}", line);
                     } else if line.contains("WARN") {
@@ -320,7 +361,7 @@ impl MinecraftLauncher {
             let reader = std::io::BufReader::new(stderr);
             tokio::spawn(async move {
                 use std::io::BufRead;
-                for line in reader.lines().flatten() {
+                for line in reader.lines().map_while(Result::ok) {
                     // Look for specific macOS/window related errors
                     if line.contains("NSWindow")
                         || line.contains("display")
@@ -1149,10 +1190,10 @@ impl MinecraftLauncher {
     }
 
     async fn try_offline_mode(&self, version_id: &str) -> Result<()> {
-        info!("Attempting to use offline mode for version {}", version_id);
+        info!("Attempting to use offline mode for version {version_id}");
 
         if self.is_version_ready_offline(version_id).await? {
-            info!("Version {} found offline, skipping downloads", version_id);
+            info!("Version {version_id} found offline, skipping downloads");
             return Ok(());
         }
 
@@ -1163,8 +1204,7 @@ impl MinecraftLauncher {
                 if let Some(name) = entry.file_name().to_str() {
                     if name != version_id && entry.path().is_dir() {
                         info!(
-                            "Found existing version: {}, you can try launching that instead",
-                            name
+                            "Found existing version: {name}, you can try launching that instead",
                         );
                     }
                 }
@@ -1172,9 +1212,7 @@ impl MinecraftLauncher {
         }
 
         Err(anyhow::anyhow!(
-            "Version {} not available offline. Available versions in {:?}. Try running the official Minecraft launcher first to download the version.",
-            version_id,
-            versions_dir
+            "Version {version_id} not available offline. Available versions in {versions_dir:?}. Try running the official Minecraft launcher first to download the version."
         ))
     }
 
@@ -1220,16 +1258,27 @@ impl MinecraftLauncher {
         let output = Command::new(java_path)
             .args(&["-version"])
             .output()
-            .map_err(|e| anyhow::anyhow!("Failed to run Java: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to run Java: {e}"))?;
 
         let version_info = String::from_utf8_lossy(&output.stderr);
         info!("Java version info: {version_info}");
 
-        // Check if Java version is compatible with Minecraft 1.20.1
-        if !version_info.contains("17.") && !version_info.contains("1.8.") {
+        // Extract major version for better compatibility checking
+        let major_version = self.get_java_major_version(java_path).unwrap_or(8);
+
+        // Provide version-specific guidance
+        if major_version >= 24 {
             warn!(
-                "Java version might not be optimal for Minecraft 1.20.1. Consider using Java 17 or 8."
+                "You're using Java {} which is very new. For optimal compatibility with Minecraft, consider using Java 21.",
+                major_version
             );
+        } else if major_version >= 22 {
+            info!(
+                "Using Java {}",
+                major_version
+            );
+        } else if major_version == 21 {
+            info!("Using Java 21");
         }
 
         Ok(())

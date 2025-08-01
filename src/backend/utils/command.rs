@@ -470,9 +470,9 @@ wait $JAVA_PID
                     }
                 };
 
-                // Only add -XstartOnFirstThread for non-Rosetta or modern versions
-                // Legacy versions with Rosetta have window display issues with this flag
-                if !self.use_rosetta || !is_legacy_version {
+                // Always add -XstartOnFirstThread for 1.13+ versions
+                // For legacy versions, only add if not using Rosetta (to avoid window display issues)
+                if !is_legacy_version || !self.use_rosetta {
                     cmd.arg("-XstartOnFirstThread");
                 }
 
@@ -533,80 +533,44 @@ wait $JAVA_PID
                         cmd.arg("-Dorg.lwjgl.opengl.Window.undecorated=false");
                     }
                 } else {
-                    // Modern version approach - comprehensive fixes
+                    // Modern version approach (1.13+) - minimal flags for better compatibility
                     cmd.arg("-Djava.awt.headless=false");
                     cmd.arg("-Dapple.awt.application.name=Minecraft");
-                    cmd.arg("-Dapple.laf.useScreenMenuBar=false");
 
-                    // Comprehensive LWJGL fixes for macOS
-                    cmd.arg("-Dorg.lwjgl.opengl.Display.allowSoftwareOpenGL=true");
-                    cmd.arg("-Dorg.lwjgl.system.allocator=system");
-                    cmd.arg("-Dorg.lwjgl.system.stackSize=4096");
-                    cmd.arg("-Dorg.lwjgl.util.Debug=false");
-                    cmd.arg("-Dorg.lwjgl.util.DebugFunctions=false");
-                    cmd.arg("-Dorg.lwjgl.util.DebugLoader=false");
-                    cmd.arg("-Dorg.lwjgl.util.DebugStack=false");
-                    cmd.arg("-Dorg.lwjgl.util.NoChecks=true");
-                    cmd.arg("-Dorg.lwjgl.system.jemalloc=false");
-
-                    // OpenGL dispatch fixes
-                    cmd.arg("-Dorg.lwjgl.opengl.maxVersion=4.1");
-                    cmd.arg("-Dorg.lwjgl.opengl.explicitInit=true");
-                    cmd.arg("-Dorg.lwjgl.system.SharedLibraryExtractDirectory=/tmp/lwjgl");
-
-                    // Memory and string handling fixes for dispatch.c
-                    cmd.arg("-Dorg.lwjgl.system.ExplicitInit=true");
-                    cmd.arg("-Dorg.lwjgl.system.CheckFunctionAddress=false");
-
-                    // Force system OpenGL on macOS
-                    cmd.arg(
-                        "-Dorg.lwjgl.opengl.libname=/System/Library/Frameworks/OpenGL.framework/OpenGL",
-                    );
-
-                    // Additional macOS compatibility
-                    cmd.arg("-Dcom.apple.mrj.application.apple.menu.about.name=Minecraft");
-                    cmd.arg("-Dcom.apple.macos.useScreenMenuBar=false");
-                }
-
-                // ARM64 specific fixes (apply to all versions)
-                if std::env::consts::ARCH == "aarch64" {
-                    if !is_legacy_version && !is_java_8 {
-                        // Disable problematic LWJGL features on ARM64
-                        cmd.arg("-Dorg.lwjgl.system.macosx.bundleLookup=false");
-                        cmd.arg("-Dorg.lwjgl.system.macosx.loadLibrary=system");
-
-                        // Java module system fixes for ARM64 (Only for Java 9+)
-                        cmd.arg("--add-opens");
-                        cmd.arg("java.base/java.nio=ALL-UNNAMED");
-                        cmd.arg("--add-opens");
-                        cmd.arg("java.base/sun.nio.ch=ALL-UNNAMED");
-                        cmd.arg("--add-opens");
-                        cmd.arg("java.base/java.lang=ALL-UNNAMED");
-                        cmd.arg("--add-opens");
-                        cmd.arg("java.base/java.lang.reflect=ALL-UNNAMED");
-                        cmd.arg("--add-opens");
-                        cmd.arg("java.base/java.util=ALL-UNNAMED");
-                        cmd.arg("--add-opens");
-                        cmd.arg("java.base/sun.security.util=ALL-UNNAMED");
-                    } else if is_java_8 {
-                        // Java 8 specific ARM64 fixes without module system args
-                        cmd.arg("-Dorg.lwjgl.system.macosx.bundleLookup=false");
-                        cmd.arg("-Dorg.lwjgl.system.macosx.loadLibrary=system");
-                    }
-
-                    // Force system library loading
-                    if natives_empty {
-                        if is_legacy_version {
-                            cmd.arg("-Djava.library.path=/System/Library/Frameworks");
-                        } else {
-                            cmd.arg("-Djava.library.path=/usr/lib:/System/Library/Frameworks");
-                        }
-                    } else {
-                        // Always set natives path for ARM64
+                    // Only essential LWJGL settings for modern versions
+                    if !natives_empty {
                         cmd.arg(format!(
                             "-Djava.library.path={}",
                             self.natives_dir.display()
                         ));
+                    }
+                }
+
+                // ARM64 specific fixes (apply to all versions)
+                if std::env::consts::ARCH == "aarch64" {
+                    if is_legacy_version {
+                        // Legacy versions need special handling on ARM64
+                        cmd.arg("-Dorg.lwjgl.system.macosx.bundleLookup=false");
+                        cmd.arg("-Dorg.lwjgl.system.macosx.loadLibrary=system");
+
+                        // Force system library loading for legacy versions
+                        if natives_empty {
+                            cmd.arg("-Djava.library.path=/System/Library/Frameworks");
+                        } else {
+                            cmd.arg(format!(
+                                "-Djava.library.path={}",
+                                self.natives_dir.display()
+                            ));
+                        }
+                    } else {
+                        // Versions (1.13+) - minimal ARM64 fixes, let Minecraft handle the rest
+                        if !is_java_8 {
+                            // Only essential module system fixes for modern versions with Java 9+
+                            cmd.arg("--add-opens");
+                            cmd.arg("java.base/java.nio=ALL-UNNAMED");
+                            cmd.arg("--add-opens");
+                            cmd.arg("java.base/sun.nio.ch=ALL-UNNAMED");
+                        }
                     }
                 }
             }
