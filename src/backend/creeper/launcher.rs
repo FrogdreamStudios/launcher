@@ -1203,9 +1203,7 @@ impl MinecraftLauncher {
             for entry in entries.flatten() {
                 if let Some(name) = entry.file_name().to_str() {
                     if name != version_id && entry.path().is_dir() {
-                        info!(
-                            "Found existing version: {name}, you can try launching that instead",
-                        );
+                        info!("Found existing version: {name}, you can try launching that instead",);
                     }
                 }
             }
@@ -1273,10 +1271,7 @@ impl MinecraftLauncher {
                 major_version
             );
         } else if major_version >= 22 {
-            info!(
-                "Using Java {}",
-                major_version
-            );
+            info!("Using Java {}", major_version);
         } else if major_version == 21 {
             info!("Using Java 21");
         }

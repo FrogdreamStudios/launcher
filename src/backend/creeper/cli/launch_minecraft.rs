@@ -36,9 +36,7 @@ pub async fn launch_minecraft(
         // Check if Java is available
         if !launcher.is_java_available(&version).await? {
             if Confirm::new()
-                .with_prompt(format!(
-                    "Java runtime not found for {version}. Install it?"
-                ))
+                .with_prompt(format!("Java runtime not found for {version}. Install it?"))
                 .interact()?
             {
                 launcher.install_java(&version).await?;
