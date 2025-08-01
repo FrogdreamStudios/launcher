@@ -76,7 +76,7 @@ jobs:
       - name: Build
         shell: bash
         run: |
-          cargo build --release tiny --locked --features "desktop"
+          - run: cargo build --release --locked --features "desktop"
 
       - name: Package
         shell: bash

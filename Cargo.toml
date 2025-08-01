@@ -45,20 +45,6 @@ debug-assertions = false
 rpath = false
 incremental = false
 
-[profile.release-small]
-inherits = "release"
-opt-level = "z"
-lto = "fat"
-codegen-units = 1
-panic = "abort"
-strip = "symbols"
-debug = false
-overflow-checks = false
-debug-assertions = false
-rpath = false
-incremental = false
-split-debuginfo = "off"
-
 # Профиль для экстремально маленького размера
 [profile.tiny]
 inherits = "release"
