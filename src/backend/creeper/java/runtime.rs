@@ -271,9 +271,7 @@ impl JavaRuntime {
         } else {
             // For unknown versions, assume modern (Java 21)
             // This handles cases where version parsing fails but it's likely a newer version
-            warn!(
-                "Failed to parse Minecraft version '{minecraft_version}', defaulting to Java 21"
-            );
+            warn!("Failed to parse Minecraft version '{minecraft_version}', defaulting to Java 21");
             21
         }
     }

@@ -31,13 +31,15 @@ fn main() {
 
     let size = LogicalSize::new(1280.0, 832.0);
 
-    let config = Config::default().with_window(
-        WindowBuilder::new()
-            .with_title("Dream Launcher")
-            .with_inner_size(size)
-            .with_min_inner_size(size)
-            .with_resizable(false),
-    );
+    let config = Config::default()
+        .with_window(
+            WindowBuilder::new()
+                .with_title("Dream Launcher")
+                .with_inner_size(size)
+                .with_min_inner_size(size)
+                .with_resizable(false),
+        )
+        .with_menu(None);
 
     LaunchBuilder::new().with_cfg(config).launch(ModeSelector);
 }
