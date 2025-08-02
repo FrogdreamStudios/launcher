@@ -1,3 +1,4 @@
+pub mod assets;
 pub mod command;
 pub mod css_loader;
 pub mod formater;

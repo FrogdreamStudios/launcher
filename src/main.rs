@@ -1,5 +1,6 @@
 mod backend;
 mod frontend;
+use crate::backend::utils::assets::ensure_assets_loaded;
 use crate::backend::utils::css_loader::ensure_css_loaded;
 use crate::backend::utils::route::Route;
 use dioxus::LaunchBuilder;
@@ -20,6 +21,7 @@ fn main() {
         .init();
 
     ensure_css_loaded();
+    ensure_assets_loaded();
 
     // Initialize runtime once
     let _rt = RUNTIME.get_or_init(|| {
