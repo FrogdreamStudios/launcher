@@ -22,8 +22,8 @@ pub fn Auth() -> Element {
             && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
     };
 
-    const LOGO: Asset = asset!("/public/assets/images/other/logo.png");
-    const MICROSOFT: Asset = asset!("/public/assets/images/other/microsoft.png");
+    const LOGO: Asset = asset!("/assets/images/other/logo.png");
+    const MICROSOFT: Asset = asset!("/assets/images/other/microsoft.png");
 
     // Function to handle keypress events
     let on_keypress = move |e: KeyboardEvent| {

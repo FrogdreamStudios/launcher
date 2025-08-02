@@ -2,9 +2,9 @@ name: Rust CI
 
 on:
   push:
-    branches: [main, chore/modularize-codebase]
+    branches: [main, fix/unstable-paths]
   pull_request:
-    branches: [main, chore/modularize-codebase]
+    branches: [main, fix/unstable-paths]
 
 jobs:
   build:

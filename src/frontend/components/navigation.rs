@@ -17,12 +17,12 @@ pub fn Navigation() -> Element {
         Route::Chat { .. } => "Chat",
     };
 
-    const LOGO: Asset = asset!("/public/assets/images/other/logo.png");
-    const HOME: Asset = asset!("/public/assets/images/buttons/home.png");
-    const PACKS: Asset = asset!("/public/assets/images/buttons/packs.png");
-    const SETTINGS: Asset = asset!("/public/assets/images/buttons/settings.png");
-    const CLOUD: Asset = asset!("/public/assets/images/buttons/cloud.png");
-    const PLUS: Asset = asset!("/public/assets/images/buttons/plus.png");
+    const LOGO: Asset = asset!("/assets/images/other/logo.png");
+    const HOME: Asset = asset!("/assets/images/buttons/home.png");
+    const PACKS: Asset = asset!("/assets/images/buttons/packs.png");
+    const SETTINGS: Asset = asset!("/assets/images/buttons/settings.png");
+    const CLOUD: Asset = asset!("/assets/images/buttons/cloud.png");
+    const PLUS: Asset = asset!("/assets/images/buttons/plus.png");
 
     rsx! {
         nav { class: "navigation nav-animate",

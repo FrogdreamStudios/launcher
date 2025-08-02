@@ -13,28 +13,28 @@ impl CssLoader {
             "main",
             include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/public/assets/styles/main.css"
+                "/assets/styles/main.css"
             )),
         );
         cache.insert(
             "auth",
             include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/public/assets/styles/auth.css"
+                "/assets/styles/auth.css"
             )),
         );
         cache.insert(
             "chat",
             include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/public/assets/styles/chat.css"
+                "/assets/styles/chat.css"
             )),
         );
         cache.insert(
             "tailwind",
             include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/public/assets/styles/output.css"
+                "/assets/styles/output.css"
             )),
         );
 
