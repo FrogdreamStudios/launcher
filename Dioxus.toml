@@ -1,0 +1,38 @@
+[application]
+name = "DreamLauncher"
+default_platform = "desktop"
+
+[web.app]
+title = "Dream Launcher"
+base_path = "."
+
+[web.watcher]
+watch_path = ["src", "assets"]
+
+[web.resource]
+dev = true
+style = ["assets/styles/main.css", "assets/styles/auth.css", "assets/styles/chat.css", "assets/styles/output.css"]
+script = []
+
+[web.proxy]
+
+[bundle]
+identifier = "com.frogdream.dreamlauncher"
+publisher = "Frogdream Studios"
+icon = ["assets/images/other/logo.png"]
+resources = ["assets/**/*"]
+short_description = "A powerful and lightweight Minecraft launcher"
+long_description = "A powerful and lightweight Minecraft launcher that will be perfect for every player"
+# category = "Game"
+
+[bundle.linux]
+app_name = "DreamLauncher"
+long_description = "A powerful and lightweight Minecraft launcher that will be perfect for every player"
+
+[bundle.macos]
+app_name = "Dream Launcher"
+long_description = "A powerful and lightweight Minecraft launcher that will be perfect for every player"
+
+[bundle.windows]
+app_name = "Dream Launcher"
+long_description = "A powerful and lightweight Minecraft launcher that will be perfect for every player"

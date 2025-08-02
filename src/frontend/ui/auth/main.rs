@@ -1,3 +1,4 @@
+use crate::backend::utils::assets::AssetLoader;
 use crate::frontend::components::auth_layout::AuthLayout;
 use crate::frontend::ui::auth::auth_context::AuthState;
 use dioxus::events::KeyboardEvent;
@@ -22,8 +23,8 @@ pub fn Auth() -> Element {
             && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
     };
 
-    const LOGO: Asset = asset!("/public/assets/images/other/logo.png");
-    const MICROSOFT: Asset = asset!("/public/assets/images/other/microsoft.png");
+    let logo = AssetLoader::get_logo();
+    let microsoft = AssetLoader::get_microsoft();
 
     // Function to handle keypress events
     let on_keypress = move |e: KeyboardEvent| {
@@ -45,7 +46,7 @@ pub fn Auth() -> Element {
                     class: "content",
                     img {
                         class: "logo logo-animate",
-                        src: "{LOGO}",
+                        src: "{logo}",
                         alt: "Dream Launcher Logo"
                     }
                     h1 {
@@ -57,9 +58,9 @@ pub fn Auth() -> Element {
                         button {
                             class: "login-button microsoft-login",
                             img {
-                                class: "microsoft-icon",
-                                src: "{MICROSOFT}",
-                                alt: "Microsoft Logo"
+                                src: "{microsoft}",
+                                alt: "Microsoft Logo",
+                                class: "microsoft-icon"
                             }
                             span {
                                 class: "microsoft-login-text",
