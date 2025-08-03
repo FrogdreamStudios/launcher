@@ -73,10 +73,6 @@ jobs:
       - name: Setup Rust
         run: rustup show
 
-      - name: Install macOS dependencies
-        if: matrix.os == 'macos-14'
-        run: brew install create-dmg
-
       - name: Build
         shell: bash
         run: |
@@ -99,7 +95,7 @@ jobs:
 
             # Clean extended attributes and codesign with entitlements
             find "target/release/Dream Launcher.app" -exec xattr -c {} \;
-            codesign --force --deep --sign - --entitlements entitlements.plist "target/release/Dream Launcher.app"
+            codesign --force --deep --sign - --options runtime --entitlements entitlements.plist "target/release/Dream Launcher.app"
 
             # Get version from Cargo.toml
             VERSION=$(grep '^version' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
@@ -143,7 +139,7 @@ jobs:
           EOF
 
             # Create DMG
-            create-dmg --volname "Dream Launcher" --window-pos 200 120 --window-size 800 400 --icon-size 100 --icon "Dream Launcher.app" 200 190 --hide-extension "Dream Launcher.app" --app-drop-link 600 185 "Dream Launcher.dmg" "target/release/Dream Launcher.app"
+            hdiutil create -volname "Dream Launcher" -srcfolder "target/release/Dream Launcher.app" -ov -format UDZO "Dream Launcher.dmg"
 
             # Sign DMG
             codesign --force --sign - "Dream Launcher.dmg"
