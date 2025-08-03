@@ -15,7 +15,7 @@ fn main() {
             "cargo:warning=Run: create-dmg --volname \"Dream Launcher\" --app-drop-link 600 185 \"Dream Launcher.dmg\" \"target/release/Dream Launcher.app\""
         );
 
-        let executable_name = "DreamLauncher";
+        let executable_name = env!("CARGO_PKG_NAME");
         let executable_path = format!("target/{}/{}", profile, executable_name);
         let icon_path = "assets/icons/app_icon.icns";
 
