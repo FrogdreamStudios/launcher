@@ -102,7 +102,7 @@ jobs:
             codesign --force --deep --sign - --entitlements entitlements.plist "target/release/Dream Launcher.app"
 
             # Get version from Cargo.toml
-            VERSION=$(grep '^version' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
+            VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
 
             # Create Info.plist
             cat > "target/release/Dream Launcher.app/Contents/Info.plist" << EOF
