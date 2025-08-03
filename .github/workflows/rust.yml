@@ -97,9 +97,9 @@ jobs:
             cp assets/icons/app_icon.icns "target/release/Dream Launcher.app/Contents/Resources/app_icon.icns"
             chmod +x "target/release/Dream Launcher.app/Contents/MacOS/Dream Launcher"
 
-            # Clean extended attributes and codesign
+            # Clean extended attributes and codesign with entitlements
             find "target/release/Dream Launcher.app" -exec xattr -c {} \;
-            codesign --force --deep --sign - "target/release/Dream Launcher.app"
+            codesign --force --deep --sign - --entitlements entitlements.plist "target/release/Dream Launcher.app"
 
             # Get version from Cargo.toml
             VERSION=$(grep '^version' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
@@ -144,6 +144,9 @@ jobs:
 
             # Create DMG
             create-dmg --volname "Dream Launcher" --window-pos 200 120 --window-size 800 400 --icon-size 100 --icon "Dream Launcher.app" 200 190 --hide-extension "Dream Launcher.app" --app-drop-link 600 185 "Dream Launcher.dmg" "target/release/Dream Launcher.app"
+
+            # Sign DMG
+            codesign --force --sign - "Dream Launcher.dmg"
             mv "Dream Launcher.dmg" DreamLauncher-macOS.dmg
           else
             cp target/release/DreamLauncher dist/
