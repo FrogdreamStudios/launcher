@@ -24,6 +24,23 @@ fn main() {
     ensure_css_loaded();
     ensure_assets_loaded();
 
+    // Icon for macOS
+    #[cfg(target_os = "macos")]
+    {
+        if let Ok(exe_path) = std::env::current_exe() {
+            let icon_path =
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("assets/icons/app_icon.icns");
+
+            if icon_path.exists() {
+                let _ = std::process::Command::new("fileicon")
+                    .arg("set")
+                    .arg(&exe_path)
+                    .arg(&icon_path)
+                    .output();
+            }
+        }
+    }
+
     // Initialize runtime once
     let _rt = RUNTIME.get_or_init(|| {
         tokio::runtime::Builder::new_multi_thread()
@@ -34,11 +51,11 @@ fn main() {
 
     let size = LogicalSize::new(1280.0, 832.0);
 
-    // Load icon - use a smaller PNG for window icon (better performance)
+    // Load icon
     let icon = {
         let icon_bytes = include_bytes!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/assets/images/other/icon.png"
+            "/assets/images/other/icon_64.png"
         ));
         let image = image::load_from_memory(icon_bytes).expect("Failed to load icon image");
         let (width, height) = image.dimensions();
