@@ -7,9 +7,10 @@ use dioxus::LaunchBuilder;
 use dioxus::prelude::*;
 use dioxus_desktop::{Config, LogicalSize, WindowBuilder, use_window};
 use dioxus_router::Router;
+use image::GenericImageView;
 use std::sync::OnceLock;
+use tao::window::Icon;
 use tokio::runtime::Runtime;
-
 use tracing_subscriber::EnvFilter;
 
 static RUNTIME: OnceLock<Runtime> = OnceLock::new();
@@ -23,6 +24,23 @@ fn main() {
     ensure_css_loaded();
     ensure_assets_loaded();
 
+    // Icon for macOS
+    #[cfg(target_os = "macos")]
+    {
+        if let Ok(exe_path) = std::env::current_exe() {
+            let icon_path =
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("assets/icons/app_icon.icns");
+
+            if icon_path.exists() {
+                let _ = std::process::Command::new("fileicon")
+                    .arg("set")
+                    .arg(&exe_path)
+                    .arg(&icon_path)
+                    .output();
+            }
+        }
+    }
+
     // Initialize runtime once
     let _rt = RUNTIME.get_or_init(|| {
         tokio::runtime::Builder::new_multi_thread()
@@ -33,13 +51,26 @@ fn main() {
 
     let size = LogicalSize::new(1280.0, 832.0);
 
+    // Load icon
+    let icon = {
+        let icon_bytes = include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/assets/images/other/icon_64.png"
+        ));
+        let image = image::load_from_memory(icon_bytes).expect("Failed to load icon image");
+        let (width, height) = image.dimensions();
+        let rgba = image.into_rgba8().into_raw();
+        Some(Icon::from_rgba(rgba, width, height).expect("Failed to create icon"))
+    };
+
     let config = Config::default()
         .with_window(
             WindowBuilder::new()
                 .with_title("Dream Launcher")
                 .with_inner_size(size)
                 .with_min_inner_size(size)
-                .with_resizable(false),
+                .with_resizable(false)
+                .with_window_icon(icon),
         )
         .with_menu(None);
 

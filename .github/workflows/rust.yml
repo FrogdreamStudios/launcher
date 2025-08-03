@@ -2,9 +2,9 @@ name: Rust CI
 
 on:
   push:
-    branches: [main, fix/unstable-paths]
+    branches: ["**"]
   pull_request:
-    branches: [main, fix/unstable-paths]
+    branches: ["**"]
 
 jobs:
   build:
@@ -73,6 +73,10 @@ jobs:
       - name: Setup Rust
         run: rustup show
 
+      - name: Install macOS dependencies
+        if: matrix.os == 'macos-14'
+        run: brew install create-dmg
+
       - name: Build
         shell: bash
         run: |
@@ -85,6 +89,65 @@ jobs:
           if [[ "${{ runner.os }}" == "Windows" ]]; then
             cp target/release/DreamLauncher.exe dist/
             powershell -Command "Compress-Archive -Path dist/DreamLauncher.exe -DestinationPath DreamLauncher-windows.zip"
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            # Create app bundle
+            mkdir -p "target/release/Dream Launcher.app/Contents/MacOS"
+            mkdir -p "target/release/Dream Launcher.app/Contents/Resources"
+            cp target/release/DreamLauncher "target/release/Dream Launcher.app/Contents/MacOS/Dream Launcher"
+            cp assets/icons/app_icon.icns "target/release/Dream Launcher.app/Contents/Resources/app_icon.icns"
+            chmod +x "target/release/Dream Launcher.app/Contents/MacOS/Dream Launcher"
+
+            # Clean extended attributes and codesign with entitlements
+            find "target/release/Dream Launcher.app" -exec xattr -c {} \;
+            codesign --force --deep --sign - --entitlements entitlements.plist "target/release/Dream Launcher.app"
+
+            # Get version from Cargo.toml
+            VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
+
+            # Create Info.plist
+            cat > "target/release/Dream Launcher.app/Contents/Info.plist" << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleDevelopmentRegion</key>
+            <string>en</string>
+            <key>CFBundleDisplayName</key>
+            <string>Dream Launcher</string>
+            <key>CFBundleExecutable</key>
+            <string>Dream Launcher</string>
+            <key>CFBundleIconFile</key>
+            <string>app_icon</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.frogdream.dreamlauncher</string>
+            <key>CFBundleInfoDictionaryVersion</key>
+            <string>6.0</string>
+            <key>CFBundleName</key>
+            <string>Dream Launcher</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>CFBundleShortVersionString</key>
+            <string>$VERSION</string>
+            <key>CFBundleVersion</key>
+            <string>$VERSION</string>
+            <key>LSMinimumSystemVersion</key>
+            <string>10.15</string>
+            <key>LSApplicationCategoryType</key>
+            <string>public.app-category.games</string>
+            <key>NSHighResolutionCapable</key>
+            <true/>
+            <key>NSHumanReadableCopyright</key>
+            <string>Copyright © 2025 Frogdream Studios</string>
+          </dict>
+          </plist>
+          EOF
+
+            # Create DMG
+            create-dmg --volname "Dream Launcher" --window-pos 200 120 --window-size 800 400 --icon-size 100 --icon "Dream Launcher.app" 200 190 --hide-extension "Dream Launcher.app" --app-drop-link 600 185 "Dream Launcher.dmg" "target/release/Dream Launcher.app"
+
+            # Sign DMG
+            codesign --force --sign - "Dream Launcher.dmg"
+            mv "Dream Launcher.dmg" DreamLauncher-macOS.dmg
           else
             cp target/release/DreamLauncher dist/
             zip -j DreamLauncher-${{ runner.os }}.zip dist/DreamLauncher
@@ -94,7 +157,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: DreamLauncher-${{ runner.os }}
-          path: DreamLauncher-*.zip
+          path: |
+            DreamLauncher-*.zip
+            DreamLauncher-*.dmg
 
   upload-artifacts:
     name: Artifacts

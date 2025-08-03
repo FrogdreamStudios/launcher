@@ -28,6 +28,11 @@ hex = "0.4.3"
 which = "8.0.0"
 tracing = "0.1.41"
 anyhow = "1.0.98"
+image = "0.25.6"
+tao = "0.34.0"
+
+[build-dependencies]
+winres = "0.1"
 
 [features]
 default = ["desktop"]

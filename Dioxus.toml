@@ -11,7 +11,12 @@ watch_path = ["src", "assets"]
 
 [web.resource]
 dev = true
-style = ["assets/styles/main.css", "assets/styles/auth.css", "assets/styles/chat.css", "assets/styles/output.css"]
+style = [
+    "assets/styles/main.css",
+    "assets/styles/auth.css",
+    "assets/styles/chat.css",
+    "assets/styles/output.css",
+]
 script = []
 
 [web.proxy]
@@ -19,7 +24,7 @@ script = []
 [bundle]
 identifier = "com.frogdream.dreamlauncher"
 publisher = "Frogdream Studios"
-icon = ["assets/images/other/logo.png"]
+icon = ["assets/icons/app_icon.icns"]
 resources = ["assets/**/*"]
 short_description = "A powerful and lightweight Minecraft launcher"
 long_description = "A powerful and lightweight Minecraft launcher that will be perfect for every player"
