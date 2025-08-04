@@ -29,7 +29,7 @@ pub fn ChatSidebar() -> Element {
                         div { class: "account-type", "To main menu" }
                     }
                 }
-                div { class: "chat-separator" }
+                div { class: "chat-divider" }
             } else {
                 // User account
                 div {
@@ -46,7 +46,7 @@ pub fn ChatSidebar() -> Element {
                         div { class: "account-type", "Microsoft account" }
                     }
                 }
-                div { class: "chat-separator" }
+                div { class: "chat-divider" }
 
                 // Chat list
                 for user in chat_manager.users.read().iter() {

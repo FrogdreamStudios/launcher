@@ -48,6 +48,7 @@ tracing = "0.1.41"
 anyhow = "1.0.98"
 image = { version = "0.25.6", default-features = false, features = ["png"] }
 tao = "0.34.0"
+pulldown-cmark = "0.13.0"
 
 [build-dependencies]
 winres = "0.1"
