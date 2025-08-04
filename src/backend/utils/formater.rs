@@ -1,9 +1,6 @@
-pub fn format_size(bytes: u64) -> String {
+pub fn format_size<T: Into<f64>>(bytes: T) -> String {
     const UNITS: &[&str] = &["B", "KB", "MB", "GB", "TB"];
-    if bytes == 0 {
-        return "0 B".to_string();
-    }
-    let mut size = bytes as f64;
+    let mut size = bytes.into();
     let mut unit = 0;
     while size >= 1024.0 && unit < UNITS.len() - 1 {
         size /= 1024.0;

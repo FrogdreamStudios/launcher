@@ -1,15 +1,27 @@
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use dirs;
 use sha1::{Digest, Sha1};
 use std::path::{Path, PathBuf};
 
+const LAUNCHER_DIR: &str = "DreamLauncher";
+const MINECRAFT_DIR: &str = ".minecraft";
+const VERSIONS: &str = "versions";
+const LIBRARIES: &str = "libraries";
+const ASSETS: &str = "assets";
+const JAVA: &str = "java";
+const CACHE: &str = "cache";
+const LOGS: &str = "logs";
+const OBJECTS: &str = "objects";
+const INDEXES: &str = "indexes";
+const NATIVES: &str = "natives";
+
 /// Get the base launcher directory.
+#[inline]
 pub fn get_launcher_dir() -> Result<PathBuf> {
     let base_dir = dirs::data_local_dir()
         .or_else(dirs::data_dir)
-        .ok_or_else(|| anyhow::anyhow!("Could not determine data directory"))?;
-
-    Ok(base_dir.join("DreamLauncher"))
+        .ok_or_else(|| anyhow!("Could not determine data directory"))?;
+    Ok(base_dir.join(LAUNCHER_DIR))
 }
 
 /// Get the Minecraft game directory.
@@ -17,92 +29,84 @@ pub fn get_game_dir(custom_path: Option<PathBuf>) -> Result<PathBuf> {
     if let Some(path) = custom_path {
         return Ok(path);
     }
-
-    let default_dir = match std::env::consts::OS {
+    let dir = match std::env::consts::OS {
         "windows" => dirs::data_dir()
-            .ok_or_else(|| anyhow::anyhow!("Could not determine AppData directory"))?
-            .join(".minecraft"),
+            .ok_or_else(|| anyhow!("Could not determine AppData directory"))?
+            .join(MINECRAFT_DIR),
         "macos" => dirs::home_dir()
-            .ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?
-            .join("Library")
-            .join("Application Support")
-            .join("minecraft"),
+            .ok_or_else(|| anyhow!("Could not determine home directory"))?
+            .join("Library/Application Support/minecraft"),
         _ => dirs::home_dir()
-            .ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?
-            .join(".minecraft"),
+            .ok_or_else(|| anyhow!("Could not determine home directory"))?
+            .join(MINECRAFT_DIR),
     };
-
-    Ok(default_dir)
+    Ok(dir)
 }
 
-/// Get the versions directory.
+#[inline]
 pub fn get_versions_dir(game_dir: &Path) -> PathBuf {
-    game_dir.join("versions")
+    game_dir.join(VERSIONS)
 }
-
-/// Get the libraries directory.
+#[inline]
 pub fn get_libraries_dir(game_dir: &Path) -> PathBuf {
-    game_dir.join("libraries")
+    game_dir.join(LIBRARIES)
 }
-
-/// Get the assets directory.
+#[inline]
 pub fn get_assets_dir(game_dir: &Path) -> PathBuf {
-    game_dir.join("assets")
+    game_dir.join(ASSETS)
 }
-
-/// Get the Java runtimes directory.
+#[inline]
 pub fn get_java_dir() -> Result<PathBuf> {
-    Ok(get_launcher_dir()?.join("java"))
+    Ok(get_launcher_dir()?.join(JAVA))
 }
-
-/// Get the launcher cache directory.
+#[inline]
 pub fn get_cache_dir() -> Result<PathBuf> {
-    Ok(get_launcher_dir()?.join("cache"))
+    Ok(get_launcher_dir()?.join(CACHE))
 }
-
-/// Get the logs directory.
+#[inline]
 pub fn get_logs_dir(game_dir: &Path) -> PathBuf {
-    game_dir.join("logs")
+    game_dir.join(LOGS)
 }
-
-/// Get the natives directory for a specific version.
+#[inline]
 pub fn get_natives_dir(game_dir: &Path, version: &str) -> PathBuf {
-    get_versions_dir(game_dir).join(version).join("natives")
+    get_versions_dir(game_dir).join(version).join(NATIVES)
 }
-
-/// Get the version jar file path.
+#[inline]
 pub fn get_version_jar_path(game_dir: &Path, version: &str) -> PathBuf {
     get_versions_dir(game_dir)
         .join(version)
         .join(format!("{version}.jar"))
 }
-
-/// Get the version JSON file path.
+#[inline]
 pub fn get_version_json_path(game_dir: &Path, version: &str) -> PathBuf {
     get_versions_dir(game_dir)
         .join(version)
         .join(format!("{version}.json"))
 }
-
-/// Get the asset objects directory.
+#[inline]
 pub fn get_asset_objects_dir(game_dir: &Path) -> PathBuf {
-    get_assets_dir(game_dir).join("objects")
+    get_assets_dir(game_dir).join(OBJECTS)
 }
-
-/// Get the asset indexes directory.
+#[inline]
 pub fn get_asset_indexes_dir(game_dir: &Path) -> PathBuf {
-    get_assets_dir(game_dir).join("indexes")
+    get_assets_dir(game_dir).join(INDEXES)
 }
-
-/// Convert asset hash to path (first 2 chars as subdirectory).
+#[inline]
 pub fn get_asset_path(game_dir: &Path, hash: &str) -> PathBuf {
-    let subdir = &hash[..2];
-    get_asset_objects_dir(game_dir).join(subdir).join(hash)
+    get_asset_objects_dir(game_dir).join(&hash[..2]).join(hash)
+}
+#[inline]
+pub fn get_classpath_separator() -> &'static str {
+    if cfg!(windows) { ";" } else { ":" }
+}
+#[inline]
+pub fn get_library_path(game_dir: &Path, library_path: &str) -> PathBuf {
+    get_libraries_dir(game_dir).join(library_path)
 }
 
 /// Ensure all necessary directories exist.
 pub async fn ensure_directories(game_dir: &Path) -> Result<()> {
-    let directories = vec![
+    let mut dirs = vec![
         game_dir.to_path_buf(),
         get_versions_dir(game_dir),
         get_libraries_dir(game_dir),
@@ -110,35 +114,25 @@ pub async fn ensure_directories(game_dir: &Path) -> Result<()> {
         get_asset_objects_dir(game_dir),
         get_asset_indexes_dir(game_dir),
         get_logs_dir(game_dir),
-        get_launcher_dir()?,
-        get_java_dir()?,
-        get_cache_dir()?,
     ];
+    dirs.push(get_launcher_dir()?);
+    dirs.push(get_java_dir()?);
+    dirs.push(get_cache_dir()?);
 
-    for dir in directories {
+    for dir in dirs {
         tokio::fs::create_dir_all(&dir).await?;
     }
 
     Ok(())
 }
 
-/// Get platform-specific classpath separator.
-pub fn get_classpath_separator() -> &'static str {
-    if cfg!(windows) { ";" } else { ":" }
-}
-
-/// Get the full library path in the libraries directory.
-pub fn get_library_path(game_dir: &Path, library_path: &str) -> PathBuf {
-    get_libraries_dir(game_dir).join(library_path)
-}
-
 /// Check if a file exists and has the correct size and hash.
 pub async fn verify_file(
-    path: &PathBuf,
+    path: &Path,
     expected_size: Option<u64>,
     expected_sha1: Option<&str>,
 ) -> Result<bool> {
-    if !path.exists() {
+    if !tokio::fs::try_exists(path).await? {
         return Ok(false);
     }
 
@@ -156,9 +150,7 @@ pub async fn verify_file(
         let content = tokio::fs::read(path).await?;
         let mut hasher = Sha1::new();
         hasher.update(&content);
-        let computed_hash = hasher.finalize();
-        let computed_hex = hex::encode(computed_hash);
-
+        let computed_hex = hex::encode(hasher.finalize());
         if computed_hex != expected_hash {
             return Ok(false);
         }
