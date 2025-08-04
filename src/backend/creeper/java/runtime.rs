@@ -232,7 +232,7 @@ impl JavaRuntime {
 
         // Parse version to determine required Java
         if let Ok(version) = Self::parse_minecraft_version(minecraft_version) {
-            let java_version = match version {
+            match version {
                 // Minecraft 1.21+ requires Java 21
                 v if v >= (1, 21, 0) => {
                     info!("Minecraft {}.{}.{} (≥1.21.0) -> Java 21", v.0, v.1, v.2);
@@ -266,8 +266,7 @@ impl JavaRuntime {
                     );
                     8
                 }
-            };
-            java_version
+            }
         } else {
             // For unknown versions, assume modern (Java 21)
             // This handles cases where version parsing fails but it's likely a newer version

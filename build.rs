@@ -16,10 +16,10 @@ fn main() {
         );
 
         let executable_name = env!("CARGO_PKG_NAME");
-        let executable_path = format!("target/{}/{}", profile, executable_name);
+        let executable_path = format!("target/{profile}/{executable_name}");
         let icon_path = "assets/icons/app_icon.icns";
 
-        if let Ok(_) = Command::new("which").arg("fileicon").output() {
+        if Command::new("which").arg("fileicon").output().is_ok() {
             let _ = Command::new("fileicon")
                 .arg("set")
                 .arg(&executable_path)

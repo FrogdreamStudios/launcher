@@ -396,8 +396,7 @@ impl MinecraftLauncher {
                         .args([
                             "-e",
                             &format!(
-                                "tell application \"System Events\" to get windows of process {}",
-                                pid
+                                "tell application \"System Events\" to get windows of process {pid}"
                             ),
                         ])
                         .output()
@@ -1227,7 +1226,7 @@ impl MinecraftLauncher {
         }
 
         // Java processes
-        if let Ok(output) = Command::new("ps").args(&["aux"]).output() {
+        if let Ok(output) = Command::new("ps").args(["aux"]).output() {
             if let Ok(ps_output) = String::from_utf8(output.stdout) {
                 let java_processes: Vec<&str> = ps_output
                     .lines()
@@ -1254,7 +1253,7 @@ impl MinecraftLauncher {
         info!("Testing Java installation...");
 
         let output = Command::new(java_path)
-            .args(&["-version"])
+            .args(["-version"])
             .output()
             .map_err(|e| anyhow::anyhow!("Failed to run Java: {e}"))?;
 
@@ -1283,7 +1282,7 @@ impl MinecraftLauncher {
         use std::process::Command;
 
         let output = Command::new(java_path)
-            .args(&["-version"])
+            .args(["-version"])
             .output()
             .map_err(|e| anyhow::anyhow!("Failed to run Java: {}", e))?;
 

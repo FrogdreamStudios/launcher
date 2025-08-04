@@ -95,15 +95,15 @@ pub fn get_asset_indexes_dir(game_dir: &Path) -> PathBuf {
 }
 
 /// Convert asset hash to path (first 2 chars as subdirectory).
-pub fn get_asset_path(game_dir: &PathBuf, hash: &str) -> PathBuf {
+pub fn get_asset_path(game_dir: &Path, hash: &str) -> PathBuf {
     let subdir = &hash[..2];
     get_asset_objects_dir(game_dir).join(subdir).join(hash)
 }
 
 /// Ensure all necessary directories exist.
-pub async fn ensure_directories(game_dir: &PathBuf) -> Result<()> {
+pub async fn ensure_directories(game_dir: &Path) -> Result<()> {
     let directories = vec![
-        game_dir.clone(),
+        game_dir.to_path_buf(),
         get_versions_dir(game_dir),
         get_libraries_dir(game_dir),
         get_assets_dir(game_dir),

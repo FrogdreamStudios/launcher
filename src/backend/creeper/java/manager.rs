@@ -257,10 +257,7 @@ impl JavaManager {
         if let Ok((major, minor, _patch)) = self.parse_minecraft_version(minecraft_version) {
             // Versions before 1.19 typically have x86_64-only natives
             // This is a conservative approach - some versions between 1.16-1.19 might work
-            match (major, minor) {
-                (1, m) if m < 19 => true,
-                _ => false,
-            }
+            matches!((major, minor), (1, m) if m < 19)
         } else {
             // For unknown versions, assume modern (ARM64 native support)
             false
@@ -801,11 +798,11 @@ impl JavaManager {
         // instead of using system Java to ensure compatibility
         if required_java >= 21 {
             // Only check managed runtimes, not system Java
-            if needs_x86_64 {
-                return self.get_compatible_x86_64_runtime(required_java).is_some();
+            return if needs_x86_64 {
+                self.get_compatible_x86_64_runtime(required_java).is_some()
             } else {
-                return self.get_compatible_runtime(required_java).is_some();
-            }
+                self.get_compatible_runtime(required_java).is_some()
+            };
         }
 
         // For older versions (Java 8, 17), allow system Java as fallback
