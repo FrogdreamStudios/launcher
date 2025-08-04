@@ -1,12 +1,12 @@
 @font-face {
     font-family: "Gilroy";
-    src: url("/public/assets/fonts/Gilroy/Gilroy-Medium.ttf") format("truetype");
+    src: url("/assets/fonts/Gilroy/Gilroy-Medium.ttf") format("truetype");
     font-weight: 400;
     font-style: normal;
 }
 @font-face {
     font-family: "Gilroy";
-    src: url("/public/assets/fonts/Gilroy/Gilroy-Bold.ttf") format("truetype");
+    src: url("/assets/fonts/Gilroy/Gilroy-Bold.ttf") format("truetype");
     font-weight: 700;
     font-style: normal;
 }
@@ -16,7 +16,8 @@
     -webkit-font-smoothing: antialiased;
     user-select: none;
 }
-html, body {
+html,
+body {
     margin: 0;
     height: 100%;
     overflow: hidden;
@@ -69,10 +70,10 @@ button:focus-visible {
 }
 @keyframes logoFloat {
     from {
-        transform: scale(375%);
+        transform: scale(95%);
     }
     to {
-        transform: scale(400%); /* 1.05 ??? */
+        transform: scale(100%);
     }
 }
 
@@ -85,7 +86,6 @@ button:focus-visible {
     margin-bottom: 2rem;
 }
 
-/* login options */
 .login-options {
     display: flex;
     flex-direction: column;
