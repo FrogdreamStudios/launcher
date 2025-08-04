@@ -18,7 +18,7 @@ static RUNTIME: OnceLock<Runtime> = OnceLock::new();
 fn main() {
     // Logging setup
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::new("warn,hyper=warn,h2=warn"))
+        .with_env_filter(EnvFilter::new("warn,hyper=warn,h2=warn,tao=error"))
         .init();
 
     ensure_css_loaded();

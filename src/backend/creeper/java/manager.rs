@@ -349,26 +349,76 @@ impl JavaManager {
             package.size / 1024 / 1024
         );
 
+        // Determine file extension from URL
+        let file_extension = if package.download_url.ends_with(".zip") {
+            "zip"
+        } else if package.download_url.ends_with(".tar.gz")
+            || package.download_url.ends_with(".tgz")
+        {
+            "tar.gz"
+        } else {
+            // Default based on OS
+            if cfg!(windows) { "zip" } else { "tar.gz" }
+        };
+
         let download_path = self
             .java_dir
-            .join(format!("java-{java_version}-download.tar.gz"));
+            .join(format!("java-{java_version}-download.{}", file_extension));
         let extract_path = self.java_dir.join(format!("java-{java_version}"));
 
         // Download the package
+        info!(
+            "Downloading Java {} from: {}",
+            java_version, package.download_url
+        );
         let mut progress = ProgressTracker::new(format!("Java {java_version}"));
-        self.downloader
+
+        if let Err(e) = self
+            .downloader
             .download_file(
                 &package.download_url,
                 &download_path,
                 None, // Disable hash verification for now
                 Some(&mut progress),
             )
-            .await?;
+            .await
+        {
+            error!("Failed to download Java {}: {}", java_version, e);
+            if download_path.exists() {
+                let _ = fs::remove_file(&download_path).await;
+            }
+            return Err(e);
+        }
+
+        // Verify downloaded file
+        let file_size = fs::metadata(&download_path).await?.len();
+        info!(
+            "Downloaded Java {} archive: {} bytes",
+            java_version, file_size
+        );
+
+        if file_size < 1024 * 1024 {
+            error!(
+                "Downloaded file is too small ({}B), likely corrupted",
+                file_size
+            );
+            let _ = fs::remove_file(&download_path).await;
+            return Err(anyhow::anyhow!(
+                "Downloaded Java archive is too small, likely corrupted"
+            ));
+        }
 
         // Extract the package
         info!("Extracting Java {java_version} runtime...");
-        self.extract_java_archive(&download_path, &extract_path)
-            .await?;
+        if let Err(e) = self
+            .extract_java_archive(&download_path, &extract_path)
+            .await
+        {
+            error!("Failed to extract Java {}: {}", java_version, e);
+            let _ = fs::remove_file(&download_path).await;
+            let _ = fs::remove_dir_all(&extract_path).await;
+            return Err(e);
+        }
 
         // Clean up download file
         if download_path.exists() {
@@ -412,14 +462,33 @@ impl JavaManager {
             package.size / 1024 / 1024
         );
 
-        let download_path = self
-            .java_dir
-            .join(format!("java-{java_version}-x64-download.tar.gz"));
+        // Determine file extension from URL
+        let file_extension = if package.download_url.ends_with(".zip") {
+            "zip"
+        } else if package.download_url.ends_with(".tar.gz")
+            || package.download_url.ends_with(".tgz")
+        {
+            "tar.gz"
+        } else {
+            // Default based on OS
+            if cfg!(windows) { "zip" } else { "tar.gz" }
+        };
+
+        let download_path = self.java_dir.join(format!(
+            "java-{java_version}-x64-download.{}",
+            file_extension
+        ));
         let extract_path = self.java_dir.join(format!("java-{java_version}-x64"));
 
         // Download the package
+        info!(
+            "Downloading x86_64 Java {} from: {}",
+            java_version, package.download_url
+        );
         let mut progress = ProgressTracker::new(format!("x86_64 Java {java_version}"));
-        self.downloader
+
+        if let Err(e) = self
+            .downloader
             .download_file(
                 &package.download_url,
                 &download_path,
@@ -427,12 +496,44 @@ impl JavaManager {
                 // TODO: add hash verification
                 Some(&mut progress),
             )
-            .await?;
+            .await
+        {
+            error!("Failed to download x86_64 Java {}: {}", java_version, e);
+            if download_path.exists() {
+                let _ = fs::remove_file(&download_path).await;
+            }
+            return Err(e);
+        }
+
+        // Verify downloaded file
+        let file_size = fs::metadata(&download_path).await?.len();
+        info!(
+            "Downloaded x86_64 Java {} archive: {} bytes",
+            java_version, file_size
+        );
+
+        if file_size < 1024 * 1024 {
+            error!(
+                "Downloaded file is too small ({}B), likely corrupted",
+                file_size
+            );
+            let _ = fs::remove_file(&download_path).await;
+            return Err(anyhow::anyhow!(
+                "Downloaded x86_64 Java archive is too small, likely corrupted"
+            ));
+        }
 
         // Extract the package
         info!("Extracting x86_64 Java {java_version} runtime...");
-        self.extract_java_archive(&download_path, &extract_path)
-            .await?;
+        if let Err(e) = self
+            .extract_java_archive(&download_path, &extract_path)
+            .await
+        {
+            error!("Failed to extract x86_64 Java {}: {}", java_version, e);
+            let _ = fs::remove_file(&download_path).await;
+            let _ = fs::remove_dir_all(&extract_path).await;
+            return Err(e);
+        }
 
         // Clean up download file
         if download_path.exists() {
@@ -602,7 +703,7 @@ impl JavaManager {
                 java_version: vec![21],
                 os: "windows".to_string(),
                 arch: "x64".to_string(),
-                download_url: "https://cdn.azul.com/zulu/bin/zulu21.44.17-ca-jre21.0.8-win_x64.zip".to_string(),
+                download_url: "https://cdn.azul.com/zulu/bin/zulu21.36.17-ca-jdk21.0.4-win_x64.zip".to_string(),
                 sha256_hash: "".to_string(),
                 size: 200000000,
             },
@@ -612,7 +713,7 @@ impl JavaManager {
                 java_version: vec![21],
                 os: "macos".to_string(),
                 arch: "x64".to_string(),
-                download_url: "https://cdn.azul.com/zulu/bin/zulu21.44.17-ca-jre21.0.8-macosx_x64.tar.gz".to_string(),
+                download_url: "https://cdn.azul.com/zulu/bin/zulu21.36.17-ca-jdk21.0.4-macosx_x64.tar.gz".to_string(),
                 sha256_hash: "".to_string(),
                 size: 200000000,
             },
@@ -622,7 +723,7 @@ impl JavaManager {
                 java_version: vec![21],
                 os: "macos".to_string(),
                 arch: "arm64".to_string(),
-                download_url: "https://cdn.azul.com/zulu/bin/zulu21.44.17-ca-jre21.0.8-macosx_aarch64.tar.gz".to_string(),
+                download_url: "https://cdn.azul.com/zulu/bin/zulu21.36.17-ca-jdk21.0.4-macosx_aarch64.tar.gz".to_string(),
                 sha256_hash: "".to_string(),
                 size: 200000000,
             },
@@ -632,7 +733,7 @@ impl JavaManager {
                 java_version: vec![21],
                 os: "linux".to_string(),
                 arch: "x64".to_string(),
-                download_url: "https://cdn.azul.com/zulu/bin/zulu21.44.17-ca-jre21.0.8-linux_x64.tar.gz".to_string(),
+                download_url: "https://cdn.azul.com/zulu/bin/zulu21.36.17-ca-jdk21.0.4-linux_x64.tar.gz".to_string(),
                 sha256_hash: "".to_string(),
                 size: 200000000,
             },
@@ -644,15 +745,68 @@ impl JavaManager {
     async fn extract_java_archive(&self, archive_path: &Path, extract_path: &Path) -> Result<()> {
         fs::create_dir_all(extract_path).await?;
 
-        let extension = archive_path
-            .extension()
+        let filename = archive_path
+            .file_name()
             .and_then(|s| s.to_str())
             .unwrap_or("");
 
-        match extension {
-            "zip" => self.extract_zip(archive_path, extract_path).await,
-            "gz" => self.extract_tar_gz(archive_path, extract_path).await,
-            _ => Err(anyhow::anyhow!("Unsupported archive format: {}", extension)),
+        info!("Extracting archive: {}", filename);
+
+        // Check for compound extensions first, then single extensions
+        if filename.ends_with(".tar.gz") || filename.ends_with(".tgz") {
+            info!("Detected TAR.GZ format");
+            self.extract_tar_gz(archive_path, extract_path).await
+        } else if filename.ends_with(".zip") {
+            info!("Detected ZIP format");
+            self.extract_zip(archive_path, extract_path).await
+        } else {
+            // Fallback to single extension check
+            let extension = archive_path
+                .extension()
+                .and_then(|s| s.to_str())
+                .unwrap_or("");
+
+            match extension {
+                "zip" => self.extract_zip(archive_path, extract_path).await,
+                "gz" => self.extract_tar_gz(archive_path, extract_path).await,
+                _ => {
+                    // Try to detect format by reading file header
+                    self.extract_archive_by_content(archive_path, extract_path)
+                        .await
+                }
+            }
+        }
+    }
+
+    async fn extract_archive_by_content(
+        &self,
+        archive_path: &Path,
+        extract_path: &Path,
+    ) -> Result<()> {
+        // Read first few bytes to detect file type
+        let mut file = fs::File::open(archive_path).await?;
+        let mut header = [0u8; 4];
+
+        use tokio::io::AsyncReadExt;
+        file.read_exact(&mut header).await?;
+
+        // ZIP files start with "PK" (0x504B)
+        if header[0] == 0x50 && header[1] == 0x4B {
+            info!("Detected ZIP format by header");
+            self.extract_zip(archive_path, extract_path).await
+        }
+        // GZIP files start with 0x1F 0x8B
+        else if header[0] == 0x1F && header[1] == 0x8B {
+            info!("Detected GZIP format by header");
+            self.extract_tar_gz(archive_path, extract_path).await
+        } else {
+            Err(anyhow::anyhow!(
+                "Unsupported or corrupted archive format. Header bytes: {:02X} {:02X} {:02X} {:02X}",
+                header[0],
+                header[1],
+                header[2],
+                header[3]
+            ))
         }
     }
 
