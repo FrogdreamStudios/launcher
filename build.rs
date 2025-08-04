@@ -1,9 +1,39 @@
 use std::env;
+
 use std::process::Command;
 
 fn main() {
     println!("cargo:rerun-if-changed=assets/images/other/icon.png");
     println!("cargo:rerun-if-changed=assets/icons/app_icon.icns");
+
+    println!("cargo:rerun-if-changed=assets/styles/main.css");
+    println!("cargo:rerun-if-changed=assets/styles/auth.css");
+    println!("cargo:rerun-if-changed=assets/styles/chat.css");
+
+    // Build Tailwind CSS
+    let tailwind_input = "assets/styles/main.css";
+    let tailwind_output = "assets/styles/output.css";
+
+    let status = Command::new("npx")
+        .arg("tailwindcss")
+        .arg("-i")
+        .arg(tailwind_input)
+        .arg("-o")
+        .arg(tailwind_output)
+        .arg("--minify")
+        .status();
+
+    match status {
+        Ok(s) if s.success() => {
+            println!("cargo:warning=Tailwind CSS built successfully.");
+        }
+        Ok(s) => {
+            println!("cargo:warning=Tailwind CSS build failed with status: {}", s);
+        }
+        Err(e) => {
+            println!("cargo:warning=Failed to run Tailwind CSS build: {}", e);
+        }
+    }
 
     let profile = env::var("PROFILE").unwrap_or_default();
 

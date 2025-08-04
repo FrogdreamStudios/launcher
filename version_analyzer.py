@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 import json
 import re
 import requests
@@ -117,7 +118,7 @@ def save_to_file(analysis, filename="minecraft_versions.json"):
     print(f"Saved to {filename}")
 
 def main():
-    print("Minecraft version requirements analyzer")
+    print("Minecraft version analyzer")
     analysis = analyze_versions()
     if analysis:
         print_versions(analysis)
