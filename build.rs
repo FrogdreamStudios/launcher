@@ -8,11 +8,40 @@ fn is_command_available(command: &str) -> bool {
         "which"
     };
 
+    let command_to_check = if cfg!(target_os = "windows") {
+        format!("{}.cmd", command)
+    } else {
+        command.to_string()
+    };
+
     Command::new(check_command)
-        .arg(command)
+        .arg(&command_to_check)
         .output()
         .map(|output| output.status.success())
         .unwrap_or(false)
+}
+
+fn run_npm_command(args: &[&str]) -> std::io::Result<std::process::ExitStatus> {
+    if cfg!(target_os = "windows") {
+        let mut cmd_args = vec!["cmd.exe", "/C", "npm"];
+        cmd_args.extend(args);
+        Command::new("cmd.exe")
+            .args(&["/C", "npm"])
+            .args(args)
+            .status()
+    } else {
+        Command::new("npm").args(args).status()
+    }
+}
+
+fn run_npx_command(args: &[&str]) -> std::io::Result<std::process::ExitStatus> {
+    if cfg!(target_os = "windows") {
+        let mut cmd_args = vec!["/C", "npx"];
+        cmd_args.extend(args);
+        Command::new("cmd.exe").args(&cmd_args).status()
+    } else {
+        Command::new("npx").args(args).status()
+    }
 }
 
 fn main() {
@@ -30,7 +59,7 @@ fn main() {
         println!("cargo:warning=npm found, attempting npm build...");
 
         // Install npm dependencies if needed
-        let npm_install_status = Command::new("npm").arg("install").status();
+        let npm_install_status = run_npm_command(&["install"]);
 
         match npm_install_status {
             Ok(s) if s.success() => {
@@ -45,7 +74,7 @@ fn main() {
         }
 
         // Build CSS using npm script
-        let npm_build_status = Command::new("npm").arg("run").arg("build:css").status();
+        let npm_build_status = run_npm_command(&["run", "build:css"]);
 
         match npm_build_status {
             Ok(s) if s.success() => {
@@ -74,14 +103,14 @@ fn main() {
         let tailwind_input = "assets/styles/main.css";
         let tailwind_output = "assets/styles/output.css";
 
-        let fallback_status = Command::new("npx")
-            .arg("tailwindcss")
-            .arg("-i")
-            .arg(tailwind_input)
-            .arg("-o")
-            .arg(tailwind_output)
-            .arg("--minify")
-            .status();
+        let fallback_status = run_npx_command(&[
+            "tailwindcss",
+            "-i",
+            tailwind_input,
+            "-o",
+            tailwind_output,
+            "--minify",
+        ]);
 
         match fallback_status {
             Ok(s) if s.success() => {
