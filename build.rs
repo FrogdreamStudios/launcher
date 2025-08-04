@@ -1,6 +1,19 @@
 use std::env;
-
 use std::process::Command;
+
+fn is_command_available(command: &str) -> bool {
+    let check_command = if cfg!(target_os = "windows") {
+        "where"
+    } else {
+        "which"
+    };
+
+    Command::new(check_command)
+        .arg(command)
+        .output()
+        .map(|output| output.status.success())
+        .unwrap_or(false)
+}
 
 fn main() {
     println!("cargo:rerun-if-changed=assets/images/other/icon.png");
@@ -12,62 +25,77 @@ fn main() {
     println!("cargo:rerun-if-changed=assets/styles/tailwind.css");
     println!("cargo:rerun-if-changed=package.json");
 
-    // Install npm dependencies if needed
-    let npm_install_status = Command::new("npm").arg("install").status();
+    // Check if npm is available and try npm build first
+    if is_command_available("npm") {
+        println!("cargo:warning=npm found, attempting npm build...");
 
-    match npm_install_status {
-        Ok(s) if s.success() => {
-            println!("cargo:warning=npm install completed successfully");
-        }
-        Ok(s) => {
-            println!("cargo:warning=npm install failed with status: {s}");
-        }
-        Err(e) => {
-            println!("cargo:warning=Failed to run npm install: {e}");
-        }
-    }
+        // Install npm dependencies if needed
+        let npm_install_status = Command::new("npm").arg("install").status();
 
-    // Build CSS using npm script
-    let npm_build_status = Command::new("npm").arg("run").arg("build:css").status();
-
-    match npm_build_status {
-        Ok(s) if s.success() => {
-            println!("cargo:warning=npm build:css completed successfully.");
-        }
-        Ok(s) => {
-            println!("cargo:warning=npm build:css failed with status: {s}");
-            println!("cargo:warning=Trying fallback Tailwind CSS build...");
-
-            let tailwind_input = "assets/styles/main.css";
-            let tailwind_output = "assets/styles/output.css";
-
-            let fallback_status = Command::new("npx")
-                .arg("tailwindcss")
-                .arg("-i")
-                .arg(tailwind_input)
-                .arg("-o")
-                .arg(tailwind_output)
-                .arg("--minify")
-                .status();
-
-            match fallback_status {
-                Ok(s) if s.success() => {
-                    println!("cargo:warning=Fallback Tailwind CSS built successfully");
-                }
-                Ok(s) => {
-                    println!(
-                        "cargo:warning=Fallback Tailwind CSS build failed with status: {s}"
-                    );
-                }
-                Err(e) => {
-                    println!(
-                        "cargo:warning=Failed to run fallback Tailwind CSS build: {e}"
-                    );
-                }
+        match npm_install_status {
+            Ok(s) if s.success() => {
+                println!("cargo:warning=npm install completed successfully.");
+            }
+            Ok(s) => {
+                println!("cargo:warning=npm install failed with status: {}", s);
+            }
+            Err(e) => {
+                println!("cargo:warning=Failed to run npm install: {}", e);
             }
         }
-        Err(e) => {
-            println!("cargo:warning=Failed to run npm build:css: {e}");
+
+        // Build CSS using npm script
+        let npm_build_status = Command::new("npm").arg("run").arg("build:css").status();
+
+        match npm_build_status {
+            Ok(s) if s.success() => {
+                println!("cargo:warning=npm build:css completed successfully.");
+            }
+            Ok(s) => {
+                println!("cargo:warning=npm build:css failed with status: {}", s);
+                build_with_npx_fallback();
+            }
+            Err(e) => {
+                println!("cargo:warning=Failed to run npm build:css: {}", e);
+                build_with_npx_fallback();
+            }
+        }
+    } else {
+        println!("cargo:warning=npm not found, using npx fallback...");
+        build_with_npx_fallback();
+    }
+
+    fn build_with_npx_fallback() {
+        if !is_command_available("npx") {
+            println!("cargo:warning=npx not found either, skipping CSS build");
+            return;
+        }
+
+        let tailwind_input = "assets/styles/main.css";
+        let tailwind_output = "assets/styles/output.css";
+
+        let fallback_status = Command::new("npx")
+            .arg("tailwindcss")
+            .arg("-i")
+            .arg(tailwind_input)
+            .arg("-o")
+            .arg(tailwind_output)
+            .arg("--minify")
+            .status();
+
+        match fallback_status {
+            Ok(s) if s.success() => {
+                println!("cargo:warning=Tailwind CSS built successfully with npx.");
+            }
+            Ok(s) => {
+                println!(
+                    "cargo:warning=npx Tailwind CSS build failed with status: {}",
+                    s
+                );
+            }
+            Err(e) => {
+                println!("cargo:warning=Failed to run npx Tailwind CSS build: {}", e);
+            }
         }
     }
 
