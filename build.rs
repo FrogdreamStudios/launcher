@@ -117,9 +117,7 @@ fn main() {
                 println!("cargo:warning=Tailwind CSS built successfully with npx.");
             }
             Ok(s) => {
-                println!(
-                    "cargo:warning=npx Tailwind CSS build failed with status: {s}"
-                );
+                println!("cargo:warning=npx Tailwind CSS build failed with status: {s}");
             }
             Err(e) => {
                 println!("cargo:warning=Failed to run npx Tailwind CSS build: {e}");

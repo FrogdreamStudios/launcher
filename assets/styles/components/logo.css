@@ -1,0 +1,52 @@
+/* Standalone Logo */
+.standalone-logo-wrapper {
+    position: absolute;
+    top: 20px;
+    left: 32px;
+    width: 192px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    gap: 12px;
+    background: #141414;
+    border-radius: 8px;
+    box-sizing: border-box;
+    opacity: 1;
+    transform: translateX(0);
+    z-index: 10;
+}
+.standalone-logo-wrapper.logo-animate {
+    opacity: 0;
+    transform: translateX(-150px);
+    animation: logo-slide-in 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.1s forwards;
+}
+
+@keyframes logo-slide-in {
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+.standalone-logo,
+.standalone-logo-img {
+    width: 32px;
+    height: 20px;
+}
+.standalone-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.standalone-logo-img {
+    object-fit: contain;
+}
+.standalone-app-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    line-height: 20px;
+    margin: 0;
+}

@@ -468,9 +468,9 @@ impl JavaManager {
             if cfg!(windows) { "zip" } else { "tar.gz" }
         };
 
-        let download_path = self.java_dir.join(format!(
-            "java-{java_version}-x64-download.{file_extension}"
-        ));
+        let download_path = self
+            .java_dir
+            .join(format!("java-{java_version}-x64-download.{file_extension}"));
         let extract_path = self.java_dir.join(format!("java-{java_version}-x64"));
 
         // Download the package

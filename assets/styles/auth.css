@@ -29,9 +29,7 @@ body {
     min-height: 100vh;
     background: #1b1b1b;
 }
-a {
-    text-decoration: none;
-}
+a { text-decoration: none; }
 img {
     user-drag: none;
     pointer-events: none;
@@ -69,12 +67,8 @@ button:focus-visible {
     animation: logoFloat 2.5s ease-in-out infinite alternate;
 }
 @keyframes logoFloat {
-    from {
-        transform: scale(95%);
-    }
-    to {
-        transform: scale(100%);
-    }
+    from { transform: scale(95%); }
+    to { transform: scale(100%); }
 }
 
 .welcome-text {
@@ -111,9 +105,7 @@ button:focus-visible {
     background: #fff;
     color: #000;
 }
-.microsoft-login:hover {
-    background: #f0f0f0;
-}
+.microsoft-login:hover { background: #f0f0f0; }
 .microsoft-icon {
     width: 32px;
     height: 32px;
@@ -127,9 +119,7 @@ button:focus-visible {
     background: #252525;
     color: #707070;
 }
-.offline-login:hover {
-    background: #212121;
-}
+.offline-login:hover { background: #212121; }
 .login-button.offline-login .offline-content {
     display: flex;
     align-items: center;

@@ -4,7 +4,7 @@ use dioxus::prelude::*;
 use dioxus_router::{navigator, use_route};
 
 #[component]
-pub fn ChatSidebar() -> Element {
+pub fn ChatSidebar(animations_played: bool) -> Element {
     let nav = navigator();
     let route = use_route::<Route>();
     let chat_manager = provide_chat_manager();
@@ -15,7 +15,7 @@ pub fn ChatSidebar() -> Element {
     };
 
     rsx! {
-        aside { class: "chat-sidebar chat-animate",
+        aside { class: if !animations_played { "chat-sidebar chat-animate" } else { "chat-sidebar" },
             if active_tab == "Chat" {
                 // Back button when in chat
                 div {
@@ -49,7 +49,7 @@ pub fn ChatSidebar() -> Element {
                 div { class: "chat-divider" }
 
                 // Chat list
-                for user in chat_manager.users.read().iter() {
+                for (index, user) in chat_manager.users.read().iter().enumerate() {
                     div {
                         key: "{user.username}",
                         class: "chat-item",
@@ -79,6 +79,11 @@ pub fn ChatSidebar() -> Element {
                                 }
                             }
                         }
+                    }
+
+                    // Divider after 4th friend (index 3)
+                    if index == 3 {
+                        div { class: "chat-divider" }
                     }
                 }
             }

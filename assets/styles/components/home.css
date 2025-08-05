@@ -1,0 +1,204 @@
+/* Home Page Components */
+
+/* Center Block */
+.center-block {
+    position: absolute;
+    top: 0;
+    left: 253px;
+    width: 752px;
+    height: 752px;
+    background: #141414;
+    border-radius: 8px;
+    opacity: 1;
+    transform: scale(1);
+}
+
+.center-block.center-animate {
+    opacity: 0;
+    transform: scale(0.95);
+    animation: center-scale-in 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.25s forwards;
+}
+
+@keyframes center-scale-in {
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Last Connections Section */
+.last-connections-title,
+.instances-title {
+    position: absolute;
+    left: 48px;
+    font-size: 24px;
+    font-weight: 700;
+    color: #fff;
+    font-family: "Gilroy-Bold", Helvetica, Arial, sans-serif;
+}
+.last-connections-title { top: 32px; }
+.instances-title { top: 344px; }
+
+.last-connections-divider,
+.instances-divider {
+    position: absolute;
+    height: 2px;
+    background: #1b1b1b;
+    border-radius: 360px;
+}
+.last-connections-divider {
+    top: 45px;
+    left: 252px;
+    width: 452px;
+}
+.instances-divider {
+    top: 359px;
+    left: 170px;
+    width: 534px;
+}
+
+/* Connection Cards */
+.connection-card {
+    position: absolute;
+    width: 656px;
+    height: 65px;
+    background: #1b1b1b;
+    border-radius: 8px;
+    left: 48px;
+    filter: brightness(1);
+    cursor: pointer;
+    transition: filter 0.25s ease-out;
+}
+.connection-card-1 { top: 85px; }
+.connection-card-2 { top: 166px; }
+.connection-card-3 { top: 247px; }
+.connection-card:hover,
+.instance-card:hover {
+    filter: brightness(1.15);
+}
+
+/* Instances Section */
+.instance-card {
+    position: absolute;
+    top: 397px;
+    left: 48px;
+    width: 80px;
+    height: 80px;
+    background: #1b1b1b;
+    border-radius: 8px;
+    filter: brightness(1);
+    cursor: pointer;
+    transition: filter 0.25s ease-out;
+}
+
+/* Play Together Block */
+.play-together {
+    position: absolute;
+    width: 192px;
+    height: 339px;
+    left: 32px;
+    top: 413px;
+    background: #141414;
+    border-radius: 8px;
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.play-together.play-animate {
+    opacity: 0;
+    transform: translateX(-200px);
+    animation: play-together-slide-in 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.3s forwards;
+}
+
+@keyframes play-together-slide-in {
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Home Content Sections */
+.home-content,
+.cloud-content,
+.mods-and-packs-content,
+.new-content,
+.settings-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    max-width: 800px;
+    min-height: 500px;
+    text-align: center;
+    gap: 24px;
+}
+
+.home-content h2,
+.cloud-content h2,
+.mods-and-packs-content h2,
+.new-content h2,
+.settings-content h2 {
+    font-size: 32px;
+    font-weight: 700;
+    margin: 0;
+    color: #fff;
+}
+
+.home-content p,
+.cloud-content p,
+.mods-and-packs-content p,
+.new-content p,
+.settings-content p {
+    font-size: 18px;
+    font-weight: 500;
+    margin: 0;
+    color: #b0b0b0;
+    max-width: 600px;
+    line-height: 1.5;
+}
+
+/* Action Buttons */
+.home-actions,
+.cloud-actions,
+.mods-actions,
+.new-actions,
+.settings-actions {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.primary-button,
+.secondary-button {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    font-family: "Gilroy-Bold", Helvetica, Arial, sans-serif;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 150px;
+}
+
+.primary-button {
+    background: #4a9eff;
+    color: #fff;
+}
+.primary-button:hover {
+    background: #3a8eef;
+    transform: translateY(-2px);
+}
+
+.secondary-button {
+    background: #2a2a2a;
+    color: #fff;
+    border: 1px solid #404040;
+}
+.secondary-button:hover {
+    background: #3a3a3a;
+    border-color: #505050;
+    transform: translateY(-2px);
+}

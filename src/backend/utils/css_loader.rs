@@ -7,12 +7,54 @@ pub struct CssLoader;
 
 impl CssLoader {
     pub fn init() {
-        let styles: [(&'static str, &'static str); 4] = [
+        let styles: [(&'static str, &'static str); 9] = [
             (
-                "main",
+                "base",
                 include_str!(concat!(
                     env!("CARGO_MANIFEST_DIR"),
-                    "/assets/styles/main.css"
+                    "/assets/styles/base.css"
+                )),
+            ),
+            (
+                "animations",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/animations.css"
+                )),
+            ),
+            (
+                "logo",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/components/logo.css"
+                )),
+            ),
+            (
+                "navigation",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/components/navigation.css"
+                )),
+            ),
+            (
+                "chat",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/components/chat.css"
+                )),
+            ),
+            (
+                "home",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/components/home.css"
+                )),
+            ),
+            (
+                "news",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/components/news.css"
                 )),
             ),
             (
@@ -20,13 +62,6 @@ impl CssLoader {
                 include_str!(concat!(
                     env!("CARGO_MANIFEST_DIR"),
                     "/assets/styles/auth.css"
-                )),
-            ),
-            (
-                "chat",
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/assets/styles/chat.css"
                 )),
             ),
             (
@@ -74,7 +109,16 @@ impl CssLoader {
     }
 
     pub fn get_combined_main() -> String {
-        Self::combine(&["main", "tailwind"])
+        Self::combine(&[
+            "base",
+            "animations",
+            "logo",
+            "navigation",
+            "chat",
+            "home",
+            "news",
+            "tailwind",
+        ])
     }
 
     pub fn get_combined_auth() -> String {

@@ -4,21 +4,29 @@ use dioxus::prelude::*;
 use dioxus_router::{navigator, use_route};
 
 #[component]
-pub fn Navigation() -> Element {
+pub fn Navigation(animations_played: bool) -> Element {
     let nav = navigator();
     let route = use_route::<Route>();
+    let mut last_active_tab = use_signal(|| "Main");
 
-    let active_tab = match route {
+    // Only update active tab for non-chat routes
+    let current_tab = match route {
         Route::Auth {} => "Auth",
         Route::Home { .. } => "Main",
         Route::Packs { .. } => "Packs",
         Route::Settings { .. } => "Settings",
         Route::Cloud { .. } => "Cloud",
         Route::New { .. } => "New",
-        Route::Chat { .. } => "Chat",
+        Route::Chat { .. } => last_active_tab(), // Keep last active tab when in chat
     };
 
-    let logo = AssetLoader::get_logo();
+    // Update last active tab only for non-chat routes
+    if !matches!(route, Route::Chat { .. }) {
+        last_active_tab.set(current_tab);
+    }
+
+    let active_tab = current_tab;
+
     let home = AssetLoader::get_home();
     let packs = AssetLoader::get_packs();
     let settings = AssetLoader::get_settings();
@@ -26,15 +34,8 @@ pub fn Navigation() -> Element {
     let plus = AssetLoader::get_plus();
 
     rsx! {
-        nav { class: "navigation nav-animate",
-            div { class: "logo-wrapper logo-animate",
-                div { class: "logo",
-                    img { src: "{logo}", alt: "Logo", class: "logo-img" }
-                }
-                h1 { class: "app-name", "Dream Launcher" }
-            }
-
-            ul { class: "nav-items nav-items-animate",
+        nav { class: if !animations_played { "navigation nav-animate" } else { "navigation" },
+            ul { class: if !animations_played { "nav-items nav-items-animate" } else { "nav-items" },
                 li {
                     class: if active_tab == "Main" { "nav-item active nav-item-1" } else { "nav-item nav-item-1" },
                     onclick: move |_| { nav.push("/"); },
