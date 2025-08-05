@@ -19,8 +19,7 @@
 .standalone-logo-wrapper.logo-animate {
     opacity: 0;
     transform: translateX(-150px);
-    animation: logo-slide-in 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.1s
-        forwards;
+    animation: logo-slide-in 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.1s forwards;
 }
 
 @keyframes logo-slide-in {
@@ -29,17 +28,18 @@
         transform: translateX(0);
     }
 }
-.standalone-logo {
+.standalone-logo,
+.standalone-logo-img {
     width: 32px;
     height: 20px;
+}
+.standalone-logo {
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
 }
 .standalone-logo-img {
-    width: 32px;
-    height: 20px;
     object-fit: contain;
 }
 .standalone-app-name {
