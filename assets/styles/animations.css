@@ -1,0 +1,49 @@
+/* Hover Animations */
+
+/* Brightness buildup animation */
+@keyframes brightness-buildup {
+    0% {
+        filter: brightness(1.02);
+    }
+    25% {
+        filter: brightness(1.05);
+    }
+    50% {
+        filter: brightness(1.08);
+    }
+    75% {
+        filter: brightness(1.12);
+    }
+    100% {
+        filter: brightness(1.15);
+    }
+}
+
+/* Brightness fadeout animation */
+@keyframes brightness-fadeout {
+    0% {
+        filter: brightness(1.15);
+    }
+    25% {
+        filter: brightness(1.12);
+    }
+    50% {
+        filter: brightness(1.08);
+    }
+    75% {
+        filter: brightness(1.05);
+    }
+    100% {
+        filter: brightness(1);
+    }
+}
+
+/* Shared hover effects */
+.hover-brightness {
+    filter: brightness(1);
+    transition: filter 0.25s ease-out;
+}
+
+.hover-brightness:hover {
+    filter: brightness(1.15);
+}

@@ -77,20 +77,12 @@ fn parse_markdown() -> Vec<NewsItem> {
 }
 
 #[component]
-pub fn News() -> Element {
-    let mut show_news = use_signal(|| false);
+pub fn News(animations_played: bool) -> Element {
     let news_items = use_signal(parse_markdown);
-
-    use_effect(move || {
-        spawn(async move {
-            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-            show_news.set(true);
-        });
-    });
 
     rsx! {
         div {
-            class: if show_news() { "news-block news-animate" } else { "news-block" },
+            class: if !animations_played { "news-block news-animate" } else { "news-block" },
 
             for (index, item) in news_items().iter().enumerate() {
                 div {
