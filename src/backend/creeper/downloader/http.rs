@@ -48,7 +48,7 @@ impl HttpDownloader {
             tokio::fs::create_dir_all(parent).await?;
         }
 
-        debug!("Downloading {} to {:?}", url, destination);
+        debug!("Downloading {url} to {destination:?}");
 
         let response = self.client.get(url).send().await?;
 
@@ -59,6 +59,23 @@ impl HttpDownloader {
                 response.status()
             ));
         }
+
+        // Log response headers for debugging
+        let content_type = response
+            .headers()
+            .get("content-type")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("unknown");
+        debug!("Content-Type: {}", content_type);
+
+        // Warn if content type doesn't match expected archive format
+        if url.contains("java")
+            && !content_type.contains("application/")
+            && !content_type.contains("octet-stream")
+        {
+            warn!("Unexpected content type for Java archive: {content_type}");
+        }
+
 
         let total_size = response.content_length();
         if let (Some(tracker), Some(size)) = (tracker.as_mut(), total_size) {
@@ -88,16 +105,29 @@ impl HttpDownloader {
         file.flush().await?;
         drop(file);
 
+        // Verify file size
+        let file_size = tokio::fs::metadata(destination).await?.len();
+        debug!("Downloaded file size: {file_size} bytes");
+
+        if file_size == 0 {
+            tokio::fs::remove_file(destination).await?;
+            return Err(anyhow::anyhow!("Downloaded file is empty: {url}"));
+        }
+
+        // For Java archives, do a basic format check
+        if url.contains("java") || destination.to_string_lossy().contains("java") {
+            if let Err(e) = self.verify_archive_format(destination).await {
+                warn!("Archive format verification failed: {e}");
+            }
+        }
+
         // Verify hash if provided
         if let (Some(expected), Some(hasher)) = (expected_sha1, hasher) {
             let computed_hash = hex::encode(hasher.finalize());
             if computed_hash != expected {
                 tokio::fs::remove_file(destination).await?;
                 return Err(anyhow::anyhow!(
-                    "Hash mismatch for {}: expected {}, got {}",
-                    url,
-                    expected,
-                    computed_hash
+                    "Hash mismatch for {url}: expected {expected}, got {computed_hash}"
                 ));
             }
         }
@@ -163,7 +193,7 @@ impl HttpDownloader {
     where
         T: serde::de::DeserializeOwned,
     {
-        debug!("Fetching JSON from {}", url);
+        debug!("Fetching JSON from {url}");
 
         // Try with retries for rate limiting
         let mut retries = 0;
@@ -203,6 +233,41 @@ impl HttpDownloader {
     pub async fn head_request(&self, url: &str) -> Result<reqwest::Response> {
         let response = self.client.head(url).send().await?;
         Ok(response)
+    }
+
+    async fn verify_archive_format(&self, file_path: &Path) -> Result<()> {
+        use tokio::io::AsyncReadExt;
+
+        let mut file = File::open(file_path).await?;
+        let mut header = [0u8; 4];
+
+        if file.read_exact(&mut header).await.is_err() {
+            return Err(anyhow::anyhow!("File too small to read header"));
+        }
+
+        // Check for known archive formats
+        if header[0] == 0x50 && header[1] == 0x4B {
+            // ZIP format (PK header)
+            debug!("Detected ZIP format");
+            Ok(())
+        } else if header[0] == 0x1F && header[1] == 0x8B {
+            // GZIP format
+            debug!("Detected GZIP format");
+            Ok(())
+        } else {
+            // Could be a different format or corrupted
+            debug!(
+                "Unknown format - header: {:02X} {:02X} {:02X} {:02X}",
+                header[0], header[1], header[2], header[3]
+            );
+            Err(anyhow::anyhow!(
+                "Unrecognized archive format. Header: {:02X} {:02X} {:02X} {:02X}",
+                header[0],
+                header[1],
+                header[2],
+                header[3]
+            ))
+        }
     }
 }
 
