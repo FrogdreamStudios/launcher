@@ -9,7 +9,7 @@ fn is_command_available(command: &str) -> bool {
     };
 
     let command_to_check = if cfg!(target_os = "windows") {
-        format!("{}.cmd", command)
+        format!("{command}.cmd")
     } else {
         command.to_string()
     };
@@ -26,7 +26,7 @@ fn run_npm_command(args: &[&str]) -> std::io::Result<std::process::ExitStatus> {
         let mut cmd_args = vec!["cmd.exe", "/C", "npm"];
         cmd_args.extend(args);
         Command::new("cmd.exe")
-            .args(&["/C", "npm"])
+            .args(["/C", "npm"])
             .args(args)
             .status()
     } else {
@@ -66,10 +66,10 @@ fn main() {
                 println!("cargo:warning=npm install completed successfully.");
             }
             Ok(s) => {
-                println!("cargo:warning=npm install failed with status: {}", s);
+                println!("cargo:warning=npm install failed with status: {s}");
             }
             Err(e) => {
-                println!("cargo:warning=Failed to run npm install: {}", e);
+                println!("cargo:warning=Failed to run npm install: {e}");
             }
         }
 
@@ -81,11 +81,11 @@ fn main() {
                 println!("cargo:warning=npm build:css completed successfully.");
             }
             Ok(s) => {
-                println!("cargo:warning=npm build:css failed with status: {}", s);
+                println!("cargo:warning=npm build:css failed with status: {s}");
                 build_with_npx_fallback();
             }
             Err(e) => {
-                println!("cargo:warning=Failed to run npm build:css: {}", e);
+                println!("cargo:warning=Failed to run npm build:css: {e}");
                 build_with_npx_fallback();
             }
         }
@@ -118,12 +118,11 @@ fn main() {
             }
             Ok(s) => {
                 println!(
-                    "cargo:warning=npx Tailwind CSS build failed with status: {}",
-                    s
+                    "cargo:warning=npx Tailwind CSS build failed with status: {s}"
                 );
             }
             Err(e) => {
-                println!("cargo:warning=Failed to run npx Tailwind CSS build: {}", e);
+                println!("cargo:warning=Failed to run npx Tailwind CSS build: {e}");
             }
         }
     }

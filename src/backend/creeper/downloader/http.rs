@@ -76,7 +76,6 @@ impl HttpDownloader {
             warn!("Unexpected content type for Java archive: {content_type}");
         }
 
-
         let total_size = response.content_length();
         if let (Some(tracker), Some(size)) = (tracker.as_mut(), total_size) {
             tracker.set_total(size);

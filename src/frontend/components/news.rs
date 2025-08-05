@@ -79,7 +79,7 @@ fn parse_markdown() -> Vec<NewsItem> {
 #[component]
 pub fn News() -> Element {
     let mut show_news = use_signal(|| false);
-    let news_items = use_signal(|| parse_markdown());
+    let news_items = use_signal(parse_markdown);
 
     use_effect(move || {
         spawn(async move {

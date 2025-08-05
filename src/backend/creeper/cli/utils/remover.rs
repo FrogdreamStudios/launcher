@@ -17,7 +17,7 @@ pub async fn remove_instances(launcher: &MinecraftLauncher) -> anyhow::Result<()
 
     let game_dir = launcher.get_game_dir();
 
-    /// List of directories to delete
+    // List of directories to delete
     let mut paths_to_delete: Vec<(&str, PathBuf)> = vec![
         ("Minecraft versions", get_versions_dir(game_dir)),
         ("Game libraries", get_libraries_dir(game_dir)),
@@ -26,7 +26,7 @@ pub async fn remove_instances(launcher: &MinecraftLauncher) -> anyhow::Result<()
         ("Natives", game_dir.join("natives")),
     ];
 
-    /// Check for additional directories
+    // Check for additional directories
     if let Ok(java_dir) = get_java_dir() {
         if java_dir.exists() {
             paths_to_delete.push(("Java runtimes", java_dir));
@@ -38,7 +38,7 @@ pub async fn remove_instances(launcher: &MinecraftLauncher) -> anyhow::Result<()
         }
     }
 
-    /// Leave only existing paths
+    // Leave only existing paths
     paths_to_delete.retain(|(_, path)| path.exists());
 
     if paths_to_delete.is_empty() {
@@ -46,7 +46,7 @@ pub async fn remove_instances(launcher: &MinecraftLauncher) -> anyhow::Result<()
         return Ok(());
     }
 
-    /// Calculate total size of directories to delete
+    // Calculate total size of directories to delete
     let total_size: u64 = paths_to_delete
         .iter()
         .map(|(_, path)| calculate_directory_size(path).unwrap_or(0))

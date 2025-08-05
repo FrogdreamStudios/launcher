@@ -392,14 +392,10 @@ impl JavaManager {
 
         // Verify downloaded file
         let file_size = fs::metadata(&download_path).await?.len();
-        info!(
-            "Downloaded Java {java_version} archive: {file_size} bytes"
-        );
+        info!("Downloaded Java {java_version} archive: {file_size} bytes");
 
         if file_size < 1024 * 1024 {
-            error!(
-                "Downloaded file is too small ({file_size}B), likely corrupted",
-            );
+            error!("Downloaded file is too small ({file_size}B), likely corrupted",);
             let _ = fs::remove_file(&download_path).await;
             return Err(anyhow::anyhow!(
                 "Downloaded Java archive is too small, likely corrupted"
@@ -473,8 +469,7 @@ impl JavaManager {
         };
 
         let download_path = self.java_dir.join(format!(
-            "java-{java_version}-x64-download.{}",
-            file_extension
+            "java-{java_version}-x64-download.{file_extension}"
         ));
         let extract_path = self.java_dir.join(format!("java-{java_version}-x64"));
 

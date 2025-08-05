@@ -1,6 +1,3 @@
-use dioxus::core::Element;
-use dioxus::core_macro::{component, rsx};
-
 /*#[component]
 pub fn Console() -> Element {
     rsx! {
