@@ -81,22 +81,9 @@ impl CssLoader {
     pub fn get(style_name: &str) -> Option<&'static str> {
         CSS_CACHE.get()?.get(style_name).copied()
     }
-
-    #[inline(always)]
-    pub fn get_main() -> &'static str {
-        Self::get("main").unwrap_or("")
-    }
-    #[inline(always)]
-    pub fn get_auth() -> &'static str {
-        Self::get("auth").unwrap_or("")
-    }
     #[inline(always)]
     pub fn get_chat() -> &'static str {
         Self::get("chat").unwrap_or("")
-    }
-    #[inline(always)]
-    pub fn get_tailwind() -> &'static str {
-        Self::get("tailwind").unwrap_or("")
     }
 
     /// Combines multiple styles into a single string
@@ -123,11 +110,6 @@ impl CssLoader {
 
     pub fn get_combined_auth() -> String {
         Self::combine(&["auth", "tailwind"])
-    }
-
-    /// Returns a combined string of all styles
-    pub fn load_styles(styles: &[&str]) -> String {
-        Self::combine(styles)
     }
 }
 

@@ -2,6 +2,9 @@
 name = "DreamLauncher"
 authors = ["Frogdream Studios"]
 description = "A powerful and lightweight Minecraft launcher that will be perfect for every player."
+repository = "https://github.com/FrogdreamStudios/launcher"
+keywords = ["minecraft", "launcher", "java", "gaming", "cross-platform"]
+categories = ["games"]
 license = "LGPL-3.0-only"
 version = "1.0.0-beta.1"
 edition = "2024"
@@ -51,7 +54,7 @@ tao = "0.34.0"
 pulldown-cmark = "0.13.0"
 
 [build-dependencies]
-winres = "0.1"
+winres = "0.1.12"
 
 [features]
 default = ["desktop"]
@@ -59,3 +62,17 @@ desktop = ["dioxus/desktop"]
 
 [profile.dev]
 incremental = true
+
+[lints.clippy]
+correctness = { level = "warn", priority = -1 }
+suspicious = { level = "warn", priority = -1 }
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+todo = "warn"
+
+pedantic = { level = "allow", priority = -1 }
+nursery = { level = "allow", priority = -1 }
+complexity = { level = "allow", priority = -1 }
+perf = { level = "allow", priority = -1 }
+style = { level = "allow", priority = -1 }

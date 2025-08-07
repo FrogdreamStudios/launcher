@@ -11,7 +11,7 @@ fn is_command_available(command: &str) -> bool {
     let command_to_check = if cfg!(target_os = "windows") {
         format!("{command}.cmd")
     } else {
-        command.to_string()
+        command.to_owned()
     };
 
     Command::new(check_command)
@@ -23,8 +23,6 @@ fn is_command_available(command: &str) -> bool {
 
 fn run_npm_command(args: &[&str]) -> std::io::Result<std::process::ExitStatus> {
     if cfg!(target_os = "windows") {
-        let mut cmd_args = vec!["cmd.exe", "/C", "npm"];
-        cmd_args.extend(args);
         Command::new("cmd.exe")
             .args(["/C", "npm"])
             .args(args)
@@ -44,6 +42,37 @@ fn run_npx_command(args: &[&str]) -> std::io::Result<std::process::ExitStatus> {
     }
 }
 
+fn build_with_npx_fallback() {
+    if !is_command_available("npx") {
+        println!("cargo:warning=npx not found either, skipping CSS build");
+        return;
+    }
+
+    let tailwind_input = "assets/styles/main.css";
+    let tailwind_output = "assets/styles/output.css";
+
+    let fallback_status = run_npx_command(&[
+        "tailwindcss",
+        "-i",
+        tailwind_input,
+        "-o",
+        tailwind_output,
+        "--minify",
+    ]);
+
+    match fallback_status {
+        Ok(s) if s.success() => {
+            println!("cargo:warning=Tailwind CSS built successfully with npx.");
+        }
+        Ok(s) => {
+            println!("cargo:warning=npx Tailwind CSS build failed with status: {s}");
+        }
+        Err(e) => {
+            println!("cargo:warning=Failed to run npx Tailwind CSS build: {e}");
+        }
+    }
+}
+
 fn main() {
     println!("cargo:rerun-if-changed=assets/images/other/icon.png");
     println!("cargo:rerun-if-changed=assets/icons/app_icon.icns");
@@ -53,6 +82,10 @@ fn main() {
     println!("cargo:rerun-if-changed=assets/styles/chat.css");
     println!("cargo:rerun-if-changed=assets/styles/tailwind.css");
     println!("cargo:rerun-if-changed=package.json");
+
+    // Add rerun triggers for all Rust source files
+    println!("cargo:rerun-if-changed=src/");
+    println!("cargo:rerun-if-changed=Cargo.toml");
 
     // Check if npm is available and try npm build first
     if is_command_available("npm") {
@@ -92,37 +125,6 @@ fn main() {
     } else {
         println!("cargo:warning=npm not found, using npx fallback...");
         build_with_npx_fallback();
-    }
-
-    fn build_with_npx_fallback() {
-        if !is_command_available("npx") {
-            println!("cargo:warning=npx not found either, skipping CSS build");
-            return;
-        }
-
-        let tailwind_input = "assets/styles/main.css";
-        let tailwind_output = "assets/styles/output.css";
-
-        let fallback_status = run_npx_command(&[
-            "tailwindcss",
-            "-i",
-            tailwind_input,
-            "-o",
-            tailwind_output,
-            "--minify",
-        ]);
-
-        match fallback_status {
-            Ok(s) if s.success() => {
-                println!("cargo:warning=Tailwind CSS built successfully with npx.");
-            }
-            Ok(s) => {
-                println!("cargo:warning=npx Tailwind CSS build failed with status: {s}");
-            }
-            Err(e) => {
-                println!("cargo:warning=Failed to run npx Tailwind CSS build: {e}");
-            }
-        }
     }
 
     let profile = env::var("PROFILE").unwrap_or_default();

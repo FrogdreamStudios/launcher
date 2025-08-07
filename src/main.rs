@@ -46,7 +46,10 @@ fn main() {
         tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()
-            .expect("Failed to create runtime")
+            .unwrap_or_else(|_| {
+                eprintln!("Failed to create tokio runtime, exiting");
+                std::process::exit(1);
+            })
     });
 
     let size = LogicalSize::new(1280.0, 832.0);
@@ -57,10 +60,23 @@ fn main() {
             env!("CARGO_MANIFEST_DIR"),
             "/assets/images/other/icon_64.png"
         ));
-        let image = image::load_from_memory(icon_bytes).expect("Failed to load icon image");
-        let (width, height) = image.dimensions();
-        let rgba = image.into_rgba8().into_raw();
-        Some(Icon::from_rgba(rgba, width, height).expect("Failed to create icon"))
+        match image::load_from_memory(icon_bytes) {
+            Ok(image) => {
+                let (width, height) = image.dimensions();
+                let rgba = image.into_rgba8().into_raw();
+                match Icon::from_rgba(rgba, width, height) {
+                    Ok(icon) => Some(icon),
+                    Err(_) => {
+                        eprintln!("Failed to create icon from image data");
+                        None
+                    }
+                }
+            }
+            Err(_) => {
+                eprintln!("Failed to load icon image from embedded data");
+                None
+            }
+        }
     };
 
     let config = Config::default()
@@ -83,12 +99,12 @@ fn ModeSelector() -> Element {
     let window = use_window();
 
     // UI mode
-    if let Some(true) = *mode.read() {
+    if *mode.read() == Some(true) {
         return rsx! { AppRoot {} };
     }
 
     // CLI mode
-    if let Some(false) = *mode.read() {
+    if *mode.read() == Some(false) {
         use_future(move || {
             let window = window.clone();
             async move {
@@ -111,19 +127,19 @@ fn ModeSelector() -> Element {
                 button {
                     style: "padding: 12px 32px; font-size: 1.1rem;",
                     onclick: move |_| mode.set(Some(true)),
-                    "UI in dev"
+                    "Launch UI Mode"
                 }
                 button {
                     style: "padding: 12px 32px; font-size: 1.1rem;",
                     onclick: {
                         let mut mode = mode;
-                        let window = window.clone();
+                        let window = window;
                         move |_| {
                             mode.set(Some(false));
-                            window.set_visible(false)
+                            window.set_visible(false);
                         }
                     },
-                    "CLI in dev"
+                    "Launch CLI Mode"
                 }
             }
         }

@@ -33,7 +33,7 @@ pub async fn interactive_mode(launcher: &mut MinecraftLauncher) -> anyhow::Resul
     Ok(())
 }
 
-pub async fn select_version(launcher: &mut MinecraftLauncher) -> anyhow::Result<String> {
+pub async fn select_version(launcher: &MinecraftLauncher) -> anyhow::Result<String> {
     let versions = launcher.get_available_versions().await?;
     let types = [
         ("release", "Releases"),
@@ -81,7 +81,7 @@ pub async fn select_version(launcher: &mut MinecraftLauncher) -> anyhow::Result<
     Ok(filtered[version_selection].id.clone())
 }
 
-pub async fn get_offline_versions(launcher: &MinecraftLauncher) -> Vec<String> {
+async fn get_offline_versions(launcher: &MinecraftLauncher) -> Vec<String> {
     let versions_dir = launcher.get_game_dir().join("versions");
     std::fs::read_dir(&versions_dir)
         .ok()
@@ -89,9 +89,9 @@ pub async fn get_offline_versions(launcher: &MinecraftLauncher) -> Vec<String> {
         .flat_map(|e| e.flatten())
         .filter_map(|entry| {
             let name = entry.file_name().to_str()?.to_string();
-            let version_dir = entry.path();
-            let jar = version_dir.join(format!("{name}.jar"));
-            let json = version_dir.join(format!("{name}.json"));
+            let version_path = entry.path();
+            let jar = version_path.join(format!("{name}.jar"));
+            let json = version_path.join(format!("{name}.json"));
             if jar.exists() && json.exists() {
                 Some(name)
             } else {

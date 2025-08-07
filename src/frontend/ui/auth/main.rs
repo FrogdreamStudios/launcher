@@ -28,7 +28,7 @@ pub fn Auth() -> Element {
 
     // Function to handle keypress events
     let on_keypress = move |e: KeyboardEvent| {
-        if e.key() == "Enter".parse().unwrap() && is_valid() {
+        if e.key() == Key::Enter && is_valid() {
             hide_ui.set(true);
             spawn(async move {
                 sleep(Duration::from_millis(700)).await;

@@ -54,7 +54,7 @@ impl MinecraftLauncher {
         Ok(launcher)
     }
 
-    pub async fn get_available_versions(&self) -> Result<Vec<VersionInfo>> {
+    pub(crate) async fn get_available_versions(&self) -> Result<Vec<VersionInfo>> {
         let manifest = self
             .manifest
             .as_ref()
@@ -97,7 +97,7 @@ impl MinecraftLauncher {
         Ok(())
     }
 
-    pub async fn is_java_available(&self, version: &str) -> Result<bool> {
+    pub(crate) async fn is_java_available(&self, version: &str) -> Result<bool> {
         Ok(self.java_manager.is_java_available(version))
     }
 
@@ -152,7 +152,7 @@ impl MinecraftLauncher {
         info!("Preparing Minecraft version: {}", version_id);
 
         // Check if version already exists offline
-        if self.is_version_ready_offline(version_id).await? {
+        if self.is_version_ready_offline(version_id)? {
             info!("Version {} is already prepared offline", version_id);
             return Ok(());
         }
@@ -507,16 +507,16 @@ impl MinecraftLauncher {
             }
 
             // Download main artifact
-            if let Some(artifact) = &library.downloads.artifact {
-                if let Some(path) = &artifact.path {
-                    let lib_path = get_library_path(&self.game_dir, path);
+            if let Some(artifact) = &library.downloads.artifact
+                && let Some(path) = &artifact.path
+            {
+                let lib_path = get_library_path(&self.game_dir, path);
 
-                    if !verify_file(&lib_path, Some(artifact.size), Some(&artifact.sha1)).await? {
-                        download_tasks.push(
-                            DownloadTask::new(artifact.url.clone(), lib_path)
-                                .with_sha1(artifact.sha1.clone()),
-                        );
-                    }
+                if !verify_file(&lib_path, Some(artifact.size), Some(&artifact.sha1)).await? {
+                    download_tasks.push(
+                        DownloadTask::new(artifact.url.clone(), lib_path)
+                            .with_sha1(artifact.sha1.clone()),
+                    );
                 }
             }
         }
@@ -588,32 +588,32 @@ impl MinecraftLauncher {
                 // Try all possible native classifiers (with fallback)
                 let mut found_native = false;
                 for classifier in &native_classifiers {
-                    if let Some(native_artifact) = classifiers.get(classifier) {
-                        if let Some(path) = &native_artifact.path {
-                            let native_path = get_library_path(&self.game_dir, path);
-                            native_libraries.push((native_path.clone(), library.clone()));
+                    if let Some(native_artifact) = classifiers.get(classifier)
+                        && let Some(path) = &native_artifact.path
+                    {
+                        let native_path = get_library_path(&self.game_dir, path);
+                        native_libraries.push((native_path.clone(), library.clone()));
 
-                            if !verify_file(
-                                &native_path,
-                                Some(native_artifact.size),
-                                Some(&native_artifact.sha1),
-                            )
-                            .await?
-                            {
-                                info!(
-                                    "Need to download native ({}): {} -> {:?}",
-                                    classifier, native_artifact.url, native_path
-                                );
-                                download_tasks.push(
-                                    DownloadTask::new(native_artifact.url.clone(), native_path)
-                                        .with_sha1(native_artifact.sha1.clone()),
-                                );
-                            } else {
-                                info!("Native already exists ({}): {:?}", classifier, native_path);
-                            }
-                            found_native = true;
-                            break; // Use first matching classifier
+                        if !verify_file(
+                            &native_path,
+                            Some(native_artifact.size),
+                            Some(&native_artifact.sha1),
+                        )
+                        .await?
+                        {
+                            info!(
+                                "Need to download native ({}): {} -> {:?}",
+                                classifier, native_artifact.url, native_path
+                            );
+                            download_tasks.push(
+                                DownloadTask::new(native_artifact.url.clone(), native_path)
+                                    .with_sha1(native_artifact.sha1.clone()),
+                            );
+                        } else {
+                            info!("Native already exists ({}): {:?}", classifier, native_path);
                         }
+                        found_native = true;
+                        break; // Use first matching classifier
                     }
                 }
 
@@ -673,10 +673,7 @@ impl MinecraftLauncher {
             for (native_path, library) in &native_libraries {
                 if native_path.exists() {
                     warn!("Force extracting: {:?}", native_path);
-                    match self
-                        .extract_native_library(native_path, &natives_dir, &library.extract)
-                        .await
-                    {
+                    match self.extract_native_library(native_path, &natives_dir, &library.extract) {
                         Ok(()) => info!("Successfully extracted {:?}", native_path),
                         Err(e) => error!("Failed to extract {:?}: {}", native_path, e),
                     }
@@ -712,7 +709,7 @@ impl MinecraftLauncher {
         Ok(())
     }
 
-    async fn create_dylib_symlinks(&self, natives_dir: &PathBuf) -> Result<()> {
+    fn create_dylib_symlinks(&self, natives_dir: &PathBuf) -> Result<()> {
         // On macOS, old LWJGL versions (2.x) use .jnilib extension, but modern Java expects .dylib
         // Create symlinks from .dylib to .jnilib files for compatibility
         if cfg!(target_os = "macos") {
@@ -779,45 +776,42 @@ impl MinecraftLauncher {
                 // Try all possible native classifiers (with fallback)
                 let mut found_and_extracted = false;
                 for classifier in &native_classifiers {
-                    if let Some(native_artifact) = classifiers.get(classifier) {
-                        if let Some(path) = &native_artifact.path {
-                            let native_path = get_library_path(&self.game_dir, path);
+                    if let Some(native_artifact) = classifiers.get(classifier)
+                        && let Some(path) = &native_artifact.path
+                    {
+                        let native_path = get_library_path(&self.game_dir, path);
 
-                            if native_path.exists() {
-                                info!(
-                                    "Extracting native library ({}) for {}: {:?}",
-                                    classifier, library.name, native_path
-                                );
-                                match self
-                                    .extract_native_library(
-                                        &native_path,
-                                        &natives_dir,
-                                        &library.extract,
-                                    )
-                                    .await
-                                {
-                                    Ok(()) => {
-                                        extracted_count += 1;
-                                        found_and_extracted = true;
-                                        info!(
-                                            "Successfully extracted native library for {}",
-                                            library.name
-                                        );
-                                    }
-                                    Err(e) => {
-                                        error!(
-                                            "Failed to extract native library for {}: {}",
-                                            library.name, e
-                                        );
-                                    }
+                        if native_path.exists() {
+                            info!(
+                                "Extracting native library ({}) for {}: {:?}",
+                                classifier, library.name, native_path
+                            );
+                            match self.extract_native_library(
+                                &native_path,
+                                &natives_dir,
+                                &library.extract,
+                            ) {
+                                Ok(()) => {
+                                    extracted_count += 1;
+                                    found_and_extracted = true;
+                                    info!(
+                                        "Successfully extracted native library for {}",
+                                        library.name
+                                    );
                                 }
-                                break; // Only extract first matching classifier
-                            } else {
-                                debug!(
-                                    "Native library not found ({}) for {}: {:?}",
-                                    classifier, library.name, native_path
-                                );
+                                Err(e) => {
+                                    error!(
+                                        "Failed to extract native library for {}: {}",
+                                        library.name, e
+                                    );
+                                }
                             }
+                            break; // Only extract first matching classifier
+                        } else {
+                            debug!(
+                                "Native library not found ({}) for {}: {:?}",
+                                classifier, library.name, native_path
+                            );
                         }
                     }
                 }
@@ -836,12 +830,12 @@ impl MinecraftLauncher {
         );
 
         // Create .dylib symlinks for .jnilib files on macOS
-        self.create_dylib_symlinks(&natives_dir).await?;
+        self.create_dylib_symlinks(&natives_dir)?;
 
         Ok(())
     }
 
-    async fn extract_native_library(
+    fn extract_native_library(
         &self,
         archive_path: &PathBuf,
         extract_dir: &PathBuf,
@@ -884,18 +878,18 @@ impl MinecraftLauncher {
 
             // Check if this file should be excluded
             let mut should_exclude = false;
-            if let Some(rules) = extract_rules {
-                if let Some(exclude) = &rules.exclude {
-                    for pattern in exclude {
-                        if file_path.to_string_lossy().contains(pattern) {
-                            debug!(
-                                "Excluding file {} due to pattern {}",
-                                file_path.display(),
-                                pattern
-                            );
-                            should_exclude = true;
-                            break;
-                        }
+            if let Some(rules) = extract_rules
+                && let Some(exclude) = &rules.exclude
+            {
+                for pattern in exclude {
+                    if file_path.to_string_lossy().contains(pattern) {
+                        debug!(
+                            "Excluding file {} due to pattern {}",
+                            file_path.display(),
+                            pattern
+                        );
+                        should_exclude = true;
+                        break;
                     }
                 }
             }
@@ -1180,7 +1174,7 @@ impl MinecraftLauncher {
         Ok(())
     }
 
-    async fn is_version_ready_offline(&self, version_id: &str) -> Result<bool> {
+    fn is_version_ready_offline(&self, version_id: &str) -> Result<bool> {
         let version_dir = self.game_dir.join("versions").join(version_id);
         let jar_file = version_dir.join(format!("{version_id}.jar"));
         let json_file = version_dir.join(format!("{version_id}.json"));
@@ -1191,7 +1185,7 @@ impl MinecraftLauncher {
     async fn try_offline_mode(&self, version_id: &str) -> Result<()> {
         info!("Attempting to use offline mode for version {version_id}");
 
-        if self.is_version_ready_offline(version_id).await? {
+        if self.is_version_ready_offline(version_id)? {
             info!("Version {version_id} found offline, skipping downloads");
             return Ok(());
         }
@@ -1200,10 +1194,11 @@ impl MinecraftLauncher {
         let versions_dir = self.game_dir.join("versions");
         if let Ok(entries) = std::fs::read_dir(&versions_dir) {
             for entry in entries.flatten() {
-                if let Some(name) = entry.file_name().to_str() {
-                    if name != version_id && entry.path().is_dir() {
-                        info!("Found existing version: {name}, you can try launching that instead",);
-                    }
+                if let Some(name) = entry.file_name().to_str()
+                    && name != version_id
+                    && entry.path().is_dir()
+                {
+                    info!("Found existing version: {name}, you can try launching that instead",);
                 }
             }
         }
@@ -1219,24 +1214,24 @@ impl MinecraftLauncher {
         info!("=== System Diagnostics ===");
 
         // Memory info
-        if let Ok(output) = Command::new("free").arg("-h").output() {
-            if let Ok(memory_info) = String::from_utf8(output.stdout) {
-                info!("Memory info:\n{}", memory_info);
-            }
+        if let Ok(output) = Command::new("free").arg("-h").output()
+            && let Ok(memory_info) = String::from_utf8(output.stdout)
+        {
+            info!("Memory info:\n{}", memory_info);
         }
 
         // Java processes
-        if let Ok(output) = Command::new("ps").args(["aux"]).output() {
-            if let Ok(ps_output) = String::from_utf8(output.stdout) {
-                let java_processes: Vec<&str> = ps_output
-                    .lines()
-                    .filter(|line| line.contains("java") || line.contains("minecraft"))
-                    .collect();
-                if !java_processes.is_empty() {
-                    warn!("Existing Java/Minecraft processes found:");
-                    for process in java_processes {
-                        warn!("  {process}");
-                    }
+        if let Ok(output) = Command::new("ps").args(["aux"]).output()
+            && let Ok(ps_output) = String::from_utf8(output.stdout)
+        {
+            let java_processes: Vec<&str> = ps_output
+                .lines()
+                .filter(|line| line.contains("java") || line.contains("minecraft"))
+                .collect();
+            if !java_processes.is_empty() {
+                warn!("Existing Java/Minecraft processes found:");
+                for process in java_processes {
+                    warn!("  {process}");
                 }
             }
         }
@@ -1300,17 +1295,16 @@ impl MinecraftLauncher {
             Ok(16)
         } else {
             for line in version_info.lines() {
-                if line.contains("version") {
-                    if let Some(start) = line.find('"') {
-                        if let Some(end) = line[start + 1..].find('"') {
-                            let version_str = &line[start + 1..start + 1 + end];
-                            let parts: Vec<&str> = version_str.split('.').collect();
-                            if let Some(first_part) = parts.first() {
-                                if let Ok(major) = first_part.parse::<u8>() {
-                                    return Ok(major);
-                                }
-                            }
-                        }
+                if line.contains("version")
+                    && let Some(start) = line.find('"')
+                    && let Some(end) = line[start + 1..].find('"')
+                {
+                    let version_str = &line[start + 1..start + 1 + end];
+                    let parts: Vec<&str> = version_str.split('.').collect();
+                    if let Some(first_part) = parts.first()
+                        && let Ok(major) = first_part.parse::<u8>()
+                    {
+                        return Ok(major);
                     }
                 }
             }
@@ -1359,7 +1353,7 @@ impl MinecraftLauncher {
         Ok(())
     }
 
-    fn get_library_paths(&self, version_details: &VersionDetails) -> Result<Vec<PathBuf>> {
+    fn get_library_paths(&self, version_details: &VersionDetails) -> anyhow::Result<Vec<PathBuf>> {
         let os_name = get_minecraft_os_name();
         let os_arch = get_minecraft_arch();
         let os_features = get_os_features();
@@ -1371,11 +1365,11 @@ impl MinecraftLauncher {
                 continue;
             }
 
-            if let Some(artifact) = &library.downloads.artifact {
-                if let Some(path) = &artifact.path {
-                    let lib_path = get_library_path(&self.game_dir, path);
-                    library_paths.push(lib_path);
-                }
+            if let Some(artifact) = &library.downloads.artifact
+                && let Some(path) = &artifact.path
+            {
+                let lib_path = get_library_path(&self.game_dir, path);
+                library_paths.push(lib_path);
             }
         }
 

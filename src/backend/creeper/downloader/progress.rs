@@ -14,17 +14,18 @@ pub struct ProgressTracker {
 
 impl ProgressTracker {
     pub fn new(name: String) -> Self {
+        let now = Instant::now();
         Self {
             current: Arc::new(AtomicU64::new(0)),
             total: Arc::new(AtomicU64::new(0)),
-            start_time: Instant::now(),
-            last_update: Instant::now(),
+            start_time: now,
+            last_update: now,
             name,
             completed: false,
         }
     }
 
-    pub fn set_total(&mut self, total: u64) {
+    pub fn set_total(&self, total: u64) {
         self.total.store(total, Ordering::Relaxed);
     }
 
@@ -145,19 +146,5 @@ impl Drop for ProgressTracker {
         if !self.completed {
             println!();
         }
-    }
-}
-
-pub struct MultiProgressTracker {}
-
-impl MultiProgressTracker {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-impl Default for MultiProgressTracker {
-    fn default() -> Self {
-        Self::new()
     }
 }

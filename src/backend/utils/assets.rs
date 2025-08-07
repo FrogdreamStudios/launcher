@@ -82,9 +82,9 @@ impl AssetLoader {
 
         let cache: HashMap<_, _> = assets.into_iter().collect();
 
-        ASSET_CACHE
-            .set(cache)
-            .expect("Asset cache already initialized");
+        if ASSET_CACHE.set(cache).is_err() {
+            tracing::warn!("Asset cache was already initialized");
+        }
     }
 
     #[inline(always)]

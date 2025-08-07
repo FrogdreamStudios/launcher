@@ -1,0 +1,43 @@
+[alias]
+dev = "run"
+check-all = "clippy --all-targets --all-features -- -D warnings"
+lint = "clippy --all-targets --all-features"
+lint-fix = "clippy --all-targets --all-features --fix"
+fmt-check = "fmt --all -- --check"
+test-all = "test --all-features"
+
+# Build aliases
+build-release = "build --release"
+build-dev = "build"
+
+# Clean aliases
+clean-all = "clean"
+clean-target = ["clean", "--target-dir", "target"]
+
+# Clippy with different levels
+clippy-strict = "clippy --all-targets --all-features -- -D warnings -D clippy::all"
+clippy-pedantic = "clippy --all-targets --all-features -- -W clippy::pedantic"
+clippy-nursery = "clippy --all-targets --all-features -- -W clippy::nursery"
+
+# Combined commands
+check-format = ["fmt", "--all", "--", "--check"]
+pre-commit = [
+    "fmt",
+    "--all",
+    "&&",
+    "clippy",
+    "--all-targets",
+    "--all-features",
+    "--",
+    "-D",
+    "warnings",
+]
+
+[build]
+rustflags = ["-C", "target-cpu=native"]
+
+[target.'cfg(target_os = "macos")']
+rustflags = ["-C", "link-arg=-Wl,-rpath,@loader_path"]
+
+[env]
+RUST_LOG = "info"

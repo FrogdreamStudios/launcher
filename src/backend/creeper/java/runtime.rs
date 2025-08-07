@@ -124,10 +124,10 @@ impl JavaRuntime {
     }
 
     fn extract_version_number(version_line: &str) -> Result<String> {
-        if let Some(start) = version_line.find('"') {
-            if let Some(end) = version_line[start + 1..].find('"') {
-                return Ok(version_line[start + 1..start + 1 + end].to_string());
-            }
+        if let Some(start) = version_line.find('"')
+            && let Some(end) = version_line[start + 1..].find('"')
+        {
+            return Ok(version_line[start + 1..start + 1 + end].to_string());
         }
 
         Err(anyhow::anyhow!(
@@ -280,23 +280,22 @@ impl JavaRuntime {
         let version_lower = version.to_lowercase();
 
         // Handle snapshots (e.g., "24w44a", "23w31a", "1.21.2-pre1")
-        if version_lower.contains('w') && version_lower.len() >= 5 {
-            if let Some(year_str) = version_lower.get(0..2) {
-                if let Ok(year) = year_str.parse::<u32>() {
-                    // Snapshots from 2023 (23w) onwards typically require Java 21
-                    return year >= 23;
-                }
-            }
+        if version_lower.contains('w')
+            && version_lower.len() >= 5
+            && let Some(year_str) = version_lower.get(0..2)
+            && let Ok(year) = year_str.parse::<u32>()
+        {
+            // Snapshots from 2023 (23w) onwards typically require Java 21
+            return year >= 23;
         }
 
         // Handle pre-releases and release candidates (e.g., "1.21.3-pre1", "1.21-rc1")
-        if version_lower.contains("-pre") || version_lower.contains("-rc") {
-            if let Ok(parsed) =
+        if (version_lower.contains("-pre") || version_lower.contains("-rc"))
+            && let Ok(parsed) =
                 Self::parse_minecraft_version(version_lower.split('-').next().unwrap_or(version))
-            {
-                // 1.20.5+ and 1.21+ pre-releases need Java 21
-                return parsed >= (1, 20, 5);
-            }
+        {
+            // 1.20.5+ and 1.21+ pre-releases need Java 21
+            return parsed >= (1, 20, 5);
         }
 
         // Handle experimental snapshots (e.g., "1.21_experimental-snapshot-1")
@@ -306,12 +305,11 @@ impl JavaRuntime {
         }
 
         // Handle combat test versions (e.g., "1.16_combat-6")
-        if version_lower.contains("combat") {
-            if let Ok(parsed) =
+        if version_lower.contains("combat")
+            && let Ok(parsed) =
                 Self::parse_minecraft_version(version_lower.split('_').next().unwrap_or(version))
-            {
-                return parsed >= (1, 20, 5); // Modern combat tests need Java 21
-            }
+        {
+            return parsed >= (1, 20, 5); // Modern combat tests need Java 21
         }
 
         // Handle versions with suffixes like "1.21.2 Pre-Release 1"
@@ -330,11 +328,10 @@ impl JavaRuntime {
         let mut clean_version = version.to_lowercase();
 
         // Remove common prefixes
-        if clean_version.starts_with("minecraft ") {
-            clean_version = clean_version
-                .strip_prefix("minecraft ")
-                .unwrap()
-                .to_string();
+        if clean_version.starts_with("minecraft ")
+            && let Some(stripped) = clean_version.strip_prefix("minecraft ")
+        {
+            clean_version = stripped.to_string();
         }
 
         // Remove various suffixes

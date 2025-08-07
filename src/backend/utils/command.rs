@@ -9,6 +9,22 @@ use crate::backend::utils::paths::{get_classpath_separator, get_natives_dir};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
+pub struct CommandConfig {
+    pub java_path: PathBuf,
+    pub game_dir: PathBuf,
+    pub version_details: VersionDetails,
+    pub username: String,
+    pub uuid: String,
+    pub access_token: String,
+    pub user_type: String,
+    pub version_type: String,
+    pub assets_dir: PathBuf,
+    pub libraries: Vec<PathBuf>,
+    pub main_jar: PathBuf,
+    pub java_major_version: u8,
+    pub use_rosetta: bool,
+}
+
 pub struct MinecraftCommand {
     java_path: PathBuf,
     game_dir: PathBuf,
@@ -27,38 +43,24 @@ pub struct MinecraftCommand {
 }
 
 impl MinecraftCommand {
-    pub fn new(
-        java_path: PathBuf,
-        game_dir: PathBuf,
-        version_details: VersionDetails,
-        username: String,
-        uuid: String,
-        access_token: String,
-        user_type: String,
-        version_type: String,
-        assets_dir: PathBuf,
-        libraries: Vec<PathBuf>,
-        main_jar: PathBuf,
-        java_major_version: u8,
-        use_rosetta: bool,
-    ) -> Self {
-        let natives_dir = get_natives_dir(&game_dir, &version_details.id);
+    pub fn new(config: CommandConfig) -> Self {
+        let natives_dir = get_natives_dir(&config.game_dir, &config.version_details.id);
 
         Self {
-            java_path,
-            game_dir,
-            version_details,
-            username,
-            uuid,
-            access_token,
-            user_type,
-            version_type,
-            assets_dir,
-            libraries,
+            java_path: config.java_path,
+            game_dir: config.game_dir,
+            version_details: config.version_details,
+            username: config.username,
+            uuid: config.uuid,
+            access_token: config.access_token,
+            user_type: config.user_type,
+            version_type: config.version_type,
+            assets_dir: config.assets_dir,
+            libraries: config.libraries,
+            main_jar: config.main_jar,
             natives_dir,
-            main_jar,
-            java_major_version,
-            use_rosetta,
+            java_major_version: config.java_major_version,
+            use_rosetta: config.use_rosetta,
         }
     }
 
@@ -235,8 +237,8 @@ wait $JAVA_PID
                                 cmd.arg(substituted);
                             }
                         }
-                        ArgumentValueInner::Array(arr) => {
-                            for s in arr {
+                        ArgumentValueInner::Array(array) => {
+                            for s in array {
                                 let substituted = self.substitute_variables(s, is_jvm);
                                 if !substituted.trim().is_empty() {
                                     cmd.arg(substituted);
@@ -292,7 +294,7 @@ wait $JAVA_PID
                 // Fallback to regular assets directory
                 assets_dir_str.clone()
             }
-        } else if self.version_details.id >= "1.7".to_string() {
+        } else if self.version_details.id.as_str() >= "1.7" {
             // For 1.7+ versions, use virtual assets
             let virtual_assets_path = self
                 .assets_dir
@@ -301,7 +303,7 @@ wait $JAVA_PID
             virtual_assets_path.display().to_string()
         } else {
             // For other versions, use regular assets directory
-            assets_dir_str.clone()
+            assets_dir_str
         };
         result = result.replace("${game_assets}", &game_assets_str);
 
@@ -424,7 +426,7 @@ wait $JAVA_PID
 
     fn add_default_jvm_args(&self, cmd: &mut Command) {
         // Determine optimal memory settings based on version
-        let is_modern_version = self.version_details.id >= "1.17".to_string();
+        let is_modern_version = self.version_details.id.as_str() >= "1.17";
 
         if is_modern_version {
             // Modern versions (1.17+) need more memory
@@ -609,7 +611,7 @@ wait $JAVA_PID
         }
 
         // Additional modern Java compatibility (only for Java 9+ and Minecraft 1.17+)
-        let is_modern_mc = self.version_details.id >= "1.17".to_string();
+        let is_modern_mc = self.version_details.id.as_str() >= "1.17";
         let is_using_java_8 = self.java_major_version == 8;
 
         if is_modern_mc && !is_using_java_8 {
@@ -722,27 +724,34 @@ impl CommandBuilder {
     }
 
     pub fn build(self) -> Result<MinecraftCommand> {
-        Ok(MinecraftCommand::new(
-            self.java_path
+        let config = CommandConfig {
+            java_path: self
+                .java_path
                 .ok_or_else(|| anyhow::anyhow!("Java path not set"))?,
-            self.game_dir
+            game_dir: self
+                .game_dir
                 .ok_or_else(|| anyhow::anyhow!("Game directory not set"))?,
-            self.version_details
+            version_details: self
+                .version_details
                 .ok_or_else(|| anyhow::anyhow!("Version details not set"))?,
-            self.username.unwrap_or_else(|| "Player".to_string()),
-            self.uuid
+            username: self.username.unwrap_or_else(|| "Player".to_string()),
+            uuid: self
+                .uuid
                 .unwrap_or_else(|| "00000000-0000-0000-0000-000000000000".to_string()),
-            self.access_token.unwrap_or_else(|| "null".to_string()),
-            self.user_type,
-            self.version_type,
-            self.assets_dir
+            access_token: self.access_token.unwrap_or_else(|| "null".to_string()),
+            user_type: self.user_type,
+            version_type: self.version_type,
+            assets_dir: self
+                .assets_dir
                 .ok_or_else(|| anyhow::anyhow!("Assets directory not set"))?,
-            self.libraries,
-            self.main_jar
+            libraries: self.libraries,
+            main_jar: self
+                .main_jar
                 .ok_or_else(|| anyhow::anyhow!("Main jar not set"))?,
-            self.java_major_version.unwrap_or(8),
-            self.use_rosetta,
-        ))
+            java_major_version: self.java_major_version.unwrap_or(8),
+            use_rosetta: self.use_rosetta,
+        };
+        Ok(MinecraftCommand::new(config))
     }
 }
 

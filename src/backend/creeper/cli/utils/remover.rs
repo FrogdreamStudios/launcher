@@ -4,7 +4,7 @@ use dialoguer::Confirm;
 use std::fs;
 use std::path::PathBuf;
 
-pub async fn remove_instances(launcher: &MinecraftLauncher) -> anyhow::Result<()> {
+pub(crate) async fn remove_instances(launcher: &MinecraftLauncher) -> anyhow::Result<()> {
     use crate::backend::utils::formater::format_size;
     use crate::backend::utils::paths::*;
     use crate::backend::utils::sizer::calculate_directory_size;
@@ -27,15 +27,15 @@ pub async fn remove_instances(launcher: &MinecraftLauncher) -> anyhow::Result<()
     ];
 
     // Check for additional directories
-    if let Ok(java_dir) = get_java_dir() {
-        if java_dir.exists() {
-            paths_to_delete.push(("Java runtimes", java_dir));
-        }
+    if let Ok(java_dir) = get_java_dir()
+        && java_dir.exists()
+    {
+        paths_to_delete.push(("Java runtimes", java_dir));
     }
-    if let Ok(cache_dir) = get_cache_dir() {
-        if cache_dir.exists() {
-            paths_to_delete.push(("Launcher cache", cache_dir));
-        }
+    if let Ok(cache_dir) = get_cache_dir()
+        && cache_dir.exists()
+    {
+        paths_to_delete.push(("Launcher cache", cache_dir));
     }
 
     // Leave only existing paths

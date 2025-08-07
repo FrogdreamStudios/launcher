@@ -1,7 +1,8 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use std::collections::HashMap;
+use std::fs;
 use std::path::{Path, PathBuf};
-use tokio::fs;
+use tokio::fs as async_fs;
 use tracing::{debug, error, info, warn};
 
 use super::runtime::{AzulJavaManifest, AzulPackage, JavaRuntime};
@@ -19,7 +20,7 @@ pub struct JavaManager {
 impl JavaManager {
     pub async fn new() -> Result<Self> {
         let java_dir = get_java_dir()?;
-        fs::create_dir_all(&java_dir).await?;
+        async_fs::create_dir_all(&java_dir).await?;
 
         let mut manager = Self {
             downloader: HttpDownloader::new()?,
@@ -90,17 +91,16 @@ impl JavaManager {
         }
 
         // Check system Java (skip for x86_64 requirement as system Java might be ARM64)
-        if !needs_x86_64 {
-            if let Some(mut system_java) = JavaRuntime::detect_system_java()? {
-                if system_java.is_compatible_with_minecraft(required_java) {
-                    info!("Using system Java {} runtime", system_java.major_version);
-                    // Set the correct path for system Java
-                    if system_java.path.as_os_str().is_empty() {
-                        system_java.path = which::which("java").unwrap_or_else(|_| "java".into());
-                    }
-                    return Ok((system_java.get_executable_path(), false));
-                }
+        if !needs_x86_64
+            && let Some(mut system_java) = JavaRuntime::detect_system_java()?
+            && system_java.is_compatible_with_minecraft(required_java)
+        {
+            info!("Using system Java {} runtime", system_java.major_version);
+            // Set the correct path for system Java
+            if system_java.path.as_os_str().is_empty() {
+                system_java.path = which::which("java").unwrap_or_else(|_| "java".into());
             }
+            return Ok((system_java.get_executable_path(), false));
         }
 
         // Download and install required Java
@@ -269,22 +269,21 @@ impl JavaManager {
         let version_lower = version.to_lowercase();
 
         // Handle snapshots (e.g., "25w31a", "24w44a", "23w31a")
-        if version_lower.contains('w') && version_lower.len() >= 5 {
-            if let Some(year_str) = version_lower.get(0..2) {
-                if let Ok(year) = year_str.parse::<u32>() {
-                    // Snapshots from 2021 (21w) onwards support ARM64
-                    return year >= 21;
-                }
-            }
+        if version_lower.contains('w')
+            && version_lower.len() >= 5
+            && let Some(year_str) = version_lower.get(0..2)
+            && let Ok(year) = year_str.parse::<u32>()
+        {
+            // Snapshots from 2021 (21w) onwards support ARM64
+            return year >= 21;
         }
 
         // Handle pre-releases and release candidates
-        if version_lower.contains("-pre") || version_lower.contains("-rc") {
-            if let Ok(parsed) =
+        if (version_lower.contains("-pre") || version_lower.contains("-rc"))
+            && let Ok(parsed) =
                 self.parse_minecraft_version(version_lower.split('-').next().unwrap_or(version))
-            {
-                return parsed >= (1, 19, 0); // 1.19+ support ARM64
-            }
+        {
+            return parsed >= (1, 19, 0); // 1.19+ support ARM64
         }
 
         // Handle experimental and special versions
@@ -323,7 +322,7 @@ impl JavaManager {
     }
 
     pub async fn install_java_runtime(&mut self, java_version: u8) -> Result<()> {
-        let manifest = self.fetch_azul_manifest().await?;
+        let manifest = self.fetch_azul_manifest()?;
 
         let os = AzulPackage::get_os_name();
         let arch = AzulPackage::get_arch_name();
@@ -385,18 +384,18 @@ impl JavaManager {
         {
             error!("Failed to download Java {}: {}", java_version, e);
             if download_path.exists() {
-                let _ = fs::remove_file(&download_path).await;
+                let _ = async_fs::remove_file(&download_path).await;
             }
             return Err(e);
         }
 
         // Verify downloaded file
-        let file_size = fs::metadata(&download_path).await?.len();
+        let file_size = async_fs::metadata(&download_path).await?.len();
         info!("Downloaded Java {java_version} archive: {file_size} bytes");
 
         if file_size < 1024 * 1024 {
             error!("Downloaded file is too small ({file_size}B), likely corrupted",);
-            let _ = fs::remove_file(&download_path).await;
+            let _ = async_fs::remove_file(&download_path).await;
             return Err(anyhow::anyhow!(
                 "Downloaded Java archive is too small, likely corrupted"
             ));
@@ -409,14 +408,14 @@ impl JavaManager {
             .await
         {
             error!("Failed to extract Java {}: {}", java_version, e);
-            let _ = fs::remove_file(&download_path).await;
-            let _ = fs::remove_dir_all(&extract_path).await;
+            let _ = async_fs::remove_file(&download_path).await;
+            let _ = async_fs::remove_dir_all(&extract_path).await;
             return Err(e);
         }
 
         // Clean up download file
         if download_path.exists() {
-            fs::remove_file(&download_path).await?;
+            async_fs::remove_file(&download_path).await?;
         }
 
         // Detect the extracted runtime
@@ -432,7 +431,7 @@ impl JavaManager {
     }
 
     pub async fn install_x86_64_java_runtime(&mut self, java_version: u8) -> Result<()> {
-        let manifest = self.fetch_azul_manifest().await?;
+        let manifest = self.fetch_azul_manifest()?;
 
         let os = AzulPackage::get_os_name();
         let _arch = "x64"; // Force x86_64 architecture
@@ -493,13 +492,13 @@ impl JavaManager {
         {
             error!("Failed to download x86_64 Java {}: {}", java_version, e);
             if download_path.exists() {
-                let _ = fs::remove_file(&download_path).await;
+                let _ = async_fs::remove_file(&download_path).await;
             }
             return Err(e);
         }
 
         // Verify downloaded file
-        let file_size = fs::metadata(&download_path).await?.len();
+        let file_size = async_fs::metadata(&download_path).await?.len();
         info!(
             "Downloaded x86_64 Java {} archive: {} bytes",
             java_version, file_size
@@ -510,7 +509,7 @@ impl JavaManager {
                 "Downloaded file is too small ({}B), likely corrupted",
                 file_size
             );
-            let _ = fs::remove_file(&download_path).await;
+            let _ = async_fs::remove_file(&download_path).await;
             return Err(anyhow::anyhow!(
                 "Downloaded x86_64 Java archive is too small, likely corrupted"
             ));
@@ -523,14 +522,14 @@ impl JavaManager {
             .await
         {
             error!("Failed to extract Java {}: {}", java_version, e);
-            let _ = fs::remove_file(&download_path).await;
-            let _ = fs::remove_dir_all(&extract_path).await;
+            let _ = async_fs::remove_file(&download_path).await;
+            let _ = async_fs::remove_dir_all(&extract_path).await;
             return Err(e);
         }
 
         // Clean up download file
         if download_path.exists() {
-            fs::remove_file(&download_path).await?;
+            async_fs::remove_file(&download_path).await?;
         }
 
         // Detect the extracted runtime
@@ -556,37 +555,35 @@ impl JavaManager {
             return Ok(());
         }
 
-        let mut entries = fs::read_dir(&self.java_dir).await?;
+        let mut entries = async_fs::read_dir(&self.java_dir).await?;
 
         while let Some(entry) = entries.next_entry().await? {
             let path = entry.path();
             if path.is_dir()
                 && path
                     .file_name()
-                    .unwrap()
-                    .to_str()
-                    .unwrap()
-                    .starts_with("java-")
+                    .and_then(|name| name.to_str())
+                    .is_some_and(|name| name.starts_with("java-"))
+                && let Ok(java_executable) = self.find_java_executable(&path)
+                && let Some(runtime) = JavaRuntime::from_path(&java_executable)?
             {
-                if let Ok(java_executable) = self.find_java_executable(&path) {
-                    if let Some(runtime) = JavaRuntime::from_path(&java_executable)? {
-                        let is_x86_64 =
-                            path.file_name().unwrap().to_str().unwrap().contains("-x64");
+                let is_x86_64 = path
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .is_some_and(|name| name.contains("-x64"));
 
-                        debug!(
-                            "Found installed {} Java {} runtime at {:?}",
-                            if is_x86_64 { "x86_64" } else { "native" },
-                            runtime.major_version,
-                            path
-                        );
+                debug!(
+                    "Found installed {} Java {} runtime at {:?}",
+                    if is_x86_64 { "x86_64" } else { "native" },
+                    runtime.major_version,
+                    path
+                );
 
-                        if is_x86_64 {
-                            self.x86_64_runtimes.insert(runtime.major_version, runtime);
-                        } else {
-                            self.installed_runtimes
-                                .insert(runtime.major_version, runtime);
-                        }
-                    }
+                if is_x86_64 {
+                    self.x86_64_runtimes.insert(runtime.major_version, runtime);
+                } else {
+                    self.installed_runtimes
+                        .insert(runtime.major_version, runtime);
                 }
             }
         }
@@ -599,7 +596,7 @@ impl JavaManager {
         Ok(())
     }
 
-    async fn fetch_azul_manifest(&self) -> Result<AzulJavaManifest> {
+    fn fetch_azul_manifest(&self) -> Result<AzulJavaManifest> {
         let _manifest_url = "https://api.azul.com/zulu/download/community/v1.0/bundles/";
 
         Ok(self.create_fallback_manifest())
@@ -616,7 +613,7 @@ impl JavaManager {
                 arch: "x64".to_string(),
                 download_url: "https://cdn.azul.com/zulu/bin/zulu8.62.0.19-ca-jdk8.0.332-win_x64.zip".to_string(),
                 sha256_hash: "".to_string(),
-                size: 104857600,
+                size: 104_857_600,
             },
             AzulPackage {
                 id: "zulu8-macos-x64".to_string(),
@@ -626,7 +623,7 @@ impl JavaManager {
                 arch: "x64".to_string(),
                 download_url: "https://cdn.azul.com/zulu/bin/zulu8.62.0.19-ca-jdk8.0.332-macosx_x64.tar.gz".to_string(),
                 sha256_hash: "".to_string(),
-                size: 104857600,
+                size: 104_857_600,
             },
             AzulPackage {
                 id: "zulu8-macos-arm64".to_string(),
@@ -636,7 +633,7 @@ impl JavaManager {
                 arch: "arm64".to_string(),
                 download_url: "https://cdn.azul.com/zulu/bin/zulu8.62.0.19-ca-jdk8.0.332-macosx_aarch64.tar.gz".to_string(),
                 sha256_hash: "".to_string(),
-                size: 104857600,
+                size: 104_857_600,
             },
             AzulPackage {
                 id: "zulu8-linux-x64".to_string(),
@@ -646,7 +643,7 @@ impl JavaManager {
                 arch: "x64".to_string(),
                 download_url: "https://cdn.azul.com/zulu/bin/zulu8.62.0.19-ca-jdk8.0.332-linux_x64.tar.gz".to_string(),
                 sha256_hash: "".to_string(),
-                size: 104857600,
+                size: 104_857_600,
             },
             // Java 17 packages
             AzulPackage {
@@ -657,7 +654,7 @@ impl JavaManager {
                 arch: "x64".to_string(),
                 download_url: "https://cdn.azul.com/zulu/bin/zulu17.34.19-ca-jdk17.0.3-win_x64.zip".to_string(),
                 sha256_hash: "".to_string(),
-                size: 183500800,
+                size: 183_500_800,
             },
             AzulPackage {
                 id: "zulu17-macos-x64".to_string(),
@@ -667,7 +664,7 @@ impl JavaManager {
                 arch: "x64".to_string(),
                 download_url: "https://cdn.azul.com/zulu/bin/zulu17.34.19-ca-jdk17.0.3-macosx_x64.tar.gz".to_string(),
                 sha256_hash: "".to_string(),
-                size: 183500800,
+                size: 183_500_800,
             },
             AzulPackage {
                 id: "zulu17-macos-arm64".to_string(),
@@ -677,7 +674,7 @@ impl JavaManager {
                 arch: "arm64".to_string(),
                 download_url: "https://cdn.azul.com/zulu/bin/zulu17.34.19-ca-jdk17.0.3-macosx_aarch64.tar.gz".to_string(),
                 sha256_hash: "".to_string(),
-                size: 183500800,
+                size: 183_500_800,
             },
             AzulPackage {
                 id: "zulu17-linux-x64".to_string(),
@@ -687,7 +684,7 @@ impl JavaManager {
                 arch: "x64".to_string(),
                 download_url: "https://cdn.azul.com/zulu/bin/zulu17.34.19-ca-jdk17.0.3-linux_x64.tar.gz".to_string(),
                 sha256_hash: "".to_string(),
-                size: 183500800,
+                size: 183_500_800,
             },
             // Java 21 packages
             AzulPackage {
@@ -698,7 +695,7 @@ impl JavaManager {
                 arch: "x64".to_string(),
                 download_url: "https://cdn.azul.com/zulu/bin/zulu21.36.17-ca-jdk21.0.4-win_x64.zip".to_string(),
                 sha256_hash: "".to_string(),
-                size: 200000000,
+                size: 200_000_000,
             },
             AzulPackage {
                 id: "zulu21-macos-x64".to_string(),
@@ -708,7 +705,7 @@ impl JavaManager {
                 arch: "x64".to_string(),
                 download_url: "https://cdn.azul.com/zulu/bin/zulu21.36.17-ca-jdk21.0.4-macosx_x64.tar.gz".to_string(),
                 sha256_hash: "".to_string(),
-                size: 200000000,
+                size: 200_000_000,
             },
             AzulPackage {
                 id: "zulu21-macos-arm64".to_string(),
@@ -718,7 +715,7 @@ impl JavaManager {
                 arch: "arm64".to_string(),
                 download_url: "https://cdn.azul.com/zulu/bin/zulu21.36.17-ca-jdk21.0.4-macosx_aarch64.tar.gz".to_string(),
                 sha256_hash: "".to_string(),
-                size: 200000000,
+                size: 200_000_000,
             },
             AzulPackage {
                 id: "zulu21-linux-x64".to_string(),
@@ -728,7 +725,7 @@ impl JavaManager {
                 arch: "x64".to_string(),
                 download_url: "https://cdn.azul.com/zulu/bin/zulu21.36.17-ca-jdk21.0.4-linux_x64.tar.gz".to_string(),
                 sha256_hash: "".to_string(),
-                size: 200000000,
+                size: 200_000_000,
             },
         ];
 
@@ -736,7 +733,7 @@ impl JavaManager {
     }
 
     async fn extract_java_archive(&self, archive_path: &Path, extract_path: &Path) -> Result<()> {
-        fs::create_dir_all(extract_path).await?;
+        async_fs::create_dir_all(extract_path).await?;
 
         let filename = archive_path
             .file_name()
@@ -777,7 +774,7 @@ impl JavaManager {
         extract_path: &Path,
     ) -> Result<()> {
         // Read first few bytes to detect file type
-        let mut file = fs::File::open(archive_path).await?;
+        let mut file = async_fs::File::open(archive_path).await?;
         let mut header = [0u8; 4];
 
         use tokio::io::AsyncReadExt;
@@ -814,13 +811,13 @@ impl JavaManager {
             let outpath = extract_path.join(file.mangled_name());
 
             if file.name().ends_with('/') {
-                fs::create_dir_all(&outpath).await?;
+                async_fs::create_dir_all(&outpath).await?;
             } else {
                 if let Some(p) = outpath.parent() {
-                    fs::create_dir_all(p).await?;
+                    async_fs::create_dir_all(p).await?;
                 }
 
-                let mut outfile = fs::File::create(&outpath).await?;
+                let mut outfile = async_fs::File::create(&outpath).await?;
                 let mut buffer = Vec::new();
                 file.read_to_end(&mut buffer)?;
 
@@ -858,7 +855,7 @@ impl JavaManager {
             let target_path = extract_path.join(&*path);
 
             if let Some(parent) = target_path.parent() {
-                fs::create_dir_all(parent).await?;
+                async_fs::create_dir_all(parent).await?;
             }
 
             entry.unpack(&target_path)?;
@@ -887,22 +884,26 @@ impl JavaManager {
         }
 
         // If not found in common locations, search recursively
-        self.find_java_recursive(java_dir, executable_name)
+        Self::find_java_recursive(java_dir, executable_name)
     }
 
-    fn find_java_recursive(&self, dir: &Path, executable_name: &str) -> Result<PathBuf> {
-        use std::fs;
-
-        for entry in fs::read_dir(dir)? {
+    pub fn find_java_recursive(dir: &Path, executable_name: &str) -> Result<PathBuf> {
+        for entry in
+            fs::read_dir(dir).with_context(|| format!("Failed to read dir: {}", dir.display()))?
+        {
             let entry = entry?;
             let path = entry.path();
 
-            if path.is_file() && path.file_name().unwrap() == executable_name {
-                return Ok(path);
-            } else if path.is_dir() {
-                if let Ok(result) = self.find_java_recursive(&path, executable_name) {
-                    return Ok(result);
+            if path.is_file()
+                && let Some(name) = path.file_name().and_then(|n| n.to_str())
+            {
+                if name == executable_name {
+                    return Ok(path);
                 }
+            } else if path.is_dir()
+                && let Ok(result) = Self::find_java_recursive(&path, executable_name)
+            {
+                return Ok(result);
             }
         }
 
@@ -923,13 +924,13 @@ impl JavaManager {
         let x64_runtime_dir = self.java_dir.join(format!("java-{java_version}-x64"));
 
         if runtime_dir.exists() {
-            fs::remove_dir_all(&runtime_dir).await?;
+            async_fs::remove_dir_all(&runtime_dir).await?;
             self.installed_runtimes.remove(&java_version);
             info!("Removed Java {java_version} runtime");
         }
 
         if x64_runtime_dir.exists() {
-            fs::remove_dir_all(&x64_runtime_dir).await?;
+            async_fs::remove_dir_all(&x64_runtime_dir).await?;
             self.x86_64_runtimes.remove(&java_version);
             info!("Removed x86_64 Java {} runtime", java_version);
         }

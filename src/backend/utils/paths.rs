@@ -139,10 +139,10 @@ pub async fn verify_file(
     let metadata = tokio::fs::metadata(path).await?;
 
     // Check size if provided
-    if let Some(size) = expected_size {
-        if metadata.len() != size {
-            return Ok(false);
-        }
+    if let Some(size) = expected_size
+        && metadata.len() != size
+    {
+        return Ok(false);
     }
 
     // Check SHA1 hash if provided

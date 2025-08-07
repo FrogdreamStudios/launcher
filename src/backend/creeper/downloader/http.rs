@@ -33,14 +33,14 @@ impl HttpDownloader {
         mut tracker: Option<&mut ProgressTracker>,
     ) -> Result<()> {
         // Check if file already exists and has correct hash
-        if let Some(sha1) = expected_sha1 {
-            if self.verify_file_hash(destination, sha1).await? {
-                debug!("File already exists with correct hash: {:?}", destination);
-                if let Some(tracker) = tracker {
-                    tracker.complete();
-                }
-                return Ok(());
+        if let Some(sha1) = expected_sha1
+            && self.verify_file_hash(destination, sha1).await?
+        {
+            debug!("File already exists with correct hash: {:?}", destination);
+            if let Some(tracker) = tracker {
+                tracker.complete();
             }
+            return Ok(());
         }
 
         // Create parent directories if they don't exist
@@ -114,10 +114,10 @@ impl HttpDownloader {
         }
 
         // For Java archives, do a basic format check
-        if url.contains("java") || destination.to_string_lossy().contains("java") {
-            if let Err(e) = self.verify_archive_format(destination).await {
-                warn!("Archive format verification failed: {e}");
-            }
+        if (url.contains("java") || destination.to_string_lossy().contains("java"))
+            && let Err(e) = self.verify_archive_format(destination).await
+        {
+            warn!("Archive format verification failed: {e}");
         }
 
         // Verify hash if provided
@@ -210,7 +210,9 @@ impl HttpDownloader {
                     retries += 1;
                     if retries > MAX_RETRIES {
                         return Err(anyhow::anyhow!(
-                            "Failed to fetch {url} after {MAX_RETRIES} retries: HTTP 429 Too Many Requests"
+                            "Failed to fetch {} after {} retries: HTTP 429 Too Many Requests",
+                            url,
+                            MAX_RETRIES
                         ));
                     }
 
@@ -272,7 +274,9 @@ impl HttpDownloader {
 
 impl Default for HttpDownloader {
     fn default() -> Self {
-        Self::new().expect("Failed to create HTTP client")
+        Self::new().unwrap_or_else(|_| Self {
+            client: reqwest::Client::new(),
+        })
     }
 }
 
