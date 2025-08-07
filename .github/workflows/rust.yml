@@ -97,9 +97,9 @@ jobs:
             cp assets/icons/app_icon.icns "target/release/Dream Launcher.app/Contents/Resources/app_icon.icns"
             chmod +x "target/release/Dream Launcher.app/Contents/MacOS/Dream Launcher"
 
-            # Clean extended attributes and codesign with entitlements
+            # Clean extended attributes and codesign
             find "target/release/Dream Launcher.app" -exec xattr -c {} \;
-            codesign --force --deep --sign - --entitlements entitlements.plist "target/release/Dream Launcher.app"
+            codesign --force --deep --sign - "target/release/Dream Launcher.app"
 
             # Get version from Cargo.toml
             VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
