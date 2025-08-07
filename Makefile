@@ -1,16 +1,18 @@
-.PHONY: all help clippy fmt test build release run clean watch install-tools loc quick pre-commit fix-all analyze-versions check-tools install-cargo-edit ver bump-version
-
 # Variables
 CARGO := cargo
-PYTHON := python3
-TOKEI := tokei
 CARGO_WATCH := cargo-watch
 CARGO_AUDIT := cargo-audit
 CARGO_CLIPPY := $(CARGO) clippy --all-targets --all-features -- -D warnings
 CARGO_TEST := $(CARGO) test
 CARGO_BUILD := $(CARGO) build
 CARGO_FMT := $(CARGO) fmt
+
+GO := go
+GO_VERSION := 1.21.5
+GO_DEV_DIR := dev
+
 EXCLUDED_DIRS := --exclude target --exclude node_modules --exclude package.json --exclude package-lock.json
+TOKEI := tokei
 
 # Default target
 all: fmt clippy build
@@ -34,19 +36,92 @@ help:
 	@echo "  quick                - Run fmt, clippy, and build"
 	@echo "  pre-commit           - Run pre-commit checks (fmt, clippy, test)"
 	@echo "  fix-all              - Run comprehensive fixes and checks"
-	@echo "  analyze-versions     - Analyze Minecraft versions"
 	@echo "  check-tools          - Verify all required tools are installed"
-	@echo "  ver                  - Run version manager"
+	@echo "  go-install           - Install Go programming language"
+	@echo "  go-version-analyzer  - Run Go version of version analyzer"
+	@echo "  go-version-manager   - Run Go version of version manager"
+	@echo "  go-build             - Build all Go projects"
+	@echo "  go-clean             - Clean Go build artifacts"
 
 # Check for required tools
 check-tools:
 	@echo "Checking for required tools..."
 	@command -v $(CARGO) >/dev/null 2>&1 || { echo "Error: cargo is not installed"; exit 1; }
-	@command -v $(PYTHON) >/dev/null 2>&1 || { echo "Error: python3 is not installed"; exit 1; }
+	@command -v $(GO) >/dev/null 2>&1 || echo "Warning: go not installed, use 'make go-install' to install"
 	@command -v $(TOKEI) >/dev/null 2>&1 || echo "Warning: tokei not installed, will install when needed"
 	@command -v $(CARGO_WATCH) >/dev/null 2>&1 || echo "Warning: cargo-watch not installed, will install when needed"
 	@command -v $(CARGO_AUDIT) >/dev/null 2>&1 || echo "Warning: cargo-audit not installed, will install when needed"
 	@echo "Tool check completed!"
+
+# Install Go programming language
+go-install:
+	@echo "Checking for Go installation..."
+	@if command -v $(GO) >/dev/null 2>&1; then \
+		echo "Go is already installed: $$($(GO) version)"; \
+	else \
+		echo "Installing Go $(GO_VERSION)..."; \
+		if [[ "$$OSTYPE" == "darwin"* ]]; then \
+			if command -v brew >/dev/null 2>&1; then \
+				brew install go; \
+			else \
+				echo "Please install Homebrew first or download Go from https://golang.org/dl/"; \
+				exit 1; \
+			fi; \
+		elif [[ "$$OSTYPE" == "linux-gnu"* ]]; then \
+			if command -v apt >/dev/null 2>&1; then \
+				sudo apt update && sudo apt install -y golang-go; \
+			elif command -v yum >/dev/null 2>&1; then \
+				sudo yum install -y golang; \
+			elif command -v pacman >/dev/null 2>&1; then \
+				sudo pacman -S go; \
+			else \
+				echo "Please install Go manually from https://golang.org/dl/"; \
+				exit 1; \
+			fi; \
+		else \
+			echo "Unsupported OS. Please install Go manually from https://golang.org/dl/"; \
+			exit 1; \
+		fi; \
+		echo "Go installed successfully!"; \
+	fi
+
+# Build all Go projects
+go-build: go-install
+	@echo "Building Go projects..."
+	@if [ -d "$(GO_DEV_DIR)/version-manager" ]; then \
+		echo "Building version-manager..."; \
+		cd $(GO_DEV_DIR)/version-manager && $(GO) mod tidy && $(GO) build -o version-manager .; \
+	fi
+	@echo "Go build completed!"
+
+# Clean Go build artifacts
+go-clean:
+	@echo "Cleaning Go build artifacts..."
+	@if [ -d "$(GO_DEV_DIR)/version-manager" ]; then \
+		cd $(GO_DEV_DIR)/version-manager && $(GO) clean && rm -f version-manager; \
+	fi
+	@echo "Go clean completed!"
+
+# Run Go version of version manager
+# Run Go version of version analyzer
+go-version-analyzer: go-install
+	@echo "Running Go version analyzer..."
+	@if [ -d "$(GO_DEV_DIR)/version-analyzer" ]; then \
+		cd $(GO_DEV_DIR)/version-analyzer && $(GO) mod tidy && $(GO) run .; \
+	else \
+		echo "Go version-analyzer not found in $(GO_DEV_DIR)/version-analyzer"; \
+		exit 1; \
+	fi
+
+# Run Go version of version manager
+go-version-manager: go-install
+	@echo "Running Go version manager..."
+	@if [ -d "$(GO_DEV_DIR)/version-manager" ]; then \
+		cd $(GO_DEV_DIR)/version-manager && $(GO) mod tidy && $(GO) run .; \
+	else \
+		echo "Go version-manager not found in $(GO_DEV_DIR)/version-manager"; \
+		exit 1; \
+	fi
 
 # Run clippy with warnings as errors
 clippy:
@@ -81,7 +156,7 @@ run:
 	@$(CARGO) run || { echo "Run failed"; exit 1; }
 
 # Clean build artifacts
-clean:
+clean: go-clean
 	@echo "Cleaning build artifacts..."
 	@$(CARGO) clean
 	@echo "Clean completed!"
@@ -96,7 +171,7 @@ watch:
 	fi
 
 # Install essential development tools
-install-tools:
+install-tools: go-install
 	@echo "Installing development tools..."
 	@$(CARGO) install cargo-watch cargo-audit cargo-outdated cargo-bloat cargo-tarpaulin flamegraph cargo-criterion cargo-asm cargo-expand tokei cargo-deps cargo-modules cargo-tree cargo-edit || { echo "Failed to install some tools"; exit 1; }
 	@echo "Development tools installed successfully!"
@@ -134,17 +209,6 @@ fix-all:
 	@$(CARGO_BUILD) || { echo "Build failed"; exit 1; }
 	@echo "All fixes completed successfully!"
 
-# Analyze Minecraft versions
-analyze-versions:
-	@echo "Analyzing Minecraft versions..."
-	@if command -v $(PYTHON) >/dev/null 2>&1; then \
-		$(PYTHON) version_analyzer.py; \
-	else \
-		echo "Python3 required for version analysis"; \
-		echo "Install with: brew install python3 (macOS) or apt install python3 (Ubuntu)"; \
-		exit 1; \
-	fi
-
 # Install cargo-edit
 install-cargo-edit:
 	@echo "Checking for cargo-edit..."
@@ -152,21 +216,3 @@ install-cargo-edit:
 		$(CARGO) install cargo-edit; \
 	fi
 	@echo "cargo-edit is ready!"
-
-# Run version manager
-ver: install-cargo-edit
-	@echo "Running version manager..."
-	@if command -v $(PYTHON) >/dev/null 2>&1; then \
-		$(PYTHON) version_manager.py; \
-	else \
-		echo "Installing Python3..."; \
-		if command -v brew >/dev/null 2>&1; then \
-			brew install python3; \
-		elif command -v apt >/dev/null 2>&1; then \
-			sudo apt update && sudo apt install -y python3; \
-		else \
-			echo "Please install Python 3 manually"; \
-			exit 1; \
-		fi; \
-		$(PYTHON) version_manager.py; \
-	fi
