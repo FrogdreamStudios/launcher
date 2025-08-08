@@ -16,7 +16,8 @@
 .center-block.center-animate {
     opacity: 0;
     transform: scale(0.95);
-    animation: center-scale-in 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.25s forwards;
+    animation: center-scale-in 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.25s
+        forwards;
 }
 
 @keyframes center-scale-in {
@@ -36,8 +37,12 @@
     color: #fff;
     font-family: "Gilroy-Bold", Helvetica, Arial, sans-serif;
 }
-.last-connections-title { top: 32px; }
-.instances-title { top: 344px; }
+.last-connections-title {
+    top: 32px;
+}
+.instances-title {
+    top: 344px;
+}
 
 .last-connections-divider,
 .instances-divider {
@@ -66,13 +71,18 @@
     border-radius: 8px;
     left: 48px;
     filter: brightness(1);
-    cursor: pointer;
     transition: filter 0.25s ease-out;
 }
-.connection-card-1 { top: 85px; }
-.connection-card-2 { top: 166px; }
-.connection-card-3 { top: 247px; }
-.connection-card:hover,
+.connection-card-1 {
+    top: 85px;
+}
+.connection-card-2 {
+    top: 166px;
+}
+.connection-card-3 {
+    top: 247px;
+}
+
 .instance-card:hover {
     filter: brightness(1.15);
 }
@@ -91,6 +101,34 @@
     transition: filter 0.25s ease-out;
 }
 
+.instance-card-pulsing {
+    animation: instance-pulse 2s ease-in-out infinite alternate;
+}
+
+@keyframes instance-pulse {
+    0% {
+        background: #1b1b1b;
+    }
+    100% {
+        background: #252525;
+    }
+}
+
+/* Instance Level Text */
+.instance-level-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 36px;
+    font-weight: 700;
+    color: #38ff10;
+    font-family: "Gilroy-Bold", Helvetica, Arial, sans-serif;
+    pointer-events: none;
+    user-select: none;
+    z-index: 999;
+}
+
 /* Play Together Block */
 .play-together {
     position: absolute;
@@ -107,7 +145,8 @@
 .play-together.play-animate {
     opacity: 0;
     transform: translateX(-200px);
-    animation: play-together-slide-in 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.3s forwards;
+    animation: play-together-slide-in 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)
+        0.3s forwards;
 }
 
 @keyframes play-together-slide-in {
@@ -201,4 +240,154 @@
     background: #3a3a3a;
     border-color: #505050;
     transform: translateY(-2px);
+}
+
+/* Server icons relative to center block */
+.server-icon {
+    position: absolute;
+    left: 64px;
+    width: 49px;
+    height: 49px;
+    background: #252525;
+    border-radius: 8px;
+    z-index: 999;
+}
+
+.server-icon-1 {
+    top: 93px;
+}
+
+.server-icon-2 {
+    top: 174px;
+}
+
+.server-icon-3 {
+    top: 255px;
+}
+
+/* Server names positioned relative to connection cards */
+.server-name {
+    position: absolute;
+    left: 128px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    font-family: "Gilroy-Bold", Helvetica, Arial, sans-serif;
+    z-index: 999;
+}
+
+.server-name-1 {
+    top: 97px;
+}
+
+.server-name-2 {
+    top: 178px;
+}
+
+.server-name-3 {
+    top: 259px;
+}
+
+/* Server last played text positioned relative to connection cards */
+.server-last-played {
+    position: absolute;
+    left: 128px;
+    font-size: 16px;
+    font-weight: 500;
+    color: #707070;
+    font-family: "Gilroy-Medium", Helvetica, Arial, sans-serif;
+    z-index: 999;
+}
+
+.server-last-played-1 {
+    top: 116px;
+}
+
+.server-last-played-2 {
+    top: 197px;
+}
+
+.server-last-played-3 {
+    top: 278px;
+}
+
+/* Last connection play buttons */
+.last-connection-play {
+    position: absolute;
+    left: 562px;
+    width: 92px;
+    height: 33px;
+    background: #252525;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: filter 0.25s ease-out;
+}
+
+.last-connection-play-1 {
+    top: 101px;
+}
+
+.last-connection-play-2 {
+    top: 182px;
+}
+
+.last-connection-play-3 {
+    top: 263px;
+}
+
+.last-connection-play:hover {
+    filter: brightness(1.15);
+}
+
+/* Play icon inside last-connection-play buttons */
+.play-icon {
+    position: absolute;
+    left: 12px;
+    top: 4.5px;
+    width: 24px;
+    height: 24px;
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+/* Play text inside last-connection-play buttons */
+.play-text {
+    position: absolute;
+    left: 48px;
+    top: 7px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #707070;
+    font-family: "Gilroy-Bold", Helvetica, Arial, sans-serif;
+}
+
+/* Additional button next to last-connection-play */
+.additional-button {
+    position: absolute;
+    left: 664px;
+    width: 24px;
+    height: 33px;
+    background-image: url("/assets/images/buttons/additional.png");
+    background-size: contain;
+    background-repeat: no-repeat;
+    cursor: pointer !important;
+    transition: filter 0.25s ease-out !important;
+    z-index: 1000;
+}
+
+.additional-button-1 {
+    top: 101px;
+}
+
+.additional-button-2 {
+    top: 182px;
+}
+
+.additional-button-3 {
+    top: 263px;
+}
+
+.additional-button:hover {
+    filter: brightness(1.15) !important;
+    cursor: pointer !important;
 }

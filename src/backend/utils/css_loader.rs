@@ -7,7 +7,7 @@ pub struct CssLoader;
 
 impl CssLoader {
     pub fn init() {
-        let styles: [(&'static str, &'static str); 9] = [
+        let styles: [(&'static str, &'static str); 10] = [
             (
                 "base",
                 include_str!(concat!(
@@ -65,6 +65,13 @@ impl CssLoader {
                 )),
             ),
             (
+                "context_menu",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/components/context_menu.css"
+                )),
+            ),
+            (
                 "tailwind",
                 include_str!(concat!(
                     env!("CARGO_MANIFEST_DIR"),
@@ -74,7 +81,7 @@ impl CssLoader {
         ];
 
         let cache: HashMap<_, _> = styles.into_iter().collect();
-        CSS_CACHE.set(cache).expect("CSS cache already initialized");
+        let _ = CSS_CACHE.set(cache);
     }
 
     #[inline(always)]
@@ -104,6 +111,7 @@ impl CssLoader {
             "chat",
             "home",
             "news",
+            "context_menu",
             "tailwind",
         ])
     }

@@ -1,0 +1,116 @@
+/* Context Menu Styles */
+.context-menu-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: transparent;
+    z-index: 9999;
+}
+
+.context-menu {
+    position: absolute;
+    width: 128px;
+    height: 162px;
+    background-color: #141414;
+    border-radius: 8px;
+    border: 2px solid #1b1b1b;
+    z-index: 10000;
+    transform-origin: top left;
+}
+
+.context-menu-show {
+    animation: context-menu-scale-in 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94)
+        forwards;
+}
+
+.context-menu-hide {
+    animation: context-menu-scale-out 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94)
+        forwards;
+}
+
+@keyframes context-menu-scale-in {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes context-menu-scale-out {
+    from {
+        opacity: 1;
+        transform: scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+}
+
+.context-menu-button {
+    all: unset;
+    box-sizing: border-box;
+    display: flex;
+    width: 128px;
+    height: 33px;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 12px;
+    position: absolute;
+    left: 0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.context-menu-button:hover {
+    filter: brightness(1.15);
+}
+
+.context-menu-button:nth-child(1) {
+    top: 6px;
+}
+
+.context-menu-button:nth-child(2) {
+    top: 45px;
+}
+
+.context-menu-button:nth-child(3) {
+    top: 84px;
+}
+
+.context-menu-button:nth-child(4) {
+    top: 123px;
+}
+
+.context-menu-icon {
+    position: relative;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.context-menu-icon img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+}
+
+.context-menu-text {
+    position: relative;
+    width: fit-content;
+    font-family: "Gilroy-Bold", Helvetica;
+    font-weight: 700;
+    color: #6f6f6f;
+    font-size: 16px;
+    letter-spacing: 0;
+    line-height: normal;
+    white-space: nowrap;
+}

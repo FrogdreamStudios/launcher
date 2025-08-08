@@ -1,8 +1,11 @@
+use crate::backend::utils::assets::AssetLoader;
 use crate::backend::utils::css_loader::CssLoader;
 use crate::backend::utils::route::Route;
 use crate::frontend::components::{
-    chat_sidebar::ChatSidebar, navigation::Navigation, news::News, standalone_logo::StandaloneLogo,
+    chat_sidebar::ChatSidebar, context_menu::ContextMenu, minecraft_launcher::launch_minecraft,
+    navigation::Navigation, news::News, standalone_logo::StandaloneLogo,
 };
+use crate::frontend::game_state::use_game_state;
 use dioxus::prelude::*;
 use dioxus_router::{components::Outlet, use_route};
 
@@ -13,6 +16,14 @@ pub fn Layout() -> Element {
     let mut animations_played = use_signal(|| false);
     let route = use_route::<Route>();
     let mut last_active_page = use_signal(|| "Home");
+
+    // Context menu state
+    let mut show_context_menu = use_signal(|| false);
+    let mut context_menu_x = use_signal(|| 0.0);
+    let mut context_menu_y = use_signal(|| 0.0);
+
+    // Game state
+    let game_status = use_game_state();
 
     // Determine current page and update last active if not in chat
     let current_page = match route {
@@ -73,11 +84,64 @@ pub fn Layout() -> Element {
                         div { class: "connection-card connection-card-2" }
                         div { class: "connection-card connection-card-3" }
 
+                        // Server icons
+                        div { class: "server-icon server-icon-1" }
+                        div { class: "server-icon server-icon-2" }
+                        div { class: "server-icon server-icon-3" }
+
+                        // Server names
+                        div { class: "server-name server-name-1", "Server 1" }
+                        div { class: "server-name server-name-2", "Server 2" }
+                        div { class: "server-name server-name-3", "Server 3" }
+
+                        // Server last played
+                        div { class: "server-last-played server-last-played-1", "Last played: 15m ago" }
+                        div { class: "server-last-played server-last-played-2", "Last played: 15m ago" }
+                        div { class: "server-last-played server-last-played-3", "Last played: 15m ago" }
+
+                        // Last connection play buttons
+                        div { class: "last-connection-play last-connection-play-1",
+                            img { src: AssetLoader::get_play(), class: "play-icon" }
+                            div { class: "play-text", "Play" }
+                        }
+                        div { class: "last-connection-play last-connection-play-2",
+                            img { src: AssetLoader::get_play(), class: "play-icon" }
+                            div { class: "play-text", "Play" }
+                        }
+                        div { class: "last-connection-play last-connection-play-3",
+                            img { src: AssetLoader::get_play(), class: "play-icon" }
+                            div { class: "play-text", "Play" }
+                        }
+
+                        // Additional buttons
+                        img { src: AssetLoader::get_additional(), class: "additional-button additional-button-1" }
+                        img { src: AssetLoader::get_additional(), class: "additional-button additional-button-2" }
+                        img { src: AssetLoader::get_additional(), class: "additional-button additional-button-3" }
+
                         div { class: "instances-title", "Instances" }
                         div { class: "instances-divider" }
 
                         // Instance card
-                        div { class: "instance-card" }
+                        div {
+                            class: if game_status().is_active() {
+                                "instance-card instance-card-pulsing"
+                            } else {
+                                "instance-card"
+                            },
+                            onclick: move |_| {
+                                launch_minecraft(game_status, "1.21.8");
+                            },
+                            oncontextmenu: move |e| {
+                                e.prevent_default();
+                                let client_x = e.client_coordinates().x;
+                                let client_y = e.client_coordinates().y;
+                                context_menu_x.set(client_x);
+                                context_menu_y.set(client_y);
+                                show_context_menu.set(true);
+                            },
+
+                            div { class: "instance-level-text", "28" }
+                        }
                     }
                 }
 
@@ -86,6 +150,14 @@ pub fn Layout() -> Element {
                 }
 
                 News { animations_played: animations_played() }
+            }
+
+            // Context menu
+            ContextMenu {
+                show: show_context_menu,
+                x: context_menu_x,
+                y: context_menu_y,
+                game_status: game_status
             }
         }
     }
