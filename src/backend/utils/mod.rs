@@ -1,6 +1,8 @@
+pub mod archive_utils;
 pub mod assets;
 pub mod command;
 pub mod css_loader;
+pub mod file_utils;
 pub mod formater;
 pub mod os;
 pub mod paths;

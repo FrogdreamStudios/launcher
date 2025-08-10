@@ -1,5 +1,6 @@
 use super::progress::ProgressTracker;
 use crate::backend::creeper::downloader::models::DownloadTask;
+use crate::backend::utils::file_utils::{ensure_parent_directory, verify_file};
 use anyhow::Result;
 use futures_util::StreamExt;
 use reqwest::Client;
@@ -33,20 +34,13 @@ impl HttpDownloader {
         mut tracker: Option<&mut ProgressTracker>,
     ) -> Result<()> {
         // Check if file already exists and has correct hash
-        if let Some(sha1) = expected_sha1
-            && self.verify_file_hash(destination, sha1).await?
-        {
-            debug!("File already exists with correct hash: {:?}", destination);
-            if let Some(tracker) = tracker {
-                tracker.complete();
-            }
+        if verify_file(destination, None, expected_sha1).await? {
+            debug!("File already exists with correct hash: {destination:?}");
             return Ok(());
         }
 
         // Create parent directories if they don't exist
-        if let Some(parent) = destination.parent() {
-            tokio::fs::create_dir_all(parent).await?;
-        }
+        ensure_parent_directory(destination).await?;
 
         debug!("Downloading {url} to {destination:?}");
 
@@ -173,19 +167,6 @@ impl HttpDownloader {
         }
 
         Ok(())
-    }
-
-    async fn verify_file_hash(&self, file_path: &Path, expected_sha1: &str) -> Result<bool> {
-        if !file_path.exists() {
-            return Ok(false);
-        }
-
-        let content = tokio::fs::read(file_path).await?;
-        let mut hasher = Sha1::new();
-        hasher.update(&content);
-        let computed_hash = hex::encode(hasher.finalize());
-
-        Ok(computed_hash == expected_sha1)
     }
 
     pub async fn get_json<T>(&self, url: &str) -> Result<T>

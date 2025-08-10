@@ -1,6 +1,7 @@
 use crate::backend::creeper::cli::launch_minecraft::launch_minecraft;
 use crate::backend::creeper::cli::launch_minecraft::update_manifest;
 use crate::backend::creeper::launcher::MinecraftLauncher;
+use crate::backend::utils::file_utils::is_minecraft_version_complete;
 use console::style;
 use dialoguer::{Confirm, Select};
 
@@ -90,9 +91,7 @@ async fn get_offline_versions(launcher: &MinecraftLauncher) -> Vec<String> {
         .filter_map(|entry| {
             let name = entry.file_name().to_str()?.to_string();
             let version_path = entry.path();
-            let jar = version_path.join(format!("{name}.jar"));
-            let json = version_path.join(format!("{name}.json"));
-            if jar.exists() && json.exists() {
+            if is_minecraft_version_complete(&version_path, &name) {
                 Some(name)
             } else {
                 None
