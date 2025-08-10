@@ -77,9 +77,6 @@ jobs:
         if: matrix.os == 'macos-14'
         run: brew install create-dmg
 
-      - name: Install Node.js dependencies
-        run: npm install
-
       - name: Build
         shell: bash
         run: |
