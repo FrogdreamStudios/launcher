@@ -1,25 +1,9 @@
 [application]
-name = "DreamLauncher"
+name = "Dream Launcher"
 default_platform = "desktop"
 
 [web.app]
 title = "Dream Launcher"
-base_path = "."
-
-[web.watcher]
-watch_path = ["src", "assets"]
-
-[web.resource]
-dev = true
-style = [
-    "assets/styles/main.css",
-    "assets/styles/auth.css",
-    "assets/styles/chat.css",
-    "assets/styles/output.css",
-]
-script = []
-
-[web.proxy]
 
 [bundle]
 identifier = "com.frogdream.dreamlauncher"
@@ -32,12 +16,9 @@ long_description = "A powerful and lightweight Minecraft launcher that will be p
 
 [bundle.linux]
 app_name = "DreamLauncher"
+short_description = "A powerful and lightweight Minecraft launcher"
 long_description = "A powerful and lightweight Minecraft launcher that will be perfect for every player"
 
 [bundle.macos]
 app_name = "Dream Launcher"
-long_description = "A powerful and lightweight Minecraft launcher that will be perfect for every player"
-
-[bundle.windows]
-app_name = "Dream Launcher"
-long_description = "A powerful and lightweight Minecraft launcher that will be perfect for every player"
+files = {}
