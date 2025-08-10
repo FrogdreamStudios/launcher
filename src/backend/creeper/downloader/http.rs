@@ -228,12 +228,6 @@ impl HttpDownloader {
         }
     }
 
-    #[allow(dead_code)]
-    pub async fn head_request(&self, url: &str) -> Result<reqwest::Response> {
-        let response = self.client.head(url).send().await?;
-        Ok(response)
-    }
-
     async fn verify_archive_format(&self, file_path: &Path) -> Result<()> {
         use tokio::io::AsyncReadExt;
 

@@ -909,31 +909,6 @@ impl JavaManager {
         ))
     }
 
-    #[allow(dead_code)]
-    pub fn list_installed_runtimes(&self) -> &HashMap<u8, JavaRuntime> {
-        &self.installed_runtimes
-    }
-
-    #[allow(dead_code)]
-    pub async fn remove_runtime(&mut self, java_version: u8) -> Result<()> {
-        let runtime_dir = self.java_dir.join(format!("java-{java_version}"));
-        let x64_runtime_dir = self.java_dir.join(format!("java-{java_version}-x64"));
-
-        if runtime_dir.exists() {
-            async_fs::remove_dir_all(&runtime_dir).await?;
-            self.installed_runtimes.remove(&java_version);
-            info!("Removed Java {java_version} runtime");
-        }
-
-        if x64_runtime_dir.exists() {
-            async_fs::remove_dir_all(&x64_runtime_dir).await?;
-            self.x86_64_runtimes.remove(&java_version);
-            info!("Removed x86_64 Java {} runtime", java_version);
-        }
-
-        Ok(())
-    }
-
     pub fn is_java_available(&self, minecraft_version: &str) -> bool {
         let required_java = JavaRuntime::get_required_java_version(minecraft_version);
         let needs_x86_64 = self.needs_x86_64_java(minecraft_version);
