@@ -16,10 +16,8 @@ static ASSET_CACHE: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::ne
 pub struct AssetLoader;
 
 impl AssetLoader {
-
     /// Initializes the asset cache with all embedded images.
     pub fn init() {
-
         // Array of all embedded assets with their names and base64 data
         let assets: [(&'static str, &'static str); 12] = [
             (

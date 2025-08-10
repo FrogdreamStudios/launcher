@@ -46,19 +46,19 @@ use std::os::unix::fs::PermissionsExt;
 
 /// Configuration structure for building Minecraft commands.
 pub struct CommandConfig {
-    pub java_path: PathBuf,              // The absolute path to the Java executable
-    pub game_dir: PathBuf,               // The Minecraft game directory
+    pub java_path: PathBuf, // The absolute path to the Java executable
+    pub game_dir: PathBuf,  // The Minecraft game directory
     pub version_details: VersionDetails, // Detailed information about the Minecraft version being launched
-    pub username: String,                // The player's nickname (defaults to "Player" in offline mode)
-    pub uuid: String,                    // The player's UUID (defaults to a zero UUID in offline mode)
-    pub access_token: String,            // Authentication token for online mode (defaults to "null" in offline mode)
-    pub user_type: String,               // Type of user account (e.g., "mojang" or "msa" for Microsoft)
-    pub version_type: String,            // Type of version (e.g., "release", "snapshot")
-    pub assets_dir: PathBuf,             // Directory for Minecraft assets
-    pub libraries: Vec<PathBuf>,         // List of library JAR paths to include in the classpath
-    pub main_jar: PathBuf,               // Path to the main Minecraft JAR file
-    pub java_major_version: u8,          // Major version of Java being used for compatibility adjustments
-    pub use_rosetta: bool,               // Flag to enable Rosetta 2 emulation on macOS ARM64 for x86_64 compatibility
+    pub username: String, // The player's nickname (defaults to "Player" in offline mode)
+    pub uuid: String,     // The player's UUID (defaults to a zero UUID in offline mode)
+    pub access_token: String, // Authentication token for online mode (defaults to "null" in offline mode)
+    pub user_type: String,    // Type of user account (e.g., "mojang" or "msa" for Microsoft)
+    pub version_type: String, // Type of version (e.g., "release", "snapshot")
+    pub assets_dir: PathBuf,  // Directory for Minecraft assets
+    pub libraries: Vec<PathBuf>, // List of library JAR paths to include in the classpath
+    pub main_jar: PathBuf,    // Path to the main Minecraft JAR file
+    pub java_major_version: u8, // Major version of Java being used for compatibility adjustments
+    pub use_rosetta: bool, // Flag to enable Rosetta 2 emulation on macOS ARM64 for x86_64 compatibility
 }
 
 /// Main command builder for Minecraft launch commands.
@@ -80,7 +80,6 @@ pub struct MinecraftCommand {
 }
 
 impl MinecraftCommand {
-
     /// Initializes the command builder with the provided config and computes the natives directory.
     pub fn new(config: CommandConfig) -> Self {
         let natives_dir = get_natives_dir(&config.game_dir, &config.version_details.id);
@@ -108,7 +107,7 @@ impl MinecraftCommand {
         let mut cmd = if self.use_rosetta && cfg!(target_os = "macos") {
             // Create simple wrapper script for Rosetta with window activation
             let script_content = format!(
-            r#"#!/bin/bash
+                r#"#!/bin/bash
             export LSUIElement=0
             export NSHighResolutionCapable=true
             export JAVA_STARTED_ON_FIRST_THREAD_1=1

@@ -14,7 +14,6 @@
 /// assert_eq!(format_size(1048576), "1 MB");
 /// ```
 pub fn format_size<T: Into<f64>>(bytes: T) -> String {
-
     // Array of size units from smallest to largest
     const UNITS: &[&str] = &["B", "KB", "MB", "GB", "TB"];
     let mut size = bytes.into();

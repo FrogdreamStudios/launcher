@@ -551,25 +551,27 @@ impl JavaManager {
                     .and_then(|name| name.to_str())
                     .is_some_and(|name| name.starts_with("java-"))
                 && let Ok(java_executable) = self.find_java_executable(&path)
-                && let Some(runtime) = JavaRuntime::from_path(&java_executable)?
             {
-                let is_x86_64 = path
-                    .file_name()
-                    .and_then(|name| name.to_str())
-                    .is_some_and(|name| name.contains("-x64"));
+                if let Some(runtime) = JavaRuntime::from_path(&java_executable)? {
+                    let is_x86_64 = path
+                        .file_name()
+                        .and_then(|name| name.to_str())
+                        .is_some_and(|name| name.contains("-x64"));
 
-                debug!(
-                    "Found installed {} Java {} runtime at {:?}",
-                    if is_x86_64 { "x86_64" } else { "native" },
-                    runtime.major_version,
-                    path
-                );
+                    let major_version: u8 = runtime.major_version;
 
-                if is_x86_64 {
-                    self.x86_64_runtimes.insert(runtime.major_version, runtime);
-                } else {
-                    self.installed_runtimes
-                        .insert(runtime.major_version, runtime);
+                    debug!(
+                        "Found installed {} Java {} runtime at {:?}",
+                        if is_x86_64 { "x86_64" } else { "native" },
+                        major_version,
+                        path
+                    );
+
+                    if is_x86_64 {
+                        self.x86_64_runtimes.insert(major_version, runtime);
+                    } else {
+                        self.installed_runtimes.insert(major_version, runtime);
+                    }
                 }
             }
         }

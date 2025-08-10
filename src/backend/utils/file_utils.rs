@@ -99,7 +99,7 @@ pub async fn get_file_size<P: AsRef<Path>>(path: P) -> Result<u64> {
 /// Checks if a directory contains the expected files for a Minecraft version.
 pub fn is_minecraft_version_complete<P: AsRef<Path>>(version_dir: P, version_name: &str) -> bool {
     let version_dir = version_dir.as_ref();
-    
+
     // Check for both required files
     let jar_file = version_dir.join(format!("{version_name}.jar"));
     let json_file = version_dir.join(format!("{version_name}.json"));
