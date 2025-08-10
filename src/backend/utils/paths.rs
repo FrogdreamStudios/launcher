@@ -1,6 +1,5 @@
 use anyhow::{Result, anyhow};
 use dirs;
-use sha1::{Digest, Sha1};
 use std::path::{Path, PathBuf};
 
 const LAUNCHER_DIR: &str = "DreamLauncher";
@@ -124,37 +123,4 @@ pub async fn ensure_directories(game_dir: &Path) -> Result<()> {
     }
 
     Ok(())
-}
-
-/// Check if a file exists and has the correct size and hash.
-pub async fn verify_file(
-    path: &Path,
-    expected_size: Option<u64>,
-    expected_sha1: Option<&str>,
-) -> Result<bool> {
-    if !tokio::fs::try_exists(path).await? {
-        return Ok(false);
-    }
-
-    let metadata = tokio::fs::metadata(path).await?;
-
-    // Check size if provided
-    if let Some(size) = expected_size
-        && metadata.len() != size
-    {
-        return Ok(false);
-    }
-
-    // Check SHA1 hash if provided
-    if let Some(expected_hash) = expected_sha1 {
-        let content = tokio::fs::read(path).await?;
-        let mut hasher = Sha1::new();
-        hasher.update(&content);
-        let computed_hex = hex::encode(hasher.finalize());
-        if computed_hex != expected_hash {
-            return Ok(false);
-        }
-    }
-
-    Ok(true)
 }

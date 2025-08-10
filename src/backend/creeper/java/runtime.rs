@@ -53,7 +53,7 @@ impl JavaRuntime {
                         })
                     }
                     Err(_) => {
-                        debug!("Failed to execute java at {:?}", path);
+                        debug!("Failed to execute java at {path:?}");
                         Ok(None)
                     }
                 }
@@ -228,27 +228,27 @@ impl JavaRuntime {
             match version {
                 // Minecraft 1.21+ requires Java 21
                 v if v >= (1, 21, 0) => {
-                    info!("Minecraft {}.{}.{} (≥1.21.0) -> Java 21", v.0, v.1, v.2);
+                    info!("Minecraft {}.{}.{} (≥ 1.21.0) -> Java 21", v.0, v.1, v.2);
                     21
                 }
                 // Minecraft 1.20.5+ requires Java 21
                 v if v >= (1, 20, 5) => {
-                    info!("Minecraft {}.{}.{} (≥1.20.5) -> Java 21", v.0, v.1, v.2);
+                    info!("Minecraft {}.{}.{} (≥ 1.20.5) -> Java 21", v.0, v.1, v.2);
                     21
                 }
                 // Minecraft 1.18+ requires Java 17
                 v if v >= (1, 18, 0) => {
-                    info!("Minecraft {}.{}.{} (≥1.18.0) -> Java 17", v.0, v.1, v.2);
+                    info!("Minecraft {}.{}.{} (≥ 1.18.0) -> Java 17", v.0, v.1, v.2);
                     17
                 }
                 // Minecraft 1.17+ requires Java 17
                 v if v >= (1, 17, 0) => {
-                    info!("Minecraft {}.{}.{} (≥1.17.0) -> Java 17", v.0, v.1, v.2);
+                    info!("Minecraft {}.{}.{} (≥ 1.17.0) -> Java 17", v.0, v.1, v.2);
                     17
                 }
                 // Minecraft 1.12-1.16 works with Java 8
                 v if v >= (1, 12, 0) => {
-                    info!("Minecraft {}.{}.{} (≥1.12.0) -> Java 8", v.0, v.1, v.2);
+                    info!("Minecraft {}.{}.{} (≥ 1.12.0) -> Java 8", v.0, v.1, v.2);
                     8
                 }
                 // Older versions (1.11 and below) use Java 8

@@ -7,6 +7,10 @@ use tracing::{debug, error, info, warn};
 
 use super::runtime::{AzulJavaManifest, AzulPackage, JavaRuntime};
 use crate::backend::creeper::downloader::{HttpDownloader, ProgressTracker};
+use crate::backend::utils::archive_utils::extract_archive;
+use crate::backend::utils::file_utils::{
+    ensure_directory, get_file_size, remove_dir_if_exists, remove_file_if_exists,
+};
 use crate::backend::utils::paths::get_java_dir;
 
 pub struct JavaManager {
@@ -20,7 +24,7 @@ pub struct JavaManager {
 impl JavaManager {
     pub async fn new() -> Result<Self> {
         let java_dir = get_java_dir()?;
-        async_fs::create_dir_all(&java_dir).await?;
+        ensure_directory(&java_dir).await?;
 
         let mut manager = Self {
             downloader: HttpDownloader::new()?,
@@ -56,8 +60,7 @@ impl JavaManager {
                     return Ok((exe_path, true));
                 } else {
                     info!(
-                        "Installed x86_64 Java runtime not found at {:?}, removing from cache",
-                        exe_path
+                        "Installed x86_64 Java runtime not found at {exe_path:?}, removing from cache"
                     );
                     Some(runtime.major_version)
                 }
@@ -149,10 +152,7 @@ impl JavaManager {
                 }
             }
         } else {
-            info!(
-                "Downloading Java {} runtime for Minecraft {}",
-                required_java, minecraft_version
-            );
+            info!("Downloading Java {required_java} runtime for Minecraft {minecraft_version}");
 
             match self.install_java_runtime(required_java).await {
                 Ok(()) => {
@@ -379,14 +379,12 @@ impl JavaManager {
             .await
         {
             error!("Failed to download Java {}: {}", java_version, e);
-            if download_path.exists() {
-                let _ = async_fs::remove_file(&download_path).await;
-            }
+            let _ = remove_file_if_exists(&download_path).await;
             return Err(e);
         }
 
         // Verify downloaded file
-        let file_size = async_fs::metadata(&download_path).await?.len();
+        let file_size = get_file_size(&download_path).await?;
         info!("Downloaded Java {java_version} archive: {file_size} bytes");
 
         if file_size < 1024 * 1024 {
@@ -399,20 +397,16 @@ impl JavaManager {
 
         // Extract the package
         info!("Extracting Java {java_version} runtime...");
-        if let Err(e) = self
-            .extract_java_archive(&download_path, &extract_path)
-            .await
-        {
+        // Extract the archive
+        if let Err(e) = extract_archive(&download_path, &extract_path).await {
             error!("Failed to extract Java {}: {}", java_version, e);
-            let _ = async_fs::remove_file(&download_path).await;
-            let _ = async_fs::remove_dir_all(&extract_path).await;
+            let _ = remove_file_if_exists(&download_path).await;
+            let _ = remove_dir_if_exists(&extract_path).await;
             return Err(e);
         }
 
         // Clean up download file
-        if download_path.exists() {
-            async_fs::remove_file(&download_path).await?;
-        }
+        remove_file_if_exists(&download_path).await?;
 
         // Detect the extracted runtime
         let java_executable = self.find_java_executable(&extract_path)?;
@@ -487,9 +481,7 @@ impl JavaManager {
             .await
         {
             error!("Failed to download x86_64 Java {}: {}", java_version, e);
-            if download_path.exists() {
-                let _ = async_fs::remove_file(&download_path).await;
-            }
+            let _ = remove_file_if_exists(&download_path).await;
             return Err(e);
         }
 
@@ -513,20 +505,16 @@ impl JavaManager {
 
         // Extract the package
         info!("Extracting Java {java_version} runtime...");
-        if let Err(e) = self
-            .extract_java_archive(&download_path, &extract_path)
-            .await
-        {
+        // Extract the archive
+        if let Err(e) = extract_archive(&download_path, &extract_path).await {
             error!("Failed to extract Java {}: {}", java_version, e);
-            let _ = async_fs::remove_file(&download_path).await;
-            let _ = async_fs::remove_dir_all(&extract_path).await;
+            let _ = remove_file_if_exists(&download_path).await;
+            let _ = remove_dir_if_exists(&extract_path).await;
             return Err(e);
         }
 
         // Clean up download file
-        if download_path.exists() {
-            async_fs::remove_file(&download_path).await?;
-        }
+        remove_file_if_exists(&download_path).await?;
 
         // Detect the extracted runtime
         let java_executable = self.find_java_executable(&extract_path)?;
@@ -728,138 +716,6 @@ impl JavaManager {
         AzulJavaManifest { packages }
     }
 
-    async fn extract_java_archive(&self, archive_path: &Path, extract_path: &Path) -> Result<()> {
-        async_fs::create_dir_all(extract_path).await?;
-
-        let filename = archive_path
-            .file_name()
-            .and_then(|s| s.to_str())
-            .unwrap_or("");
-
-        info!("Extracting archive: {}", filename);
-
-        // Check for compound extensions first, then single extensions
-        if filename.ends_with(".tar.gz") || filename.ends_with(".tgz") {
-            info!("Detected TAR.GZ format");
-            self.extract_tar_gz(archive_path, extract_path).await
-        } else if filename.ends_with(".zip") {
-            info!("Detected ZIP format");
-            self.extract_zip(archive_path, extract_path).await
-        } else {
-            // Fallback to single extension check
-            let extension = archive_path
-                .extension()
-                .and_then(|s| s.to_str())
-                .unwrap_or("");
-
-            match extension {
-                "zip" => self.extract_zip(archive_path, extract_path).await,
-                "gz" => self.extract_tar_gz(archive_path, extract_path).await,
-                _ => {
-                    // Try to detect format by reading file header
-                    self.extract_archive_by_content(archive_path, extract_path)
-                        .await
-                }
-            }
-        }
-    }
-
-    async fn extract_archive_by_content(
-        &self,
-        archive_path: &Path,
-        extract_path: &Path,
-    ) -> Result<()> {
-        // Read first few bytes to detect file type
-        let mut file = async_fs::File::open(archive_path).await?;
-        let mut header = [0u8; 4];
-
-        use tokio::io::AsyncReadExt;
-        file.read_exact(&mut header).await?;
-
-        // ZIP files start with "PK" (0x504B)
-        if header[0] == 0x50 && header[1] == 0x4B {
-            info!("Detected ZIP format by header");
-            self.extract_zip(archive_path, extract_path).await
-        }
-        // GZIP files start with 0x1F 0x8B
-        else if header[0] == 0x1F && header[1] == 0x8B {
-            info!("Detected GZIP format by header");
-            self.extract_tar_gz(archive_path, extract_path).await
-        } else {
-            Err(anyhow::anyhow!(
-                "Unsupported or corrupted archive format. Header bytes: {:02X} {:02X} {:02X} {:02X}",
-                header[0],
-                header[1],
-                header[2],
-                header[3]
-            ))
-        }
-    }
-
-    async fn extract_zip(&self, archive_path: &Path, extract_path: &Path) -> Result<()> {
-        use std::io::Read;
-
-        let file = std::fs::File::open(archive_path)?;
-        let mut archive = zip::ZipArchive::new(file)?;
-
-        for i in 0..archive.len() {
-            let mut file = archive.by_index(i)?;
-            let outpath = extract_path.join(file.mangled_name());
-
-            if file.name().ends_with('/') {
-                async_fs::create_dir_all(&outpath).await?;
-            } else {
-                if let Some(p) = outpath.parent() {
-                    async_fs::create_dir_all(p).await?;
-                }
-
-                let mut outfile = async_fs::File::create(&outpath).await?;
-                let mut buffer = Vec::new();
-                file.read_to_end(&mut buffer)?;
-
-                use tokio::io::AsyncWriteExt;
-                outfile.write_all(&buffer).await?;
-
-                // Set executable permissions on Unix systems
-                #[cfg(unix)]
-                {
-                    use std::os::unix::fs::PermissionsExt;
-                    if file.unix_mode().unwrap_or(0) & 0o111 != 0 {
-                        let metadata = std::fs::metadata(&outpath)?;
-                        let mut perms = metadata.permissions();
-                        perms.set_mode(0o755);
-                        std::fs::set_permissions(&outpath, perms)?;
-                    }
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    async fn extract_tar_gz(&self, archive_path: &Path, extract_path: &Path) -> Result<()> {
-        use flate2::read::GzDecoder;
-        use tar::Archive;
-
-        let file = std::fs::File::open(archive_path)?;
-        let gz = GzDecoder::new(file);
-        let mut archive = Archive::new(gz);
-
-        for entry in archive.entries()? {
-            let mut entry = entry?;
-            let path = entry.path()?;
-            let target_path = extract_path.join(&*path);
-
-            if let Some(parent) = target_path.parent() {
-                async_fs::create_dir_all(parent).await?;
-            }
-
-            entry.unpack(&target_path)?;
-        }
-
-        Ok(())
-    }
-
     fn find_java_executable(&self, java_dir: &Path) -> Result<PathBuf> {
         let executable_name = if cfg!(windows) { "java.exe" } else { "java" };
 
@@ -907,31 +763,6 @@ impl JavaManager {
             "Java executable not found in {}",
             dir.display()
         ))
-    }
-
-    #[allow(dead_code)]
-    pub fn list_installed_runtimes(&self) -> &HashMap<u8, JavaRuntime> {
-        &self.installed_runtimes
-    }
-
-    #[allow(dead_code)]
-    pub async fn remove_runtime(&mut self, java_version: u8) -> Result<()> {
-        let runtime_dir = self.java_dir.join(format!("java-{java_version}"));
-        let x64_runtime_dir = self.java_dir.join(format!("java-{java_version}-x64"));
-
-        if runtime_dir.exists() {
-            async_fs::remove_dir_all(&runtime_dir).await?;
-            self.installed_runtimes.remove(&java_version);
-            info!("Removed Java {java_version} runtime");
-        }
-
-        if x64_runtime_dir.exists() {
-            async_fs::remove_dir_all(&x64_runtime_dir).await?;
-            self.x86_64_runtimes.remove(&java_version);
-            info!("Removed x86_64 Java {} runtime", java_version);
-        }
-
-        Ok(())
     }
 
     pub fn is_java_available(&self, minecraft_version: &str) -> bool {
