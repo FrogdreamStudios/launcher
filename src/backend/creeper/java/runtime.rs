@@ -1,9 +1,18 @@
+//! Java runtime detection and management.
+//!
+//! This module provides utilities to detect, download, and manage
+//! Java runtimes for running Minecraft with the correct Java version.
+
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use tracing::{debug, info, warn};
 
+/// Information about a Java runtime installation.
+///
+/// Contains details about the Java version, vendor, architecture,
+/// and the path to the Java executable.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JavaRuntime {
     pub path: PathBuf,
@@ -13,11 +22,13 @@ pub struct JavaRuntime {
     pub architecture: String,
 }
 
+/// Manifest containing available Azul Java packages for download.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AzulJavaManifest {
     pub packages: Vec<AzulPackage>,
 }
 
+/// Individual Java package from Azul with download information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AzulPackage {
     pub id: String,
@@ -31,6 +42,9 @@ pub struct AzulPackage {
 }
 
 impl JavaRuntime {
+    /// Detects Java runtime installed on the system.
+    ///
+    /// Searches for Java in system PATH and extracts version information.
     pub fn detect_system_java() -> Result<Option<Self>> {
         // Try to find java using which/where
         let java_path = if cfg!(windows) {
@@ -138,7 +152,7 @@ impl JavaRuntime {
     /// Extract the major version from a Java version string.
     fn get_major_version(version: &str) -> u8 {
         if version.starts_with("1.") {
-            // Java 8 and below use format "1.X.Y"
+            // Java 8 and below use the format "1.X.Y"
             version
                 .chars()
                 .nth(2)
@@ -198,7 +212,7 @@ impl JavaRuntime {
     }
 
     pub fn get_executable_path(&self) -> PathBuf {
-        // If path is already a java executable, return it directly
+        // If the path is already a java executable, return it directly
         if self.path.file_name() == Some(std::ffi::OsStr::new("java"))
             || self.path.file_name() == Some(std::ffi::OsStr::new("java.exe"))
         {
@@ -262,13 +276,13 @@ impl JavaRuntime {
             }
         } else {
             // For unknown versions, assume modern (Java 21)
-            // This handles cases where version parsing fails but it's likely a newer version
+            // This handles cases where version parsing fails, but it's likely a newer version
             warn!("Failed to parse Minecraft version '{minecraft_version}', defaulting to Java 21");
             21
         }
     }
 
-    /// Check if version is a modern snapshot or pre-release that requires Java 21
+    /// Check if a version is a modern snapshot or pre-release that requires Java 21.
     fn is_modern_snapshot_or_prerelease(version: &str) -> bool {
         let version_lower = version.to_lowercase();
 

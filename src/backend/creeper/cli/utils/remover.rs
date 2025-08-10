@@ -1,8 +1,14 @@
+//! File and directory removal utilities for launcher cleanup.
+
 use crate::backend::creeper::launcher::MinecraftLauncher;
 use std::fs;
 use std::io::{self, Write};
 use std::path::PathBuf;
 
+/// Removes all launcher-created instances and files with user confirmation.
+///
+/// This function displays all directories that will be deleted, calculates
+/// the total size, and asks for user confirmation before proceeding with deletion.
 pub(crate) async fn remove_instances(launcher: &MinecraftLauncher) -> anyhow::Result<()> {
     use crate::backend::utils::formater::format_size;
     use crate::backend::utils::paths::*;
@@ -13,7 +19,7 @@ pub(crate) async fn remove_instances(launcher: &MinecraftLauncher) -> anyhow::Re
 
     let game_dir = launcher.get_game_dir();
 
-    // List of directories to delete
+    // List of directories to delete with their descriptions
     let mut paths_to_delete: Vec<(&str, PathBuf)> = vec![
         ("Minecraft versions", get_versions_dir(game_dir)),
         ("Game libraries", get_libraries_dir(game_dir)),
@@ -22,7 +28,7 @@ pub(crate) async fn remove_instances(launcher: &MinecraftLauncher) -> anyhow::Re
         ("Natives", game_dir.join("natives")),
     ];
 
-    // Check for additional directories
+    // Check for additional launcher-specific directories
     if let Ok(java_dir) = get_java_dir()
         && java_dir.exists()
     {
@@ -34,7 +40,7 @@ pub(crate) async fn remove_instances(launcher: &MinecraftLauncher) -> anyhow::Re
         paths_to_delete.push(("Launcher cache", cache_dir));
     }
 
-    // Leave only existing paths
+    // Filter to only include paths that actually exist
     paths_to_delete.retain(|(_, path)| path.exists());
 
     if paths_to_delete.is_empty() {
@@ -42,7 +48,7 @@ pub(crate) async fn remove_instances(launcher: &MinecraftLauncher) -> anyhow::Re
         return Ok(());
     }
 
-    // Calculate total size of directories to delete
+    // Calculate the total size of all directories to be deleted
     let total_size: u64 = paths_to_delete
         .iter()
         .map(|(_, path)| calculate_directory_size(path).unwrap_or(0))
@@ -67,8 +73,9 @@ pub(crate) async fn remove_instances(launcher: &MinecraftLauncher) -> anyhow::Re
     }
 
     println!("Deleting files...");
-    let (mut deleted, mut failed) = (0, 0);
+    let (mut deleted, mut failed) = (0, 0); // Track success and failure counts
 
+    // Delete each directory and track results
     for (name, path) in paths_to_delete {
         print!("Deleting {name}... ");
         match fs::remove_dir_all(&path) {
@@ -84,6 +91,8 @@ pub(crate) async fn remove_instances(launcher: &MinecraftLauncher) -> anyhow::Re
     }
 
     println!();
+
+    // Display final results
     if failed == 0 {
         println!(
             "Successfully deleted {} directories ({})!",

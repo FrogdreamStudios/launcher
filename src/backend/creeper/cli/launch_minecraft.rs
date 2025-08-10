@@ -31,10 +31,10 @@ pub async fn launch_minecraft(
 
         println!("Version {version} found locally, skipping download checks...");
     } else {
-        // Online mode - check if version exists online first
+        // Online mode - check if a version exists online first
         println!("Checking version {version} availability online...");
 
-        // Try to prepare version (download if needed)
+        // Try to prepare a version (download if needed)
         match launcher.prepare_version(&version).await {
             Ok(_) => {
                 println!("Version {version} prepared successfully");
@@ -42,7 +42,7 @@ pub async fn launch_minecraft(
             Err(e) => {
                 error!("Failed to prepare version: {e}");
 
-                // Check if we have it offline as fallback
+                // Check if we have it offline as a fallback
                 let version_dir = launcher.get_game_dir().join("versions").join(&version);
                 if version_dir.exists() {
                     println!("Found version offline, attempting to use local version...");
