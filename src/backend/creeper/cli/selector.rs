@@ -26,7 +26,7 @@ pub async fn interactive_mode(launcher: &mut MinecraftLauncher) -> anyhow::Resul
                 println!("{}", style("Goodbye!").bold().green());
                 break;
             }
-            _ => unreachable!(),
+            _ => return Err(anyhow::anyhow!("Invalid selection")),
         }
         println!();
     }

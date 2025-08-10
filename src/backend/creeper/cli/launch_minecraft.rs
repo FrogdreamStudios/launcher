@@ -19,18 +19,15 @@ pub async fn launch_minecraft(
         }
     };
 
-    info!("Launching Minecraft version: {}", version);
+    info!("Launching Minecraft version: {version}");
 
     if offline {
         // Check if a version exists locally
         let version_dir = launcher.get_game_dir().join("versions").join(&version);
         if !version_dir.exists() {
-            error!(
-                "Version {} not found locally. Available offline versions:",
-                version
-            );
+            error!("Version {version} not found locally. Available offline versions:");
             crate::backend::creeper::cli::selector::list_offline_versions(launcher).await?;
-            return Err(anyhow::anyhow!("Version {} not available offline", version));
+            return Err(anyhow::anyhow!("Version {version} not available offline"));
         }
     } else {
         // Check if Java is available

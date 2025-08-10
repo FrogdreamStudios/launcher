@@ -44,7 +44,7 @@ impl MinecraftLauncher {
 
         // Load cached manifest or fetch new one
         if let Err(e) = launcher.load_cached_manifest().await {
-            warn!("Failed to load cached manifest: {}", e);
+            warn!("Failed to load cached manifest: {e}");
             launcher.update_manifest().await?;
         } else if launcher.manifest.is_none() {
             info!("No cached manifest found, fetching from Mojang...");
@@ -111,11 +111,8 @@ impl MinecraftLauncher {
             Err(e) => {
                 // For modern versions requiring Java 21+, try x86_64 as fallback
                 if required_java >= 21 {
-                    warn!("Native Java {} installation failed: {}", required_java, e);
-                    warn!(
-                        "Attempting to install x86_64 Java {} as fallback...",
-                        required_java
-                    );
+                    warn!("Native Java {required_java} installation failed: {e}");
+                    warn!("Attempting to install x86_64 Java {required_java} as fallback...");
 
                     match self
                         .java_manager
@@ -123,21 +120,15 @@ impl MinecraftLauncher {
                         .await
                     {
                         Ok(()) => {
-                            info!(
-                                "Successfully installed x86_64 Java {} as fallback",
-                                required_java
-                            );
+                            info!("Successfully installed x86_64 Java {required_java} as fallback");
                             Ok(())
                         }
                         Err(x86_err) => {
                             error!("Both native and x86_64 Java installation failed");
-                            error!("Native error: {}", e);
-                            error!("x86_64 error: {}", x86_err);
+                            error!("Native error: {e}");
+                            error!("x86_64 error: {x86_err}");
                             Err(anyhow::anyhow!(
-                                "Failed to install Java {}: native installation failed ({}), x86_64 fallback also failed ({})",
-                                required_java,
-                                e,
-                                x86_err
+                                "Failed to install Java {required_java}: native installation failed ({e}), x86_64 fallback also failed ({x86_err})"
                             ))
                         }
                     }

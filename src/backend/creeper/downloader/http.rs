@@ -66,7 +66,7 @@ impl HttpDownloader {
             .get("content-type")
             .and_then(|v| v.to_str().ok())
             .unwrap_or("unknown");
-        debug!("Content-Type: {}", content_type);
+        debug!("Content-Type: {content_type}");
 
         // Warn if content type doesn't match expected archive format
         if url.contains("java")
@@ -210,9 +210,7 @@ impl HttpDownloader {
                     retries += 1;
                     if retries > MAX_RETRIES {
                         return Err(anyhow::anyhow!(
-                            "Failed to fetch {} after {} retries: HTTP 429 Too Many Requests",
-                            url,
-                            MAX_RETRIES
+                            "Failed to fetch {url} after {MAX_RETRIES} retries: HTTP 429 Too Many Requests"
                         ));
                     }
 

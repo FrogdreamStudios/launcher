@@ -1,6 +1,7 @@
 use crate::backend::utils::assets::AssetLoader;
 use crate::frontend::components::minecraft_launcher::launch_minecraft;
 use crate::frontend::game_state::GameStatus;
+use anyhow::Result;
 use dioxus::prelude::*;
 
 #[derive(Props, Clone, PartialEq)]
@@ -45,7 +46,7 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
 
     let handle_run_click = move |e: Event<MouseData>| {
         e.stop_propagation();
-        println!("Run clicked - launching Minecraft 1.21.8");
+        println!("Run clicked, launching Minecraft 1.21.8");
         show.set(false);
         // Start Minecraft launch after menu closes
         spawn(async move {
@@ -62,7 +63,7 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
         spawn(async move {
             tokio::time::sleep(std::time::Duration::from_millis(160)).await;
             if let Err(e) = open_game_folder().await {
-                println!("Failed to open game folder: {}", e);
+                println!("Failed to open game folder: {e}");
             }
         });
     };
@@ -134,7 +135,7 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
 }
 
 /// Open the Minecraft game folder in the system file explorer
-async fn open_game_folder() -> Result<(), Box<dyn std::error::Error>> {
+async fn open_game_folder() -> Result<()> {
     use std::process::Command;
 
     // Get the Minecraft directory path
@@ -143,16 +144,16 @@ async fn open_game_folder() -> Result<(), Box<dyn std::error::Error>> {
 
     // Check if directory exists
     if !std::path::Path::new(&minecraft_dir).exists() {
-        return Err("Minecraft directory not found".into());
+        return Err(anyhow::anyhow!("Minecraft directory not found"));
     }
 
     // Open in Finder on macOS
     let output = Command::new("open").arg(&minecraft_dir).output()?;
 
     if !output.status.success() {
-        return Err("Failed to open folder".into());
+        return Err(anyhow::anyhow!("Failed to open folder"));
     }
 
-    println!("Opened Minecraft folder: {}", minecraft_dir);
+    println!("Opened Minecraft folder: {minecraft_dir}");
     Ok(())
 }

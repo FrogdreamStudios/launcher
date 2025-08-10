@@ -131,8 +131,7 @@ impl JavaRuntime {
         }
 
         Err(anyhow::anyhow!(
-            "Could not parse Java version from: {}",
-            version_line
+            "Could not parse Java version from: {version_line}"
         ))
     }
 
@@ -216,17 +215,11 @@ impl JavaRuntime {
 
     /// Get required Java version for Minecraft version.
     pub fn get_required_java_version(minecraft_version: &str) -> u8 {
-        info!(
-            "Determining Java version for Minecraft {}",
-            minecraft_version
-        );
+        info!("Determining Java version for Minecraft {minecraft_version}");
 
         // Handle snapshots and pre-releases first
         if Self::is_modern_snapshot_or_prerelease(minecraft_version) {
-            info!(
-                "Detected modern snapshot/pre-release: {} -> Java 21",
-                minecraft_version
-            );
+            info!("Detected modern snapshot/pre-release: {minecraft_version} -> Java 21");
             return 21; // Modern snapshots require Java 21
         }
 

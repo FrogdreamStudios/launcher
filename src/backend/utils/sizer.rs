@@ -1,4 +1,6 @@
-pub fn calculate_directory_size(path: &std::path::Path) -> Result<u64, std::io::Error> {
+use anyhow::Result;
+
+pub fn calculate_directory_size(path: &std::path::Path) -> Result<u64> {
     if path.is_file() {
         return Ok(path.metadata()?.len());
     }

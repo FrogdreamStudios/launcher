@@ -41,8 +41,7 @@ impl JavaManager {
         let needs_x86_64 = self.needs_x86_64_java(minecraft_version);
 
         info!(
-            "Minecraft version {} requires Java {} (x86_64: {})",
-            minecraft_version, required_java, needs_x86_64
+            "Minecraft version {minecraft_version} requires Java {required_java} (x86_64: {needs_x86_64})"
         );
 
         // Check if we already have a compatible runtime
@@ -106,8 +105,7 @@ impl JavaManager {
         // Download and install required Java
         if needs_x86_64 {
             info!(
-                "Downloading x86_64 Java {} runtime for Minecraft {}",
-                required_java, minecraft_version
+                "Downloading x86_64 Java {required_java} runtime for Minecraft {minecraft_version}"
             );
 
             match self.install_x86_64_java_runtime(required_java).await {
@@ -117,13 +115,12 @@ impl JavaManager {
                         Ok((runtime.get_executable_path(), true))
                     } else {
                         Err(anyhow::anyhow!(
-                            "Failed to install x86_64 Java {} runtime",
-                            required_java
+                            "Failed to install x86_64 Java {required_java} runtime"
                         ))
                     }
                 }
                 Err(e) => {
-                    warn!("Failed to download x86_64 Java {}: {}", required_java, e);
+                    warn!("Failed to download x86_64 Java {required_java}: {e}");
                     warn!("Attempting to use system Java as fallback...");
 
                     // Try system Java as fallback
@@ -147,8 +144,7 @@ impl JavaManager {
                     }
 
                     Err(anyhow::anyhow!(
-                        "Failed to install x86_64 Java {} and no compatible system Java found",
-                        required_java
+                        "Failed to install x86_64 Java {required_java} and no compatible system Java found"
                     ))
                 }
             }
