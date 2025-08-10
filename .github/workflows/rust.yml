@@ -80,9 +80,6 @@ jobs:
       - name: Install Node.js dependencies
         run: npm install
 
-      - name: Build CSS assets
-        run: npm run build:css || echo "CSS build failed, will be handled by build.rs"
-
       - name: Build
         shell: bash
         run: |
