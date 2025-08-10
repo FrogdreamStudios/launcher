@@ -1,3 +1,5 @@
+//! Java runtime management and utilities.
+
 use anyhow::{Context, Result};
 use std::collections::HashMap;
 use std::fs;
@@ -83,7 +85,7 @@ impl JavaManager {
             None
         };
 
-        // Remove invalid runtime from cache if needed
+        // Remove invalid runtime from the cache if needed
         if let Some(version) = invalid_runtime_version {
             if needs_x86_64 {
                 self.x86_64_runtimes.remove(&version);
@@ -105,7 +107,7 @@ impl JavaManager {
             return Ok((system_java.get_executable_path(), false));
         }
 
-        // Download and install required Java
+        // Download and install the required Java
         if needs_x86_64 {
             info!(
                 "Downloading x86_64 Java {required_java} runtime for Minecraft {minecraft_version}"
@@ -126,7 +128,7 @@ impl JavaManager {
                     warn!("Failed to download x86_64 Java {required_java}: {e}");
                     warn!("Attempting to use system Java as fallback...");
 
-                    // Try system Java as fallback
+                    // Try system Java as a fallback
                     if let Some(mut system_java) = JavaRuntime::detect_system_java()? {
                         if system_java.is_compatible_with_minecraft(required_java) {
                             info!(
@@ -169,7 +171,7 @@ impl JavaManager {
                 Err(e) => {
                     warn!("Failed to download native Java {}: {}", required_java, e);
 
-                    // For modern versions requiring Java 21, try x86_64 as fallback
+                    // For modern versions requiring Java 21, try x86_64 as a fallback
                     if required_java >= 21 {
                         warn!(
                             "Attempting to download x86_64 Java {} as fallback...",
@@ -193,7 +195,7 @@ impl JavaManager {
 
                     warn!("Attempting to use system Java as fallback...");
 
-                    // Try system Java as fallback
+                    // Try system Java as a fallback
                     if let Some(mut system_java) = JavaRuntime::detect_system_java()? {
                         if system_java.is_compatible_with_minecraft(required_java) {
                             info!(
@@ -383,7 +385,7 @@ impl JavaManager {
             return Err(e);
         }
 
-        // Verify downloaded file
+        // Verify the downloaded file
         let file_size = get_file_size(&download_path).await?;
         info!("Downloaded Java {java_version} archive: {file_size} bytes");
 
@@ -485,7 +487,7 @@ impl JavaManager {
             return Err(e);
         }
 
-        // Verify downloaded file
+        // Verify the downloaded file
         let file_size = async_fs::metadata(&download_path).await?.len();
         info!(
             "Downloaded x86_64 Java {} archive: {} bytes",
@@ -719,7 +721,7 @@ impl JavaManager {
     fn find_java_executable(&self, java_dir: &Path) -> Result<PathBuf> {
         let executable_name = if cfg!(windows) { "java.exe" } else { "java" };
 
-        // Look in common locations within the Java installation
+        // Look for common locations within the Java installation
         let possible_paths = vec![
             java_dir.join("bin").join(executable_name),
             java_dir

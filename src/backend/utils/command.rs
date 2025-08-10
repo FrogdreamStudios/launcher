@@ -1,3 +1,38 @@
+//! Minecraft command building utilities.
+//!
+//! Tools and utilities for constructing Java commands to launch Minecraft.
+//! JVM arguments, game arguments, classpath construction, variable substitution, platform-specific
+//! configurations (such as Rosetta support on macOS), and compatibility settings for different
+//! Minecraft versions (from legacy pre-1.6 to modern 1.17+).
+//!
+//! #### Example:
+//! ```rust
+//! use anyhow::Result;
+//! use std::path::PathBuf;
+//! use crate::backend::creeper::models::VersionDetails;
+//! use crate::backend::command::CommandBuilder;
+//!
+//! fn main() -> Result<()> {
+//!     let builder = CommandBuilder::new()
+//!         .java_path(PathBuf::from("/path/to/java"))
+//!         .game_dir(PathBuf::from("/path/to/.minecraft"))
+//!         .version_details(VersionDetails { /* ... */ })
+//!         .username("Player".to_string())
+//!         .uuid("uuid-here".to_string())
+//!         .access_token("token-here".to_string())
+//!         .assets_dir(PathBuf::from("/path/to/assets"))
+//!         .libraries(vec![/* library paths */])
+//!         .main_jar(PathBuf::from("/path/to/minecraft.jar"))
+//!         .java_major_version(17)
+//!         .use_rosetta(false);
+//!
+//!     let mc_command = builder.build()?;
+//!     let command = mc_command.build()?;
+//!     command.spawn()?;
+//!     Ok(())
+//! }
+//! ```
+
 use anyhow::Result;
 use std::path::PathBuf;
 use std::process::Command;
@@ -9,22 +44,24 @@ use crate::backend::utils::paths::{get_classpath_separator, get_natives_dir};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
+/// Configuration structure for building Minecraft commands.
 pub struct CommandConfig {
-    pub java_path: PathBuf,
-    pub game_dir: PathBuf,
-    pub version_details: VersionDetails,
-    pub username: String,
-    pub uuid: String,
-    pub access_token: String,
-    pub user_type: String,
-    pub version_type: String,
-    pub assets_dir: PathBuf,
-    pub libraries: Vec<PathBuf>,
-    pub main_jar: PathBuf,
-    pub java_major_version: u8,
-    pub use_rosetta: bool,
+    pub java_path: PathBuf,              // The absolute path to the Java executable
+    pub game_dir: PathBuf,               // The Minecraft game directory
+    pub version_details: VersionDetails, // Detailed information about the Minecraft version being launched
+    pub username: String,                // The player's nickname (defaults to "Player" in offline mode)
+    pub uuid: String,                    // The player's UUID (defaults to a zero UUID in offline mode)
+    pub access_token: String,            // Authentication token for online mode (defaults to "null" in offline mode)
+    pub user_type: String,               // Type of user account (e.g., "mojang" or "msa" for Microsoft)
+    pub version_type: String,            // Type of version (e.g., "release", "snapshot")
+    pub assets_dir: PathBuf,             // Directory for Minecraft assets
+    pub libraries: Vec<PathBuf>,         // List of library JAR paths to include in the classpath
+    pub main_jar: PathBuf,               // Path to the main Minecraft JAR file
+    pub java_major_version: u8,          // Major version of Java being used for compatibility adjustments
+    pub use_rosetta: bool,               // Flag to enable Rosetta 2 emulation on macOS ARM64 for x86_64 compatibility
 }
 
+/// Main command builder for Minecraft launch commands.
 pub struct MinecraftCommand {
     java_path: PathBuf,
     game_dir: PathBuf,
@@ -43,6 +80,8 @@ pub struct MinecraftCommand {
 }
 
 impl MinecraftCommand {
+
+    /// Initializes the command builder with the provided config and computes the natives directory.
     pub fn new(config: CommandConfig) -> Self {
         let natives_dir = get_natives_dir(&config.game_dir, &config.version_details.id);
 
@@ -64,27 +103,28 @@ impl MinecraftCommand {
         }
     }
 
+    /// Builds the complete Java command to launch Minecraft.
     pub fn build(&self) -> Result<Command> {
         let mut cmd = if self.use_rosetta && cfg!(target_os = "macos") {
             // Create simple wrapper script for Rosetta with window activation
             let script_content = format!(
-                r#"#!/bin/bash
-export LSUIElement=0
-export NSHighResolutionCapable=true
-export JAVA_STARTED_ON_FIRST_THREAD_1=1
-export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+            r#"#!/bin/bash
+            export LSUIElement=0
+            export NSHighResolutionCapable=true
+            export JAVA_STARTED_ON_FIRST_THREAD_1=1
+            export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
 
-# Launch Java with Rosetta
-arch -x86_64 "{}" "$@" &
-JAVA_PID=$!
+            # Launch Java with Rosetta
+            arch -x86_64 "{}" "$@" &
+            JAVA_PID=$!
 
-# Wait for window creation and activate it
-sleep 3
-osascript -e 'tell application "System Events" to set frontmost of every process whose name contains "java" to true' 2>/dev/null || true
+            # Wait for window creation and activate it
+            sleep 3
+            osascript -e 'tell application "System Events" to set frontmost of every process whose name contains "java" to true' 2>/dev/null || true
 
-# Wait for process to complete
-wait $JAVA_PID
-"#,
+            # Wait for process to complete
+            wait $JAVA_PID
+            "#,
                 self.java_path.display()
             );
 
@@ -148,19 +188,18 @@ wait $JAVA_PID
         // Add game arguments
         self.add_game_arguments(&mut cmd)?;
 
-        // Set working directory
+        // Set the working directory
         cmd.current_dir(&self.game_dir);
 
         Ok(cmd)
     }
 
+    /// Adds JVM arguments to the command.
     fn add_jvm_arguments(&self, cmd: &mut Command) -> Result<()> {
         // Add classpath
         let classpath = self.build_classpath();
         cmd.arg("-cp");
         cmd.arg(classpath);
-
-        // Natives directory will be set in add_default_jvm_args to avoid duplicates
 
         // Add launcher name and version
         cmd.arg("-Dminecraft.launcher.brand=DreamLauncher");
@@ -179,6 +218,10 @@ wait $JAVA_PID
         Ok(())
     }
 
+    /// Adds game arguments to the command.
+    ///
+    /// Handles both modern (post-1.13 with structured arguments) and legacy (pre-1.13 with string-based arguments) formats.
+    /// For legacy, it substitutes variables and parses the string while preserving quoted parts.
     fn add_game_arguments(&self, cmd: &mut Command) -> Result<()> {
         if let Some(arguments) = &self.version_details.arguments {
             // Modern argument format (1.13+)
@@ -220,6 +263,9 @@ wait $JAVA_PID
         Ok(())
     }
 
+    /// Processes a single argument, handling strings and conditionals.
+    ///
+    /// Substitutes variables and adds to the command if the argument is a string or if conditional rules evaluate to true.
     fn process_argument(&self, cmd: &mut Command, arg: &ArgumentValue, is_jvm: bool) -> Result<()> {
         match arg {
             ArgumentValue::String(s) => {
@@ -253,6 +299,7 @@ wait $JAVA_PID
         Ok(())
     }
 
+    /// Checks if all rules match based on OS name, architecture, and features.
     fn evaluate_rules(&self, rules: &[crate::backend::creeper::models::Rule]) -> bool {
         let os_name = get_minecraft_os_name();
         let os_arch = get_minecraft_arch();
@@ -267,14 +314,17 @@ wait $JAVA_PID
         true
     }
 
+    /// Substitutes variables in a string with actual values.
     fn substitute_variables(&self, input: &str, is_jvm: bool) -> String {
         let mut result = input.to_string();
 
-        // Game directory - DO NOT quote as it breaks path resolution
+        // Game directory.
+        // WARNING: do NOT quote this path
         let game_dir_str = self.game_dir.display().to_string();
         result = result.replace("${game_directory}", &game_dir_str);
 
-        // Assets - DO NOT quote assets directory as it breaks path resolution
+        // Assets
+        // WARNING: do NOT quote this path
         let assets_dir_str = self.assets_dir.display().to_string();
         result = result.replace("${assets_root}", &assets_dir_str);
         result = result.replace("${assets_index_name}", &self.version_details.assets);
@@ -316,7 +366,7 @@ wait $JAVA_PID
         // Legacy auth session support (for very old versions like 1.0-1.5.x)
         result = result.replace("${auth_session}", &self.access_token);
 
-        // User properties - Minecraft expects this as a JSON object
+        // User properties. Minecraft expects this as a JSON object
         // For offline mode, we provide an empty JSON object
         result = result.replace("${user_properties}", "{}");
 
@@ -328,7 +378,8 @@ wait $JAVA_PID
         result = result.replace("${launcher_name}", "DreamLauncher");
         result = result.replace("${launcher_version}", "1.0.0-beta.1");
 
-        // Natives directory (JVM only) - DO NOT quote
+        // Natives directory (JVM only)
+        // WARNING: do NOT quote this path
         if is_jvm {
             let natives_dir_str = self.natives_dir.display().to_string();
             result = result.replace("${natives_directory}", &natives_dir_str);
@@ -342,6 +393,8 @@ wait $JAVA_PID
         result
     }
 
+    /// Substitutes variables in legacy argument strings.
+    /// Similar to `substitute_variables`, but specifically for legacy arguments.
     fn substitute_legacy_arguments(&self, args: &str) -> String {
         let mut result = args.to_string();
 
@@ -402,13 +455,14 @@ wait $JAVA_PID
         };
         result = result.replace("${game_assets}", &game_assets_quoted);
 
-        // User properties - Minecraft expects this as a JSON object
+        // User properties. Minecraft expects this as a JSON object
         // For offline mode, we provide an empty JSON object
         result = result.replace("${user_properties}", "{}");
 
         result
     }
 
+    /// Combines library paths and the main JAR, joined by the platform-specific separator.
     fn build_classpath(&self) -> String {
         let separator = get_classpath_separator();
         let mut classpath = Vec::new();
@@ -424,21 +478,22 @@ wait $JAVA_PID
         classpath.join(separator)
     }
 
+    /// Adds default JVM arguments based on version and platform.
     fn add_default_jvm_args(&self, cmd: &mut Command) {
         // Determine optimal memory settings based on version
         let is_modern_version = self.version_details.id.as_str() >= "1.17";
 
         if is_modern_version {
-            // Modern versions (1.17+) need more memory
-            cmd.arg("-Xms1G");
-            cmd.arg("-Xmx4G");
+            // Modern versions (1.17+) need more memory, so we will use these settings for our betas
+            cmd.arg("-Xms128M");
+            cmd.arg("-Xmx4096M");
         } else {
-            // Older versions work fine with less memory
+            // Older versions (pre-1.17) need less memory, so we will use these settings
             cmd.arg("-Xms512M");
             cmd.arg("-Xmx2G");
         }
 
-        // Conservative GC settings for better compatibility
+        // Conservative GC settings
         cmd.arg("-XX:+UseG1GC");
         cmd.arg("-XX:MaxGCPauseMillis=200");
         cmd.arg("-XX:G1HeapRegionSize=16M");
@@ -623,6 +678,7 @@ wait $JAVA_PID
     }
 }
 
+/// Builder pattern for creating MinecraftCommand instances.
 pub struct CommandBuilder {
     java_path: Option<PathBuf>,
     game_dir: Option<PathBuf>,
@@ -640,6 +696,7 @@ pub struct CommandBuilder {
 }
 
 impl CommandBuilder {
+    /// Creates a new CommandBuilder with default values.
     pub fn new() -> Self {
         Self {
             java_path: None,
@@ -658,71 +715,88 @@ impl CommandBuilder {
         }
     }
 
+    /// Sets the Java executable path.
     pub fn java_path(mut self, path: PathBuf) -> Self {
         self.java_path = Some(path);
         self
     }
 
+    /// Sets the game directory.
     pub fn game_dir(mut self, dir: PathBuf) -> Self {
         self.game_dir = Some(dir);
         self
     }
 
+    /// Sets the version details.
     pub fn version_details(mut self, details: VersionDetails) -> Self {
         self.version_details = Some(details);
         self
     }
 
+    /// Sets the username.
     pub fn username(mut self, name: String) -> Self {
         self.username = Some(name);
         self
     }
 
+    /// Sets the UUID.
     pub fn uuid(mut self, id: String) -> Self {
         self.uuid = Some(id);
         self
     }
 
+    /// Sets the access token.
     pub fn access_token(mut self, token: String) -> Self {
         self.access_token = Some(token);
         self
     }
 
+    /// Sets the user type.
     pub fn user_type(mut self, user_type: String) -> Self {
         self.user_type = user_type;
         self
     }
 
+    /// Sets the version type (e.g., "release", "snapshot").
     pub fn version_type(mut self, version_type: String) -> Self {
         self.version_type = version_type;
         self
     }
 
+    /// Sets the assets directory.
     pub fn assets_dir(mut self, dir: PathBuf) -> Self {
         self.assets_dir = Some(dir);
         self
     }
 
+    /// Sets the list of library paths.
     pub fn libraries(mut self, libs: Vec<PathBuf>) -> Self {
         self.libraries = libs;
         self
     }
 
+    /// Sets the main JAR path.
     pub fn main_jar(mut self, main_jar: PathBuf) -> Self {
         self.main_jar = Some(main_jar);
         self
     }
 
+    /// Sets the Java major version.
     pub fn java_major_version(mut self, java_major_version: u8) -> Self {
         self.java_major_version = Some(java_major_version);
         self
     }
 
+    /// Sets whether to use Rosetta on macOS.
     pub fn use_rosetta(mut self, use_rosetta: bool) -> Self {
         self.use_rosetta = use_rosetta;
         self
     }
 
+    /// Builds a MinecraftCommand from the configured parameters.
+    ///
+    /// Validates that all required fields are set, applies defaults for optional ones,
+    /// and constructs the `CommandConfig` to pass to `MinecraftCommand::new`.
     pub fn build(self) -> Result<MinecraftCommand> {
         let config = CommandConfig {
             java_path: self

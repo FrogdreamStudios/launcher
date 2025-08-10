@@ -1,3 +1,5 @@
+//! HTTP downloader implementation with progress tracking.
+
 use super::progress::ProgressTracker;
 use crate::backend::creeper::downloader::models::DownloadTask;
 use crate::backend::utils::file_utils::{ensure_parent_directory, verify_file};
@@ -11,6 +13,7 @@ use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tracing::{debug, warn};
 
+/// HTTP downloader with progress tracking and file verification.
 pub struct HttpDownloader {
     client: Client,
 }
@@ -18,12 +21,13 @@ pub struct HttpDownloader {
 impl Default for HttpDownloader {
     fn default() -> Self {
         Self::new().unwrap_or_else(|_| Self {
-            client: reqwest::Client::new(),
+            client: Client::new(),
         })
     }
 }
 
 impl HttpDownloader {
+    /// Creates a new HTTP downloader with configured timeouts.
     pub fn new() -> Result<Self> {
         let client = Client::builder()
             .timeout(Duration::from_secs(30))
@@ -34,6 +38,7 @@ impl HttpDownloader {
         Ok(Self { client })
     }
 
+    /// Downloads a single file with optional SHA1 verification and progress tracking.
     pub async fn download_file(
         &self,
         url: &str,
@@ -41,7 +46,7 @@ impl HttpDownloader {
         expected_sha1: Option<&str>,
         mut tracker: Option<&mut ProgressTracker>,
     ) -> Result<()> {
-        // Check if file already exists and has correct hash
+        // Check if the file already exists and has the correct hash
         if verify_file(destination, None, expected_sha1).await? {
             debug!("File already exists with correct hash: {destination:?}");
             return Ok(());

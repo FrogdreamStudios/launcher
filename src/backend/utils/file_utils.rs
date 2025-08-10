@@ -1,3 +1,8 @@
+//! File system utilities for common operations.
+//!
+//! This module provides async file operations including directory creation,
+//! file verification with SHA1 hashing, and Minecraft-specific file checks.
+
 use anyhow::Result;
 use sha1::{Digest, Sha1};
 use std::path::Path;
@@ -23,7 +28,7 @@ pub async fn ensure_parent_directory<P: AsRef<Path>>(file_path: P) -> Result<()>
     Ok(())
 }
 
-/// Checks if a file exists and optionally verifies its size and SHA1 hash
+/// Checks if a file exists and optionally verifies its size and SHA1 hash.
 pub async fn verify_file<P: AsRef<Path>>(
     path: P,
     expected_size: Option<u64>,
@@ -94,6 +99,8 @@ pub async fn get_file_size<P: AsRef<Path>>(path: P) -> Result<u64> {
 /// Checks if a directory contains the expected files for a Minecraft version.
 pub fn is_minecraft_version_complete<P: AsRef<Path>>(version_dir: P, version_name: &str) -> bool {
     let version_dir = version_dir.as_ref();
+    
+    // Check for both required files
     let jar_file = version_dir.join(format!("{version_name}.jar"));
     let json_file = version_dir.join(format!("{version_name}.json"));
 

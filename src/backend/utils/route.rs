@@ -1,3 +1,5 @@
+//! Application routing system.
+
 use crate::frontend::chats::main::Chat;
 use crate::frontend::ui::auth::main::Auth;
 use crate::frontend::ui::launcher::main::Main;
@@ -5,7 +7,6 @@ use crate::frontend::ui::launcher::main::Main;
 use dioxus::prelude::*;
 use dioxus_router::Routable;
 
-// Empty page components
 #[component]
 pub fn Home() -> Element {
     rsx! { div {} }
@@ -31,22 +32,30 @@ pub fn New() -> Element {
     rsx! { div {} }
 }
 
+/// Main routing enum for the application.
 #[derive(Clone, Routable, Debug, PartialEq)]
 pub enum Route {
+    /// Authentication page route.
     #[route("/auth")]
     Auth {},
+    /// Main layout wrapper with home page as default.
     #[layout(Main)]
     #[redirect("/", || Route::Home {})]
     #[route("/home")]
     Home {},
+    /// Mod packs management page.
     #[route("/packs")]
     Packs {},
+    /// Application settings page.
     #[route("/settings")]
     Settings {},
+    /// Cloud storage management page.
     #[route("/cloud")]
     Cloud {},
+    /// New instance creation page.
     #[route("/new")]
     New {},
+    /// Chat page with dynamic username parameter.
     #[route("/chat/:username")]
     Chat { username: String },
 }

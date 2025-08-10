@@ -1,3 +1,5 @@
+//! Core Minecraft launcher implementation.
+
 use anyhow::Result;
 use std::path::PathBuf;
 use std::process::Stdio;
@@ -14,6 +16,7 @@ use crate::backend::utils::os::{
 };
 use crate::backend::utils::paths::*;
 
+/// Main Minecraft launcher that handles downloading and launching game instances.
 pub struct MinecraftLauncher {
     downloader: HttpDownloader,
     java_manager: JavaManager,
@@ -23,10 +26,15 @@ pub struct MinecraftLauncher {
 }
 
 impl MinecraftLauncher {
+    /// Gets the game directory path.
     pub fn get_game_dir(&self) -> &PathBuf {
         &self.game_dir
     }
 
+    /// Creates a new MinecraftLauncher instance.
+    ///
+    /// Initializes the launcher with proper directories and loads
+    /// the version manifest from cache or downloads it fresh.
     pub async fn new(custom_game_dir: Option<PathBuf>) -> Result<Self> {
         let game_dir = get_game_dir(custom_game_dir)?;
         let cache_dir = get_cache_dir()?;
@@ -42,7 +50,7 @@ impl MinecraftLauncher {
             manifest: None,
         };
 
-        // Load cached manifest or fetch new one
+        // Load cached manifest or fetched a new one
         if let Err(e) = launcher.load_cached_manifest().await {
             warn!("Failed to load cached manifest: {e}");
             launcher.update_manifest().await?;
@@ -109,7 +117,7 @@ impl MinecraftLauncher {
         match self.java_manager.install_java_runtime(required_java).await {
             Ok(()) => Ok(()),
             Err(e) => {
-                // For modern versions requiring Java 21+, try x86_64 as fallback
+                // For modern versions requiring Java 21+, try x86_64 as a fallback
                 if required_java >= 21 {
                     warn!("Native Java {required_java} installation failed: {e}");
                     warn!("Attempting to install x86_64 Java {required_java} as fallback...");
@@ -142,7 +150,7 @@ impl MinecraftLauncher {
     pub async fn prepare_version(&self, version_id: &str) -> Result<()> {
         info!("Preparing Minecraft version: {version_id}");
 
-        // Check if version already exists offline
+        // Check if a version already exists offline
         if self.is_version_ready_offline(version_id)? {
             info!("Version {version_id} is already prepared offline");
             return Ok(());
@@ -220,7 +228,7 @@ impl MinecraftLauncher {
             ));
         }
 
-        // Test Java version and get major version
+        // Test the Java version and get a major version
         self.test_java_version(&java_path)?;
         let java_major_version = self.get_java_major_version(&java_path)?;
 
@@ -289,10 +297,10 @@ impl MinecraftLauncher {
 
         // Add window debugging for macOS
         if cfg!(target_os = "macos") {
-            // Wait a moment for process to initialize
+            // Wait a moment for the process to initialize
             tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
 
-            // Check if Java process is running and what windows it has
+            // Check if the Java process is running and what windows it has
             let pid = child.id();
             let _ = std::process::Command::new("ps")
                 .args(["-p", &pid.to_string(), "-o", "pid,ppid,state,comm"])
@@ -309,7 +317,7 @@ impl MinecraftLauncher {
                     info!("Java processes: {}", String::from_utf8_lossy(&output.stdout));
                 });
 
-            // Try to find Minecraft window
+            // Try to find the Minecraft window
             let _ = std::process::Command::new("osascript")
                 .args(["-e", "tell application \"System Events\" to get name of every window of every process"])
                 .output()
@@ -345,7 +353,7 @@ impl MinecraftLauncher {
             tokio::spawn(async move {
                 use std::io::BufRead;
                 for line in reader.lines().map_while(Result::ok) {
-                    // Look for specific macOS/window related errors
+                    // Look for specific macOS / window-related errors
                     if line.contains("NSWindow")
                         || line.contains("display")
                         || line.contains("OpenGL")
@@ -391,7 +399,7 @@ impl MinecraftLauncher {
                             );
                         });
 
-                    // Try to bring any Java windows to front
+                    // Try to bring any Java windows to the front
                     let _ = std::process::Command::new("osascript")
                         .args(["-e", "tell application \"System Events\" to set frontmost of first process whose name contains \"java\" to true"])
                         .output()
@@ -487,7 +495,7 @@ impl MinecraftLauncher {
                 continue;
             }
 
-            // Download main artifact
+            // Download the main artifact
             if let Some(artifact) = &library.downloads.artifact
                 && let Some(path) = &artifact.path
             {
@@ -588,7 +596,7 @@ impl MinecraftLauncher {
                             info!("Native already exists ({classifier}): {native_path:?}");
                         }
                         found_native = true;
-                        break; // Use first matching classifier
+                        break; // Use the first matching classifier
                     }
                 }
 
@@ -777,7 +785,7 @@ impl MinecraftLauncher {
                                     );
                                 }
                             }
-                            break; // Only extract first matching classifier
+                            break; // Only extract the first matching classifier
                         } else {
                             debug!(
                                 "Native library not found ({}) for {}: {:?}",
@@ -1030,7 +1038,7 @@ impl MinecraftLauncher {
                         true // If we can't parse, assume we need virtual assets
                     }
                 } else {
-                    true // If version format is unexpected, assume we need virtual assets
+                    true // If a version format is unexpected, assume we need virtual assets
                 }
             }
         };
@@ -1076,10 +1084,10 @@ impl MinecraftLauncher {
 
             let asset_path = get_asset_path(&self.game_dir, &asset.hash);
 
-            // Create parent directory if needed
+            // Create a parent directory if needed
             ensure_parent_directory(&virtual_path).await?;
 
-            // Copy or link the asset to virtual location if it doesn't exist
+            // Copy or link the asset to a virtual location if it doesn't exist
             if !virtual_path.exists() && asset_path.exists() {
                 match tokio::fs::copy(&asset_path, &virtual_path).await {
                     Ok(_) => {
@@ -1107,7 +1115,7 @@ impl MinecraftLauncher {
     async fn verify_installation(&self, version_details: &VersionDetails) -> Result<()> {
         info!("Verifying installation for version {}", version_details.id);
 
-        // Check main jar
+        // Check the main jar
         let main_jar = get_version_jar_path(&self.game_dir, &version_details.id);
         if !main_jar.exists() {
             warn!("Main jar missing: {main_jar:?}");
@@ -1118,7 +1126,7 @@ impl MinecraftLauncher {
         let natives_dir = get_natives_dir(&self.game_dir, &version_details.id);
         if !natives_dir.exists() {
             warn!("Natives directory missing: {natives_dir:?}");
-            // Try to create empty natives directory
+            // Try to create an empty natives directory
             ensure_directory(&natives_dir).await?;
             info!("Created empty natives directory");
         }
@@ -1215,7 +1223,7 @@ impl MinecraftLauncher {
         let version_info = String::from_utf8_lossy(&output.stderr);
         info!("Java version info: {version_info}");
 
-        // Extract major version for better compatibility checking
+        // Extract a major version for better compatibility checking
         let major_version = self.get_java_major_version(java_path).unwrap_or(8);
 
         // Provide version-specific guidance

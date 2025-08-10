@@ -1,9 +1,12 @@
+//! Version selection and interactive CLI utilities.
+
 use crate::backend::creeper::cli::launch_minecraft::launch_minecraft;
 use crate::backend::creeper::cli::launch_minecraft::update_manifest;
 use crate::backend::creeper::launcher::MinecraftLauncher;
 use crate::backend::utils::file_utils::is_minecraft_version_complete;
 use std::io::{self, Write};
 
+/// Runs the interactive CLI mode with main menu options.
 pub async fn interactive_mode(launcher: &mut MinecraftLauncher) -> anyhow::Result<()> {
     let options = [
         "Launch Minecraft",
@@ -42,6 +45,7 @@ pub async fn interactive_mode(launcher: &mut MinecraftLauncher) -> anyhow::Resul
     Ok(())
 }
 
+/// Provides interactive version selection with type filtering.
 pub async fn select_version(launcher: &MinecraftLauncher) -> anyhow::Result<String> {
     let versions = launcher.get_available_versions().await?;
     let types = [

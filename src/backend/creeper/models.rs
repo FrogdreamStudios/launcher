@@ -1,18 +1,26 @@
+//! Core data models for Minecraft launcher functionality.
+//!
+//! This module contains all the data structures used to represent
+//! Minecraft versions, libraries, assets, and other game metadata.
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+/// Main version manifest from Mojang containing all available versions.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct VersionManifest {
     pub latest: LatestVersions,
     pub versions: Vec<VersionInfo>,
 }
 
+/// Latest version information for release and snapshot.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LatestVersions {
     pub release: String,
     pub snapshot: String,
 }
 
+/// Basic information about a Minecraft version.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct VersionInfo {
     pub id: String,
@@ -24,6 +32,7 @@ pub struct VersionInfo {
     pub release_time: String,
 }
 
+/// Detailed version information including libraries and arguments.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct VersionDetails {
     pub id: String,
@@ -46,12 +55,14 @@ pub struct VersionDetails {
     pub java_version: Option<JavaVersion>,
 }
 
+/// Command line arguments for game and JVM.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Arguments {
     pub game: Vec<ArgumentValue>,
     pub jvm: Vec<ArgumentValue>,
 }
 
+/// Argument value that can be a string or conditional based on rules.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum ArgumentValue {
@@ -62,6 +73,7 @@ pub enum ArgumentValue {
     },
 }
 
+/// Inner argument value that can be a string or array.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum ArgumentValueInner {
@@ -69,6 +81,7 @@ pub enum ArgumentValueInner {
     Array(Vec<String>),
 }
 
+/// Rule for conditional arguments and library inclusion.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Rule {
     pub action: String,
@@ -76,6 +89,7 @@ pub struct Rule {
     pub features: Option<HashMap<String, bool>>,
 }
 
+/// Operating system rule for platform-specific conditions.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct OsRule {
     pub name: Option<String>,
@@ -83,6 +97,7 @@ pub struct OsRule {
     pub arch: Option<String>,
 }
 
+/// Library dependency with download information and rules.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Library {
     pub name: String,
@@ -92,12 +107,14 @@ pub struct Library {
     pub extract: Option<ExtractRules>,
 }
 
+/// Download information for library artifacts.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LibraryDownloads {
     pub artifact: Option<Artifact>,
     pub classifiers: Option<HashMap<String, Artifact>>,
 }
 
+/// Downloadable artifact with hash and size information.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Artifact {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -107,11 +124,13 @@ pub struct Artifact {
     pub url: String,
 }
 
+/// Rules for extracting native libraries.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ExtractRules {
     pub exclude: Option<Vec<String>>,
 }
 
+/// Download information for client and server JARs.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Downloads {
     pub client: Option<Artifact>,
@@ -122,6 +141,7 @@ pub struct Downloads {
     pub server_mappings: Option<Artifact>,
 }
 
+/// Asset index containing information about game assets.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AssetIndex {
     pub id: String,
@@ -132,6 +152,7 @@ pub struct AssetIndex {
     pub url: String,
 }
 
+/// Java version requirement for Minecraft.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct JavaVersion {
     pub component: String,
@@ -139,11 +160,13 @@ pub struct JavaVersion {
     pub major_version: u8,
 }
 
+/// Manifest containing all asset objects for a version.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AssetManifest {
     pub objects: HashMap<String, AssetObject>,
 }
 
+/// Individual asset object with hash and size.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AssetObject {
     pub hash: String,
@@ -151,15 +174,18 @@ pub struct AssetObject {
 }
 
 impl VersionManifest {
+    /// URL to download the official version manifest.
     pub const MANIFEST_URL: &'static str =
         "https://launchermeta.mojang.com/mc/game/version_manifest.json";
 
+    /// Finds a version by its ID.
     pub fn get_version(&self, version_id: &str) -> Option<&VersionInfo> {
         self.versions.iter().find(|v| v.id == version_id)
     }
 }
 
 impl Rule {
+    /// Checks if this rule matches the current platform and features.
     pub fn matches(&self, os_name: &str, os_arch: &str, features: &HashMap<String, bool>) -> bool {
         let mut matches = true;
 
@@ -190,6 +216,7 @@ impl Rule {
 }
 
 impl Library {
+    /// Determines if this library should be used on the current platform.
     pub fn should_use(
         &self,
         os_name: &str,
