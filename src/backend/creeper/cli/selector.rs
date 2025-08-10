@@ -2,8 +2,7 @@ use crate::backend::creeper::cli::launch_minecraft::launch_minecraft;
 use crate::backend::creeper::cli::launch_minecraft::update_manifest;
 use crate::backend::creeper::launcher::MinecraftLauncher;
 use crate::backend::utils::file_utils::is_minecraft_version_complete;
-use console::style;
-use dialoguer::{Confirm, Select};
+use std::io::{self, Write};
 
 pub async fn interactive_mode(launcher: &mut MinecraftLauncher) -> anyhow::Result<()> {
     let options = [
@@ -13,23 +12,32 @@ pub async fn interactive_mode(launcher: &mut MinecraftLauncher) -> anyhow::Resul
         "Delete instances",
         "Exit",
     ];
+
     loop {
-        match Select::new()
-            .with_prompt("What would you like to do?")
-            .items(&options)
-            .interact()?
-        {
-            0 => launch_minecraft(launcher, None, false).await?,
-            1 => list_versions_interactive(launcher).await?,
-            2 => update_manifest(launcher).await?,
-            3 => crate::backend::creeper::cli::utils::remover::remove_instances(launcher).await?,
-            4 => {
-                println!("{}", style("Goodbye!").bold().green());
+        println!("\nWhat would you like to do?");
+        for (i, option) in options.iter().enumerate() {
+            println!("  {}. {}", i + 1, option);
+        }
+
+        print!("Enter your choice (1-5): ");
+        io::stdout().flush()?;
+
+        let mut input = String::new();
+        io::stdin().read_line(&mut input)?;
+
+        let choice = input.trim().parse::<usize>().unwrap_or(0);
+
+        match choice {
+            1 => launch_minecraft(launcher, None, false).await?,
+            2 => list_versions_interactive(launcher).await?,
+            3 => update_manifest(launcher).await?,
+            4 => crate::backend::creeper::cli::utils::remover::remove_instances(launcher).await?,
+            5 => {
+                println!("Goodbye!");
                 break;
             }
-            _ => return Err(anyhow::anyhow!("Invalid selection")),
+            _ => println!("Invalid selection. Please enter 1-5."),
         }
-        println!();
     }
     Ok(())
 }
@@ -54,10 +62,16 @@ pub async fn select_version(launcher: &MinecraftLauncher) -> anyhow::Result<Stri
         .collect();
     let type_options = [type_options, vec!["Show all versions".to_string()]].concat();
 
-    let type_selection = Select::new()
-        .with_prompt("Select version type")
-        .items(&type_options)
-        .interact()?;
+    println!("\nSelect version type:");
+    for (i, option) in type_options.iter().enumerate() {
+        println!("  {}. {}", i + 1, option);
+    }
+    print!("Enter your choice: ");
+    io::stdout().flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+    let type_selection = input.trim().parse::<usize>().unwrap_or(1).saturating_sub(1);
     let filtered: Vec<_> = if type_selection < 4 {
         versions
             .iter()
@@ -75,10 +89,20 @@ pub async fn select_version(launcher: &MinecraftLauncher) -> anyhow::Result<Stri
         .iter()
         .map(|v| format!("{} [{}]", v.id, v.version_type))
         .collect();
-    let version_selection = Select::new()
-        .with_prompt("Select Minecraft version")
-        .items(&version_items)
-        .interact()?;
+    println!("\nSelect Minecraft version:");
+    for (i, item) in version_items.iter().enumerate() {
+        println!("  {}. {}", i + 1, item);
+        if i >= 19 && version_items.len() > 20 {
+            println!("  ... and {} more", version_items.len() - 20);
+            break;
+        }
+    }
+    print!("Enter your choice: ");
+    io::stdout().flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+    let version_selection = input.trim().parse::<usize>().unwrap_or(1).saturating_sub(1);
     Ok(filtered[version_selection].id.clone())
 }
 
@@ -125,17 +149,23 @@ pub async fn select_offline_version(launcher: &MinecraftLauncher) -> anyhow::Res
         ));
     }
 
-    let version_items: Vec<_> = offline_versions
-        .iter()
-        .map(|v| format!("{v} [offline]"))
-        .collect();
+    println!("\nSelect offline version:");
+    for (i, version) in offline_versions.iter().enumerate() {
+        println!("  {}. {} [offline]", i + 1, version);
+    }
 
-    let version_selection = Select::new()
-        .with_prompt("Select Minecraft version")
-        .items(&version_items)
-        .interact()?;
+    print!("Enter your choice: ");
+    io::stdout().flush()?;
 
-    Ok(offline_versions[version_selection].clone())
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+
+    let choice = input.trim().parse::<usize>().unwrap_or(1);
+    if choice < 1 || choice > offline_versions.len() {
+        return Err(anyhow::anyhow!("Invalid selection"));
+    }
+
+    Ok(offline_versions[choice - 1].clone())
 }
 
 pub async fn list_versions_interactive(launcher: &MinecraftLauncher) -> anyhow::Result<()> {
@@ -151,10 +181,16 @@ pub async fn list_versions_interactive(launcher: &MinecraftLauncher) -> anyhow::
         .map(|(_, name)| *name)
         .chain(std::iter::once("All versions"))
         .collect();
-    let type_selection = Select::new()
-        .with_prompt("Which versions to show?")
-        .items(&type_options)
-        .interact()?;
+    println!("\nWhich versions to show?");
+    for (i, option) in type_options.iter().enumerate() {
+        println!("  {}. {}", i + 1, option);
+    }
+    print!("Enter your choice: ");
+    io::stdout().flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+    let type_selection = input.trim().parse::<usize>().unwrap_or(1).saturating_sub(1);
 
     let filtered: Vec<_> = if type_selection < 4 {
         versions
@@ -165,38 +201,27 @@ pub async fn list_versions_interactive(launcher: &MinecraftLauncher) -> anyhow::
         versions.iter().collect()
     };
 
-    println!(
-        "{}",
-        style(format!(
-            "Available {} versions:",
-            type_options[type_selection]
-        ))
-        .bold()
-    );
+    println!("Available {} versions:", type_options[type_selection]);
     println!();
 
     for (i, version) in filtered.iter().enumerate() {
-        let color = match version.version_type.as_str() {
-            "release" => style(&version.version_type).green(),
-            "snapshot" => style(&version.version_type).yellow(),
-            "old_beta" => style(&version.version_type).blue(),
-            "old_alpha" => style(&version.version_type).red(),
-            _ => style(&version.version_type).white(),
-        };
-        println!(
-            "  {}. {} [{}]",
-            style(i + 1).dim(),
-            style(&version.id).bold(),
-            color
-        );
+        let version_type = &version.version_type;
+        println!("  {}. {} [{}]", i + 1, &version.id, version_type);
 
-        if i >= 19
-            && filtered.len() > 20
-            && !Confirm::new()
-                .with_prompt(format!("Show remaining {} versions?", filtered.len() - 20))
-                .interact()?
-        {
-            break;
+        if i >= 19 && filtered.len() > 20 {
+            print!("Show remaining {} versions? (y/n): ", filtered.len() - 20);
+            io::stdout().flush().unwrap_or(());
+
+            let mut input = String::new();
+            if io::stdin().read_line(&mut input).is_ok() {
+                let show_more =
+                    input.trim().to_lowercase() == "y" || input.trim().to_lowercase() == "yes";
+                if !show_more {
+                    break;
+                }
+            } else {
+                break;
+            }
         }
     }
     Ok(())

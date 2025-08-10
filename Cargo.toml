@@ -27,22 +27,15 @@ tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 reqwest = { version = "0.12.22", features = [
     "json",
     "stream",
-    "rustls-tls",
+    "native-tls",
 ], default-features = false }
 futures-util = { version = "0.3.31", default-features = false, features = [
     "std",
 ] }
-zip = { version = "4.3.0", default-features = false, features = ["deflate"] }
 flate2 = { version = "1.1.2", default-features = false, features = [
     "rust_backend",
 ] }
 tar = { version = "0.4.44", default-features = false }
-clap = { version = "4.4.42", features = [
-    "derive",
-    "std",
-], default-features = false }
-dialoguer = { version = "0.11.0", default-features = false }
-console = { version = "0.16.0", default-features = false, features = ["std"] }
 sha1 = "0.11.0-rc.0"
 dirs = "6.0.0"
 hex = "0.4.3"
@@ -51,7 +44,7 @@ tracing = "0.1.41"
 anyhow = "1.0.98"
 image = { version = "0.25.6", default-features = false, features = ["png"] }
 tao = "0.34.0"
-pulldown-cmark = "0.13.0"
+zip = { version = "4.3.0", default-features = false, features = ["deflate"] }
 
 [build-dependencies]
 winres = "0.1.12"

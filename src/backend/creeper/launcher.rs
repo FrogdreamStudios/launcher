@@ -1,5 +1,4 @@
 use anyhow::Result;
-use console::style;
 use std::path::PathBuf;
 use std::process::Stdio;
 use tracing::{debug, error, info, warn};
@@ -251,7 +250,7 @@ impl MinecraftLauncher {
 
         let mut cmd = minecraft_cmd.build()?;
 
-        println!("{}", style("Starting Minecraft...").green().bold());
+        println!("Starting Minecraft...");
         info!("Full command: {cmd:?}");
 
         // Add macOS window debugging
@@ -406,7 +405,7 @@ impl MinecraftLauncher {
         };
 
         if status.success() {
-            println!("{}", style("Minecraft exited successfully").green());
+            println!("Minecraft exited successfully");
         } else {
             error!("Minecraft exited with code: {:?}", status.code());
             return Err(anyhow::anyhow!(

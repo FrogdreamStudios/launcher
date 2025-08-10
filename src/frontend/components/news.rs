@@ -1,10 +1,63 @@
 use dioxus::prelude::*;
-use pulldown_cmark::{Event, Parser, Tag, TagEnd};
 
 #[derive(Debug, Clone)]
 struct NewsItem {
     date: String,
     content: String,
+}
+
+fn markdown_to_html(markdown: &str) -> String {
+    let mut html = String::new();
+    let lines: Vec<&str> = markdown.lines().collect();
+    let mut in_paragraph = false;
+
+    for line in lines {
+        let trimmed = line.trim();
+
+        if trimmed.is_empty() {
+            if in_paragraph {
+                html.push_str("</p>\n");
+                in_paragraph = false;
+            }
+            continue;
+        }
+
+        // Handle headers
+        if trimmed.starts_with("# ") {
+            if in_paragraph {
+                html.push_str("</p>\n");
+                in_paragraph = false;
+            }
+            html.push_str(&format!("<h1>{}</h1>\n", &trimmed[2..]));
+        } else if trimmed.starts_with("## ") {
+            if in_paragraph {
+                html.push_str("</p>\n");
+                in_paragraph = false;
+            }
+            html.push_str(&format!("<h2>{}</h2>\n", &trimmed[3..]));
+        } else if trimmed.starts_with("### ") {
+            if in_paragraph {
+                html.push_str("</p>\n");
+                in_paragraph = false;
+            }
+            html.push_str(&format!("<h3>{}</h3>\n", &trimmed[4..]));
+        } else {
+            // Regular text - treat as paragraph
+            if !in_paragraph {
+                html.push_str("<p>");
+                in_paragraph = true;
+            } else {
+                html.push(' ');
+            }
+            html.push_str(trimmed);
+        }
+    }
+
+    if in_paragraph {
+        html.push_str("</p>\n");
+    }
+
+    html
 }
 
 fn parse_markdown() -> Vec<NewsItem> {
@@ -36,32 +89,8 @@ fn parse_markdown() -> Vec<NewsItem> {
             })
             .unwrap_or_else(|| "Unknown date".to_string());
 
-        // Parse markdown content to HTML
-        let parser = Parser::new(content_md);
-        let mut html_content = String::new();
-
-        for event in parser {
-            match event {
-                Event::Start(Tag::Heading { level, .. }) => match level {
-                    pulldown_cmark::HeadingLevel::H1 => html_content.push_str("<h1>"),
-                    pulldown_cmark::HeadingLevel::H2 => html_content.push_str("<h2>"),
-                    pulldown_cmark::HeadingLevel::H3 => html_content.push_str("<h3>"),
-                    _ => html_content.push_str("<h4>"),
-                },
-                Event::End(TagEnd::Heading(level)) => match level {
-                    pulldown_cmark::HeadingLevel::H1 => html_content.push_str("</h1>"),
-                    pulldown_cmark::HeadingLevel::H2 => html_content.push_str("</h2>"),
-                    pulldown_cmark::HeadingLevel::H3 => html_content.push_str("</h3>"),
-                    _ => html_content.push_str("</h4>"),
-                },
-                Event::Start(Tag::Paragraph) => html_content.push_str("<p>"),
-                Event::End(TagEnd::Paragraph) => html_content.push_str("</p>"),
-                Event::Text(text) => html_content.push_str(&text),
-                Event::SoftBreak => html_content.push(' '),
-                Event::HardBreak => html_content.push_str("<br>"),
-                _ => {}
-            }
-        }
+        // Convert markdown to HTML using simple parser
+        let html_content = markdown_to_html(content_md);
 
         if !html_content.is_empty() {
             news_items.push(NewsItem {

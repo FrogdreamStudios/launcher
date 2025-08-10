@@ -1,7 +1,6 @@
 use crate::backend::creeper::launcher::MinecraftLauncher;
-use console::style;
-use dialoguer::Confirm;
-use tracing::{error, info};
+use std::io::{self, Write};
+use tracing::{error, info, warn};
 
 pub async fn launch_minecraft(
     launcher: &mut MinecraftLauncher,
@@ -29,30 +28,65 @@ pub async fn launch_minecraft(
             crate::backend::creeper::cli::selector::list_offline_versions(launcher).await?;
             return Err(anyhow::anyhow!("Version {version} not available offline"));
         }
+
+        println!("Version {version} found locally, skipping download checks...");
     } else {
-        // Check if Java is available
-        if !launcher.is_java_available(&version).await? {
-            if Confirm::new()
-                .with_prompt(format!("Java runtime not found for {version}. Install it?"))
-                .interact()?
-            {
-                launcher.install_java(&version).await?;
-            } else {
-                error!("Cannot launch without Java runtime");
-                return Ok(());
+        // Online mode - check if version exists online first
+        println!("Checking version {version} availability online...");
+
+        // Try to prepare version (download if needed)
+        match launcher.prepare_version(&version).await {
+            Ok(_) => {
+                println!("Version {version} prepared successfully");
+            }
+            Err(e) => {
+                error!("Failed to prepare version: {e}");
+
+                // Check if we have it offline as fallback
+                let version_dir = launcher.get_game_dir().join("versions").join(&version);
+                if version_dir.exists() {
+                    println!("Found version offline, attempting to use local version...");
+                } else {
+                    return Err(anyhow::anyhow!(
+                        "Version {version} not available online or offline"
+                    ));
+                }
             }
         }
-        if let Err(e) = launcher.prepare_version(&version).await {
-            error!("Failed to prepare version: {e}");
-            println!("Trying to launch...");
+
+        // Check if Java is available
+        if !launcher.is_java_available(&version).await? {
+            print!(
+                "Java runtime not found for {}. Install it? (y/n): ",
+                version
+            );
+            io::stdout().flush()?;
+
+            let mut input = String::new();
+            io::stdin().read_line(&mut input)?;
+
+            let install =
+                input.trim().to_lowercase() == "y" || input.trim().to_lowercase() == "yes";
+
+            if install {
+                match launcher.install_java(&version).await {
+                    Ok(_) => println!("Java installed successfully"),
+                    Err(e) => {
+                        warn!("Failed to install Java: {e}");
+                        println!("Continuing without Java installation - may cause launch issues");
+                    }
+                }
+            } else {
+                println!("Continuing without Java installation - may cause launch issues");
+            }
         }
     }
     launcher.launch(&version).await
 }
 
 pub async fn update_manifest(launcher: &mut MinecraftLauncher) -> anyhow::Result<()> {
-    println!("{}", style("Updating version manifest...").bold());
+    println!("Updating version manifest...");
     launcher.update_manifest().await?;
-    println!("{}", style("Manifest updated successfully").green());
+    println!("Manifest updated successfully");
     Ok(())
 }

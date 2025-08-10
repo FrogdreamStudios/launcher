@@ -15,12 +15,20 @@ pub struct HttpDownloader {
     client: Client,
 }
 
+impl Default for HttpDownloader {
+    fn default() -> Self {
+        Self::new().unwrap_or_else(|_| Self {
+            client: reqwest::Client::new(),
+        })
+    }
+}
+
 impl HttpDownloader {
     pub fn new() -> Result<Self> {
         let client = Client::builder()
-            .use_rustls_tls()
-            .timeout(Duration::from_secs(60))
-            .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+            .timeout(Duration::from_secs(30))
+            .connect_timeout(Duration::from_secs(10))
+            .user_agent("DreamLauncher/1.0.0")
             .build()?;
 
         Ok(Self { client })
@@ -48,26 +56,9 @@ impl HttpDownloader {
 
         if !response.status().is_success() {
             return Err(anyhow::anyhow!(
-                "Failed to download {}: HTTP {}",
-                url,
+                "Failed to download {url}: HTTP {}",
                 response.status()
             ));
-        }
-
-        // Log response headers for debugging
-        let content_type = response
-            .headers()
-            .get("content-type")
-            .and_then(|v| v.to_str().ok())
-            .unwrap_or("unknown");
-        debug!("Content-Type: {content_type}");
-
-        // Warn if content type doesn't match expected archive format
-        if url.contains("java")
-            && !content_type.contains("application/")
-            && !content_type.contains("octet-stream")
-        {
-            warn!("Unexpected content type for Java archive: {content_type}");
         }
 
         let total_size = response.content_length();
@@ -107,14 +98,14 @@ impl HttpDownloader {
             return Err(anyhow::anyhow!("Downloaded file is empty: {url}"));
         }
 
-        // For Java archives, do a basic format check
+        // Verify archive format for Java downloads
         if (url.contains("java") || destination.to_string_lossy().contains("java"))
             && let Err(e) = self.verify_archive_format(destination).await
         {
-            warn!("Archive format verification failed: {e}");
+            warn!("Archive format verification failed for {url}: {e}");
         }
 
-        // Verify hash if provided
+        // Verify SHA1 if provided
         if let (Some(expected), Some(hasher)) = (expected_sha1, hasher) {
             let computed_hash = hex::encode(hasher.finalize());
             if computed_hash != expected {
@@ -123,10 +114,7 @@ impl HttpDownloader {
                     "Hash mismatch for {url}: expected {expected}, got {computed_hash}"
                 ));
             }
-        }
-
-        if let Some(tracker) = tracker {
-            tracker.complete();
+            debug!("SHA1 verification passed for {url}");
         }
 
         Ok(())
@@ -137,16 +125,18 @@ impl HttpDownloader {
         downloads: Vec<DownloadTask>,
         max_concurrent: usize,
     ) -> Result<()> {
-        use futures_util::stream::{self, StreamExt};
-
         let semaphore = std::sync::Arc::new(tokio::sync::Semaphore::new(max_concurrent));
+        let mut handles = Vec::new();
 
-        let tasks = downloads.into_iter().map(|task| {
+        for task in downloads {
             let client = self.client.clone();
             let semaphore = semaphore.clone();
 
-            async move {
-                let _permit = semaphore.acquire().await?;
+            let handle = tokio::spawn(async move {
+                let _permit = semaphore
+                    .acquire()
+                    .await
+                    .map_err(|e| anyhow::anyhow!("Semaphore error: {e}"))?;
 
                 let downloader = HttpDownloader { client };
                 downloader
@@ -157,13 +147,16 @@ impl HttpDownloader {
                         None,
                     )
                     .await
-            }
-        });
+            });
 
-        let mut stream = stream::iter(tasks).buffer_unordered(max_concurrent);
+            handles.push(handle);
+        }
 
-        while let Some(result) = stream.next().await {
-            result?; // Propagate errors instead of just warning
+        // Wait for all downloads to complete
+        for handle in handles {
+            handle
+                .await
+                .map_err(|e| anyhow::anyhow!("Task join error: {e}"))??;
         }
 
         Ok(())
@@ -173,37 +166,46 @@ impl HttpDownloader {
     where
         T: serde::de::DeserializeOwned,
     {
-        debug!("Fetching JSON from {url}");
-
-        // Try with retries for rate limiting
+        const MAX_RETRIES: usize = 3;
         let mut retries = 0;
-        const MAX_RETRIES: u32 = 3;
 
         loop {
-            let response = self.client.get(url).send().await?;
+            match self.client.get(url).send().await {
+                Ok(response) => match response.status() {
+                    reqwest::StatusCode::OK => {
+                        let json = response.json::<T>().await?;
+                        return Ok(json);
+                    }
+                    reqwest::StatusCode::TOO_MANY_REQUESTS => {
+                        retries += 1;
+                        if retries > MAX_RETRIES {
+                            return Err(anyhow::anyhow!(
+                                "Failed to fetch {url} after {MAX_RETRIES} retries: HTTP 429 Too Many Requests"
+                            ));
+                        }
 
-            match response.status() {
-                reqwest::StatusCode::OK => {
-                    let json = response.json::<T>().await?;
-                    return Ok(json);
-                }
-                reqwest::StatusCode::TOO_MANY_REQUESTS => {
+                        let wait_time = Duration::from_secs(2_u64.pow(retries as u32));
+                        warn!(
+                            "Rate limited, waiting {wait_time:?} before retry {retries}/{MAX_RETRIES}"
+                        );
+                        tokio::time::sleep(wait_time).await;
+                        continue;
+                    }
+                    status => {
+                        return Err(anyhow::anyhow!("HTTP {status} for {url}"));
+                    }
+                },
+                Err(e) => {
                     retries += 1;
                     if retries > MAX_RETRIES {
                         return Err(anyhow::anyhow!(
-                            "Failed to fetch {url} after {MAX_RETRIES} retries: HTTP 429 Too Many Requests"
+                            "Network error after {MAX_RETRIES} retries for {url}: {e}"
                         ));
                     }
 
-                    let wait_time = Duration::from_secs(1 + (retries as u64));
-                    warn!(
-                        "Rate limited, waiting {wait_time:?} before retry {retries}/{MAX_RETRIES}"
-                    );
-                    tokio::time::sleep(wait_time).await;
+                    warn!("Network error, retrying {retries}/{MAX_RETRIES} for {url}: {e}");
+                    tokio::time::sleep(Duration::from_secs(1 + retries as u64)).await;
                     continue;
-                }
-                status => {
-                    return Err(anyhow::anyhow!("Failed to fetch {url}: HTTP {status}"));
                 }
             }
         }
@@ -220,50 +222,28 @@ impl HttpDownloader {
         }
 
         // Check for known archive formats
-        if header[0] == 0x50 && header[1] == 0x4B {
-            // ZIP format (PK header)
-            debug!("Detected ZIP format");
-            Ok(())
-        } else if header[0] == 0x1F && header[1] == 0x8B {
-            // GZIP format
-            debug!("Detected GZIP format");
-            Ok(())
-        } else {
-            // Could be a different format or corrupted
-            debug!(
-                "Unknown format - header: {:02X} {:02X} {:02X} {:02X}",
-                header[0], header[1], header[2], header[3]
-            );
-            Err(anyhow::anyhow!(
-                "Unrecognized archive format. Header: {:02X} {:02X} {:02X} {:02X}",
-                header[0],
-                header[1],
-                header[2],
-                header[3]
-            ))
+        match &header {
+            // ZIP signature
+            [0x50, 0x4B, 0x03, 0x04] | [0x50, 0x4B, 0x05, 0x06] | [0x50, 0x4B, 0x07, 0x08] => {
+                debug!("Detected ZIP archive format");
+                Ok(())
+            }
+            // TAR.GZ signature (gzip magic number)
+            [0x1F, 0x8B, _, _] => {
+                debug!("Detected TAR.GZ archive format");
+                Ok(())
+            }
+            // TAR signature (check at offset 257)
+            _ => {
+                let mut tar_header = [0u8; 5];
+                let _ = file.read_exact(&mut tar_header).await;
+                if &tar_header == b"ustar" {
+                    debug!("Detected TAR archive format");
+                    Ok(())
+                } else {
+                    Err(anyhow::anyhow!("Unknown archive format"))
+                }
+            }
         }
-    }
-}
-
-impl Default for HttpDownloader {
-    fn default() -> Self {
-        Self::new().unwrap_or_else(|_| Self {
-            client: reqwest::Client::new(),
-        })
-    }
-}
-
-impl DownloadTask {
-    pub fn new(url: String, destination: std::path::PathBuf) -> Self {
-        Self {
-            url,
-            destination,
-            expected_sha1: None,
-        }
-    }
-
-    pub fn with_sha1(mut self, sha1: String) -> Self {
-        self.expected_sha1 = Some(sha1);
-        self
     }
 }

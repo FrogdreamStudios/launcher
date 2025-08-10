@@ -1,7 +1,6 @@
 use crate::backend::creeper::launcher::MinecraftLauncher;
-use console::style;
-use dialoguer::Confirm;
 use std::fs;
+use std::io::{self, Write};
 use std::path::PathBuf;
 
 pub(crate) async fn remove_instances(launcher: &MinecraftLauncher) -> anyhow::Result<()> {
@@ -9,11 +8,8 @@ pub(crate) async fn remove_instances(launcher: &MinecraftLauncher) -> anyhow::Re
     use crate::backend::utils::paths::*;
     use crate::backend::utils::sizer::calculate_directory_size;
 
-    println!("{}", style("Delete Instances").bold().red());
-    println!(
-        "{}",
-        style("This will delete ALL files created by this launcher!").yellow()
-    );
+    println!("Delete Instances");
+    println!("This will delete all files created by this launcher!");
 
     let game_dir = launcher.get_game_dir();
 
@@ -42,7 +38,7 @@ pub(crate) async fn remove_instances(launcher: &MinecraftLauncher) -> anyhow::Re
     paths_to_delete.retain(|(_, path)| path.exists());
 
     if paths_to_delete.is_empty() {
-        println!("{}", style("No launcher files found to delete").green());
+        println!("No launcher files found to delete");
         return Ok(());
     }
 
@@ -52,40 +48,36 @@ pub(crate) async fn remove_instances(launcher: &MinecraftLauncher) -> anyhow::Re
         .map(|(_, path)| calculate_directory_size(path).unwrap_or(0))
         .sum();
 
-    println!("{}", style("The following paths will be deleted:").bold());
+    println!("The following paths will be deleted:");
     for (name, path) in &paths_to_delete {
-        println!(
-            "  {} {}",
-            style("•").red(),
-            style(format!("{}: {}", name, path.display())).dim()
-        );
+        println!("  • {}: {}", name, path.display());
     }
-    println!(
-        "\nTotal size: {}",
-        style(format_size(total_size as f64)).bold()
-    );
+    println!("\nTotal size: {}", format_size(total_size as f64));
 
-    if !Confirm::new()
-        .with_prompt("Are you sure you want to delete all these files?")
-        .default(false)
-        .interact()?
-    {
-        println!("{}", style("Deletion cancelled").yellow());
+    print!("Are you sure you want to delete all these files? (y/N): ");
+    io::stdout().flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+
+    let confirm = input.trim().to_lowercase() == "y" || input.trim().to_lowercase() == "yes";
+    if !confirm {
+        println!("Deletion cancelled");
         return Ok(());
     }
 
-    println!("{}", style("Deleting files...").yellow());
+    println!("Deleting files...");
     let (mut deleted, mut failed) = (0, 0);
 
     for (name, path) in paths_to_delete {
         print!("Deleting {name}... ");
         match fs::remove_dir_all(&path) {
             Ok(_) => {
-                println!("{}", style("OK").green());
+                println!("OK");
                 deleted += 1;
             }
             Err(e) => {
-                println!("{} ({})", style("Failed").red(), e);
+                println!("Failed ({e})");
                 failed += 1;
             }
         }
@@ -94,20 +86,12 @@ pub(crate) async fn remove_instances(launcher: &MinecraftLauncher) -> anyhow::Re
     println!();
     if failed == 0 {
         println!(
-            "{}",
-            style(format!(
-                "Successfully deleted {} directories ({})!",
-                deleted,
-                format_size(total_size as f64)
-            ))
-            .green()
-            .bold()
+            "Successfully deleted {} directories ({})!",
+            deleted,
+            format_size(total_size as f64)
         );
     } else {
-        println!(
-            "{}",
-            style(format!("Deleted {deleted} directories, {failed} failed")).yellow()
-        );
+        println!("Deleted {deleted} directories, {failed} failed");
     }
     Ok(())
 }
