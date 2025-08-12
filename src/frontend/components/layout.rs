@@ -181,8 +181,30 @@ pub fn Layout() -> Element {
                     }
                 }
 
+                // Temporarily
+                /*
                 div {
                     class: if !animations_played() { "play-together play-animate" } else { "play-together" }
+                }
+                */
+
+                // Temporary
+                div {
+                    style: "
+                        position: absolute;
+                        width: 192px;
+                        height: 339px;
+                        left: 32px;
+                        top: 413px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-family: 'Gilroy-Medium', Helvetica, Arial, sans-serif;
+                        font-size: 14px;
+                        color: #6f6f6f;
+                        user-select: none;
+                    ",
+                    "No shared connections."
                 }
 
                 News { animations_played: animations_played() }
