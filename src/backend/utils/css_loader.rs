@@ -9,6 +9,31 @@ use std::sync::OnceLock;
 /// Global cache for storing loaded CSS styles.
 static CSS_CACHE: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
 
+/// Macro to generate CSS entry with embedded content.
+macro_rules! css_entry {
+    ($name:literal, $path:literal) => {
+        (
+            $name,
+            include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/assets/styles/",
+                $path
+            )),
+        )
+    };
+}
+
+/// Macro to generate CSS getter methods.
+macro_rules! css_getter {
+    ($fn_name:ident, $style_name:literal, $doc:literal) => {
+        #[doc = $doc]
+        #[inline(always)]
+        pub fn $fn_name() -> &'static str {
+            Self::get($style_name).unwrap_or("")
+        }
+    };
+}
+
 /// CSS loader that manages embedded stylesheets.
 ///
 /// All CSS files are embedded at compile time and cached for fast access.
@@ -16,90 +41,22 @@ pub struct CssLoader;
 
 impl CssLoader {
     /// Initializes the CSS cache with all embedded stylesheets.
-    ///
-    /// This loads all CSS files into memory for fast access.
     pub fn init() {
         let styles = [
-            (
-                "base",
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/assets/styles/base.css"
-                )),
-            ),
-            (
-                "animations",
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/assets/styles/animations.css"
-                )),
-            ),
-            (
-                "logo",
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/assets/styles/components/logo.css"
-                )),
-            ),
-            (
-                "navigation",
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/assets/styles/components/navigation.css"
-                )),
-            ),
-            (
-                "chat",
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/assets/styles/components/chat.css"
-                )),
-            ),
-            (
-                "home",
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/assets/styles/components/home.css"
-                )),
-            ),
-            (
-                "news",
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/assets/styles/components/news.css"
-                )),
-            ),
-            (
-                "auth",
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/assets/styles/auth.css"
-                )),
-            ),
-            (
-                "context_menu",
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/assets/styles/components/context_menu.css"
-                )),
-            ),
-            (
-                "debug",
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/assets/styles/components/debug.css"
-                )),
-            ),
-            (
-                "tailwind",
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/assets/styles/output.css"
-                )),
-            ),
+            css_entry!("base", "base.css"),
+            css_entry!("animations", "animations.css"),
+            css_entry!("auth", "auth.css"),
+            css_entry!("tailwind", "output.css"),
+            css_entry!("logo", "components/logo.css"),
+            css_entry!("navigation", "components/navigation.css"),
+            css_entry!("chat", "components/chat.css"),
+            css_entry!("home", "components/home.css"),
+            css_entry!("news", "components/news.css"),
+            css_entry!("context_menu", "components/context_menu.css"),
+            css_entry!("debug", "components/debug.css"),
         ];
-        let cache: HashMap<_, _> = styles.into_iter().collect();
-        let _ = CSS_CACHE.set(cache);
+
+        let _ = CSS_CACHE.set(styles.into_iter().collect());
     }
 
     /// Returns a CSS style by name.
@@ -112,14 +69,12 @@ impl CssLoader {
     pub fn combine(styles: &[&str]) -> String {
         styles
             .iter()
-            .map(|&name| Self::get(name).unwrap_or(""))
+            .filter_map(|&name| Self::get(name))
             .collect::<Vec<_>>()
             .join("\n")
     }
 
     /// Gets all main application styles combined into one string.
-    ///
-    /// Includes base styles, animations, components, and Tailwind CSS.
     pub fn get_combined_main() -> String {
         Self::combine(&[
             "base",
@@ -136,36 +91,22 @@ impl CssLoader {
     }
 
     /// Gets authentication page styles combined into one string.
-    ///
-    /// Includes auth-specific styles and Tailwind CSS.
     pub fn get_combined_auth() -> String {
         Self::combine(&["auth", "tailwind"])
     }
 
-    /// Returns chat component CSS.
-    #[inline(always)]
-    pub fn get_chat() -> &'static str {
-        Self::get("chat").unwrap_or("")
-    }
+    css_getter!(get_chat, "chat", "Returns chat component CSS.");
 }
 
 /// Macro to include multiple styles at compile time.
-///
-/// This macro provides a convenient way to load multiple CSS styles
-/// in a single call.
 #[macro_export]
 macro_rules! include_styles {
     ($($style:expr),*) => {
-        {
-            $crate::utils::css_loader::CssLoader::combine(&[$($style),*])
-        }
+        $crate::backend::utils::css_loader::CssLoader::combine(&[$($style),*])
     };
 }
 
 /// Ensures that CSS styles are loaded into a cache.
-///
-/// This function checks if styles are already loaded and initializes
-/// them if they haven't been loaded yet. Safe to call multiple times.
 pub fn ensure_css_loaded() {
     if CSS_CACHE.get().is_none() {
         CssLoader::init();
