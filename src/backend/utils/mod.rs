@@ -13,13 +13,9 @@ pub mod command;
 pub mod css_loader;
 /// File system operations and utilities.
 pub mod file_utils;
-/// File size formatting utilities.
-pub mod formater;
 /// OS detection and compatibility.
 pub mod os;
 /// Path utilities for Minecraft directories.
 pub mod paths;
 /// Application routing system.
 pub mod route;
-/// Directory size calculation utility.
-pub mod sizer;

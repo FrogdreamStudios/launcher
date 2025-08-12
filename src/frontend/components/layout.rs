@@ -2,10 +2,16 @@ use crate::backend::utils::assets::AssetLoader;
 use crate::backend::utils::css_loader::CssLoader;
 use crate::backend::utils::route::Route;
 use crate::frontend::components::{
-    chat_sidebar::ChatSidebar, context_menu::ContextMenu, minecraft_launcher::launch_minecraft,
-    navigation::Navigation, news::News, standalone_logo::StandaloneLogo,
+    chat_sidebar::ChatSidebar,
+    context_menu::ContextMenu,
+    debug_window::{DebugWindow, use_version_selection},
+    minecraft_launcher::launch_minecraft,
+    navigation::Navigation,
+    news::News,
+    standalone_logo::StandaloneLogo,
 };
 use crate::frontend::game_state::use_game_state;
+use dioxus::prelude::Key;
 use dioxus::prelude::*;
 use dioxus_router::{components::Outlet, use_route};
 
@@ -24,6 +30,10 @@ pub fn Layout() -> Element {
 
     // Game state
     let game_status = use_game_state();
+
+    // Debug window and version selection state
+    let mut show_debug_window = use_signal(|| false);
+    let version_selection = use_version_selection();
 
     // Determine current page and update last active if not in chat
     let current_page = match route {
@@ -62,6 +72,13 @@ pub fn Layout() -> Element {
 
         div {
             class: if show_ui() { "desktop fade-in" } else { "desktop fade-out" },
+            tabindex: "0",
+            onkeydown: move |e| {
+                if e.key() == Key::F12 {
+                    e.prevent_default();
+                    show_debug_window.set(!show_debug_window());
+                }
+            },
 
             StandaloneLogo { animations_played: animations_played() }
 
@@ -128,8 +145,11 @@ pub fn Layout() -> Element {
                             } else {
                                 "instance-card"
                             },
-                            onclick: move |_| {
-                                launch_minecraft(game_status, "1.21.8");
+                            onclick: {
+                                let selected_version = version_selection().selected_version.read().clone();
+                                move |_| {
+                                    launch_minecraft(game_status, &selected_version);
+                                }
                             },
                             oncontextmenu: move |e| {
                                 e.prevent_default();
@@ -141,6 +161,22 @@ pub fn Layout() -> Element {
                             },
 
                             div { class: "instance-level-text", "28" }
+
+                            // Version indicator
+                            div {
+                                class: "instance-version-indicator",
+                                "{version_selection().selected_version.read()}"
+                            }
+
+                            // Debug button overlay
+                            div {
+                                class: "instance-debug-button",
+                                onclick: move |e| {
+                                    e.stop_propagation();
+                                    show_debug_window.set(true);
+                                },
+                                "DEBUG"
+                            }
                         }
                     }
                 }
@@ -157,6 +193,13 @@ pub fn Layout() -> Element {
                 show: show_context_menu,
                 x: context_menu_x,
                 y: context_menu_y,
+                game_status: game_status
+            }
+
+            // Debug window
+            DebugWindow {
+                show: show_debug_window,
+                version_selection: version_selection,
                 game_status: game_status
             }
         }

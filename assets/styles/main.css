@@ -12,6 +12,7 @@
 @import url("./components/chat.css");
 @import url("./components/home.css");
 @import url("./components/news.css");
+@import url("./components/debug.css");
 
 /* Component-specific text selection rules */
 .nav-text,

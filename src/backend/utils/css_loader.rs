@@ -21,7 +21,7 @@ impl CssLoader {
     /// Should be called once at application startup.
     pub fn init() {
         // Array of all embedded CSS files with their names and content
-        let styles: [(&'static str, &'static str); 10] = [
+        let styles: [(&'static str, &'static str); 11] = [
             (
                 "base",
                 include_str!(concat!(
@@ -86,6 +86,13 @@ impl CssLoader {
                 )),
             ),
             (
+                "debug",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/components/debug.css"
+                )),
+            ),
+            (
                 "tailwind",
                 include_str!(concat!(
                     env!("CARGO_MANIFEST_DIR"),
@@ -132,6 +139,7 @@ impl CssLoader {
             "home",
             "news",
             "context_menu",
+            "debug",
             "tailwind",
         ])
     }

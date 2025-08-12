@@ -1,0 +1,197 @@
+/* Debug Window Styles */
+.debug-window-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.debug-window {
+    background: #222;
+    border: 1px solid #444;
+    padding: 20px;
+    width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    color: white;
+}
+
+.debug-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #444;
+    padding-bottom: 10px;
+}
+
+.debug-title {
+    margin: 0;
+    color: white;
+}
+
+.debug-subtitle {
+    font-size: 12px;
+    color: #888;
+}
+
+.debug-close {
+    background: #444;
+    border: none;
+    color: white;
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+.debug-section {
+    background: #333;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.debug-section-title {
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+.debug-selected-version {
+    font-size: 18px;
+    color: #4a9eff;
+    margin-bottom: 10px;
+}
+
+.debug-launch-btn {
+    background: #4a9eff;
+    border: none;
+    color: white;
+    padding: 8px 15px;
+    cursor: pointer;
+}
+
+.debug-loading {
+    text-align: center;
+    padding: 20px;
+    color: #4a9eff;
+}
+
+.debug-versions-list {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #444;
+    background: #333;
+}
+
+.debug-version-item {
+    padding: 8px;
+    border-bottom: 1px solid #444;
+    cursor: pointer;
+    background: transparent;
+}
+
+.debug-version-item.selected {
+    background: #4a9eff;
+}
+
+.debug-version-name {
+    font-weight: bold;
+}
+
+.debug-version-meta {
+    font-size: 12px;
+    color: #aaa;
+}
+
+.debug-system-info {
+    background: #333;
+    padding: 15px;
+    margin-top: 20px;
+}
+
+.debug-system-info pre {
+    font-size: 12px;
+    color: #ccc;
+    margin: 0;
+    white-space: pre-wrap;
+    font-family: monospace;
+}
+
+.debug-actions {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #444;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.debug-btn {
+    border: none;
+    color: white;
+    padding: 8px 15px;
+    cursor: pointer;
+}
+
+.debug-btn-primary {
+    background: #4a9eff;
+}
+
+.debug-btn-danger {
+    background: #dc3545;
+}
+
+.debug-btn-success {
+    background: #28a745;
+}
+
+.debug-btn-secondary {
+    background: #666;
+}
+
+.debug-btn-disabled {
+    background: #666;
+    cursor: not-allowed;
+}
+
+.debug-empty {
+    padding: 20px;
+    text-align: center;
+    color: #888;
+}
+
+/* Instance card debug elements */
+.instance-version-indicator {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    background: rgba(0, 120, 212, 0.9);
+    color: #ffffff;
+    padding: 4px 8px;
+    border-radius: 2px;
+    font-weight: 500;
+    font-family: 'Gilroy', sans-serif;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.instance-debug-button {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(220, 53, 69, 0.9);
+    color: #ffffff;
+    padding: 4px 8px;
+    border-radius: 2px;
+    font-weight: 600;
+    cursor: pointer;
+    z-index: 10;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.2s ease;
+}
+
+.instance-debug-button:hover {
+    background: rgba(220, 53, 69, 1);
+}
