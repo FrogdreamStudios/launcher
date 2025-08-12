@@ -18,109 +18,33 @@ impl CssLoader {
     /// Initializes the CSS cache with all embedded stylesheets.
     ///
     /// This loads all CSS files into memory for fast access.
-    /// Should be called once at application startup.
     pub fn init() {
-        // Array of all embedded CSS files with their names and content
-        let styles: [(&'static str, &'static str); 11] = [
-            (
-                "base",
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/assets/styles/base.css"
-                )),
-            ),
-            (
-                "animations",
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/assets/styles/animations.css"
-                )),
-            ),
-            (
-                "logo",
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/assets/styles/components/logo.css"
-                )),
-            ),
-            (
-                "navigation",
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/assets/styles/components/navigation.css"
-                )),
-            ),
-            (
-                "chat",
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/assets/styles/components/chat.css"
-                )),
-            ),
-            (
-                "home",
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/assets/styles/components/home.css"
-                )),
-            ),
-            (
-                "news",
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/assets/styles/components/news.css"
-                )),
-            ),
-            (
-                "auth",
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/assets/styles/auth.css"
-                )),
-            ),
-            (
-                "context_menu",
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/assets/styles/components/context_menu.css"
-                )),
-            ),
-            (
-                "debug",
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/assets/styles/components/debug.css"
-                )),
-            ),
-            (
-                "tailwind",
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/assets/styles/output.css"
-                )),
-            ),
+        let styles = [
+            ("base",        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/styles/base.css"))),
+            ("animations",  include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/styles/animations.css"))),
+            ("logo",        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/styles/components/logo.css"))),
+            ("navigation",  include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/styles/components/navigation.css"))),
+            ("chat",        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/styles/components/chat.css"))),
+            ("home",        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/styles/components/home.css"))),
+            ("news",        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/styles/components/news.css"))),
+            ("auth",        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/styles/auth.css"))),
+            ("context_menu",include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/styles/components/context_menu.css"))),
+            ("debug",       include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/styles/components/debug.css"))),
+            ("tailwind",    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/styles/output.css"))),
         ];
-
         let cache: HashMap<_, _> = styles.into_iter().collect();
-        // Initialize the global cache (only works once)
         let _ = CSS_CACHE.set(cache);
     }
 
-    /// Gets a CSS style by name.
+    /// Returns a CSS style by name.
     #[inline(always)]
     pub fn get(style_name: &str) -> Option<&'static str> {
         CSS_CACHE.get()?.get(style_name).copied()
     }
-    /// Gets the chat component CSS styles.
-    #[inline(always)]
-    pub fn get_chat() -> &'static str {
-        Self::get("chat").unwrap_or("")
-    }
 
     /// Combines multiple styles into a single string.
     pub fn combine(styles: &[&str]) -> String {
-        styles
-            .iter()
+        styles.iter()
             .map(|&name| Self::get(name).unwrap_or(""))
             .collect::<Vec<_>>()
             .join("\n")
@@ -131,16 +55,8 @@ impl CssLoader {
     /// Includes base styles, animations, components, and Tailwind CSS.
     pub fn get_combined_main() -> String {
         Self::combine(&[
-            "base",
-            "animations",
-            "logo",
-            "navigation",
-            "chat",
-            "home",
-            "news",
-            "context_menu",
-            "debug",
-            "tailwind",
+            "base", "animations", "logo", "navigation", "chat", "home", "news",
+            "context_menu", "debug", "tailwind",
         ])
     }
 
@@ -149,6 +65,12 @@ impl CssLoader {
     /// Includes auth-specific styles and Tailwind CSS.
     pub fn get_combined_auth() -> String {
         Self::combine(&["auth", "tailwind"])
+    }
+
+    /// Returns chat component CSS.
+    #[inline(always)]
+    pub fn get_chat() -> &'static str {
+        Self::get("chat").unwrap_or("")
     }
 }
 
@@ -160,7 +82,7 @@ impl CssLoader {
 macro_rules! include_styles {
     ($($style:expr),*) => {
         {
-            $crate::utils::css_loader::CssLoader::load_styles(&[$($style),*])
+            $crate::utils::css_loader::CssLoader::combine(&[$($style),*])
         }
     };
 }
