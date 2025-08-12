@@ -20,17 +20,83 @@ impl CssLoader {
     /// This loads all CSS files into memory for fast access.
     pub fn init() {
         let styles = [
-            ("base",        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/styles/base.css"))),
-            ("animations",  include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/styles/animations.css"))),
-            ("logo",        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/styles/components/logo.css"))),
-            ("navigation",  include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/styles/components/navigation.css"))),
-            ("chat",        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/styles/components/chat.css"))),
-            ("home",        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/styles/components/home.css"))),
-            ("news",        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/styles/components/news.css"))),
-            ("auth",        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/styles/auth.css"))),
-            ("context_menu",include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/styles/components/context_menu.css"))),
-            ("debug",       include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/styles/components/debug.css"))),
-            ("tailwind",    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/styles/output.css"))),
+            (
+                "base",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/base.css"
+                )),
+            ),
+            (
+                "animations",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/animations.css"
+                )),
+            ),
+            (
+                "logo",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/components/logo.css"
+                )),
+            ),
+            (
+                "navigation",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/components/navigation.css"
+                )),
+            ),
+            (
+                "chat",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/components/chat.css"
+                )),
+            ),
+            (
+                "home",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/components/home.css"
+                )),
+            ),
+            (
+                "news",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/components/news.css"
+                )),
+            ),
+            (
+                "auth",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/auth.css"
+                )),
+            ),
+            (
+                "context_menu",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/components/context_menu.css"
+                )),
+            ),
+            (
+                "debug",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/components/debug.css"
+                )),
+            ),
+            (
+                "tailwind",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/output.css"
+                )),
+            ),
         ];
         let cache: HashMap<_, _> = styles.into_iter().collect();
         let _ = CSS_CACHE.set(cache);
@@ -44,7 +110,8 @@ impl CssLoader {
 
     /// Combines multiple styles into a single string.
     pub fn combine(styles: &[&str]) -> String {
-        styles.iter()
+        styles
+            .iter()
             .map(|&name| Self::get(name).unwrap_or(""))
             .collect::<Vec<_>>()
             .join("\n")
@@ -55,8 +122,16 @@ impl CssLoader {
     /// Includes base styles, animations, components, and Tailwind CSS.
     pub fn get_combined_main() -> String {
         Self::combine(&[
-            "base", "animations", "logo", "navigation", "chat", "home", "news",
-            "context_menu", "debug", "tailwind",
+            "base",
+            "animations",
+            "logo",
+            "navigation",
+            "chat",
+            "home",
+            "news",
+            "context_menu",
+            "debug",
+            "tailwind",
         ])
     }
 

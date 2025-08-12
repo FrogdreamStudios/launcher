@@ -12,12 +12,15 @@
 .context-menu {
     position: absolute;
     width: 128px;
-    height: 162px;
     background-color: #141414;
     border-radius: 8px;
     border: 2px solid #1b1b1b;
     z-index: 10000;
     transform-origin: top left;
+    padding: 6px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 }
 
 .context-menu-show {
@@ -61,31 +64,14 @@
     align-items: center;
     gap: 12px;
     padding: 4px 12px;
-    position: absolute;
-    left: 0;
     border-radius: 8px;
     cursor: pointer;
     transition: background-color 0.15s ease;
+    flex-shrink: 0;
 }
 
 .context-menu-button:hover {
     filter: brightness(1.15);
-}
-
-.context-menu-button:nth-child(1) {
-    top: 6px;
-}
-
-.context-menu-button:nth-child(2) {
-    top: 45px;
-}
-
-.context-menu-button:nth-child(3) {
-    top: 84px;
-}
-
-.context-menu-button:nth-child(4) {
-    top: 123px;
 }
 
 .context-menu-icon {
@@ -113,4 +99,55 @@
     letter-spacing: 0;
     line-height: normal;
     white-space: nowrap;
+}
+
+/* Context Menu Rename */
+.context-menu-rename {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 12px;
+    width: 128px;
+    height: 33px;
+    box-sizing: border-box;
+    flex-shrink: 0;
+}
+
+.context-menu-rename-input {
+    flex: 1;
+    background: #2a2a2a;
+    border: 1px solid #3a3a3a;
+    border-radius: 4px;
+    color: #fff;
+    font-family: "Gilroy-Medium", Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    padding: 6px 8px;
+    outline: none;
+    text-align: center;
+    font-weight: 600;
+}
+
+.context-menu-rename-input:focus {
+    border-color: #38ff10;
+}
+
+.context-menu-rename-confirm {
+    background: #38ff10;
+    border: none;
+    border-radius: 4px;
+    color: #000;
+    font-family: "Gilroy-Bold", Helvetica, Arial, sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.15s ease;
+}
+
+.context-menu-rename-confirm:hover {
+    background: #2ecc08;
 }

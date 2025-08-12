@@ -19,7 +19,7 @@ impl AssetLoader {
     /// Initializes the asset cache with all embedded images.
     pub fn init() {
         // Array of all embedded assets with their names and base64 data
-        let assets: [(&'static str, &'static str); 12] = [
+        let assets: [(&'static str, &'static str); 14] = [
             (
                 "logo",
                 concat!(
@@ -140,6 +140,26 @@ impl AssetLoader {
                     ))
                 ),
             ),
+            (
+                "debug",
+                concat!(
+                    "data:image/png;base64,",
+                    include_str!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/assets/images/buttons/debug.png.base64"
+                    ))
+                ),
+            ),
+            (
+                "add",
+                concat!(
+                    "data:image/png;base64,",
+                    include_str!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/assets/images/buttons/add.png.base64"
+                    ))
+                ),
+            ),
         ];
 
         let cache: HashMap<_, _> = assets.into_iter().collect();
@@ -219,6 +239,16 @@ impl AssetLoader {
     #[inline(always)]
     pub fn get_folder() -> &'static str {
         Self::get("folder")
+    }
+    /// Gets the debug icon.
+    #[inline(always)]
+    pub fn get_debug() -> &'static str {
+        Self::get("debug")
+    }
+    /// Gets the add icon.
+    #[inline(always)]
+    pub fn get_add() -> &'static str {
+        Self::get("add")
     }
 }
 

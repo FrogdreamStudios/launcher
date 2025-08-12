@@ -2,6 +2,7 @@ use crate::backend::creeper::launcher::MinecraftLauncher;
 use crate::backend::creeper::models::VersionInfo;
 use crate::frontend::components::minecraft_launcher::launch_minecraft;
 use crate::frontend::game_state::GameStatus;
+use crate::frontend::instances::main::INSTANCES;
 use dioxus::prelude::*;
 use std::fs;
 use tracing::{error, info};
@@ -32,6 +33,7 @@ pub fn DebugWindow(
     show: Signal<bool>,
     version_selection: Signal<VersionSelection>,
     game_status: Signal<GameStatus>,
+    instance_id: Signal<Option<u32>>,
 ) -> Element {
     if !show() {
         return rsx! { div { display: "none" } };
@@ -41,7 +43,28 @@ pub fn DebugWindow(
     let (loading, deleting) = (*vs.is_loading.read(), *vs.is_deleting.read());
     let busy = loading || deleting;
 
-    // Load versions when component mounts
+    // Get instance information outside of rsx!
+    let (title, subtitle) = if let Some(id) = instance_id() {
+        let instances = INSTANCES.read();
+        if let Some(instance) = instances.get(&id) {
+            (
+                format!("Debug Panel - Instance {}", instance.name),
+                format!("Instance ID: {} | Color: #{}", id, instance.color),
+            )
+        } else {
+            (
+                format!("Debug Panel - Instance {}", id),
+                "Instance not found".to_string(),
+            )
+        }
+    } else {
+        (
+            "Debug Panel".to_string(),
+            "No instance selected".to_string(),
+        )
+    };
+
+    // Load versions when the component mounts
     use_effect(move || {
         if vs.available_versions.read().is_empty() && !loading {
             vs.is_loading.set(true);
@@ -68,8 +91,8 @@ pub fn DebugWindow(
                 div {
                     class: "debug-header",
                     div {
-                        h3 { class: "debug-title", "Debug Panel" }
-                        div { class: "debug-subtitle", "Press F12 to toggle" }
+                        h3 { class: "debug-title", "{title}" }
+                        div { class: "debug-subtitle", "{subtitle}" }
                     }
                     button { class: "debug-close", onclick: move |_| show.set(false), "✕" }
                 }
@@ -83,7 +106,12 @@ pub fn DebugWindow(
                         class: "debug-launch-btn",
                         onclick: {
                             let selected = vs.selected_version.read().clone();
-                            move |_| { launch_minecraft(game_status, &selected); show.set(false); }
+                            move |_| {
+                                if let Some(id) = instance_id() {
+                                    launch_minecraft(game_status, &selected, id);
+                                }
+                                show.set(false);
+                            }
                         },
                         "Launch"
                     }
@@ -195,9 +223,15 @@ pub fn DebugWindow(
                         class: "debug-btn debug-btn-success",
                         onclick: {
                             let mut system_info = vs.system_info;
+                            let current_instance_id = instance_id();
                             move |_| {
                                 spawn(async move {
-                                    match get_system_info().await {
+                                    let result = if let Some(id) = current_instance_id {
+                                        get_instance_info(id).await
+                                    } else {
+                                        get_system_info().await
+                                    };
+                                    match result {
                                         Ok(info) => system_info.set(info),
                                         Err(e) => error!("Failed to get system info: {e}"),
                                     }
@@ -213,12 +247,12 @@ pub fn DebugWindow(
 }
 
 async fn load_available_versions() -> anyhow::Result<Vec<VersionInfo>> {
-    let launcher = MinecraftLauncher::new(None).await?;
+    let launcher = MinecraftLauncher::new(None, None).await?;
     launcher.get_available_versions().await
 }
 
 async fn update_and_load_versions() -> anyhow::Result<Vec<VersionInfo>> {
-    let mut launcher = MinecraftLauncher::new(None).await?;
+    let mut launcher = MinecraftLauncher::new(None, None).await?;
     launcher.update_manifest().await?;
     launcher.get_available_versions().await
 }
@@ -226,7 +260,7 @@ async fn update_and_load_versions() -> anyhow::Result<Vec<VersionInfo>> {
 async fn delete_launcher_files() -> anyhow::Result<()> {
     info!("Starting launcher files deletion...");
 
-    let launcher = MinecraftLauncher::new(None).await?;
+    let launcher = MinecraftLauncher::new(None, None).await?;
     let game_dir = launcher.get_game_dir();
 
     info!("Game directory: {game_dir:?}");
@@ -284,7 +318,7 @@ async fn delete_launcher_files() -> anyhow::Result<()> {
 }
 
 async fn get_system_info() -> anyhow::Result<String> {
-    let launcher = MinecraftLauncher::new(None).await?;
+    let launcher = MinecraftLauncher::new(None, None).await?;
     let game_dir = launcher.get_game_dir();
 
     let mut info = String::new();
@@ -308,6 +342,59 @@ async fn get_system_info() -> anyhow::Result<String> {
             info.push_str(&format!("Assets directory exists: {assets_dir:?}\n"));
         }
     }
+
+    Ok(info)
+}
+
+async fn get_instance_info(instance_id: u32) -> anyhow::Result<String> {
+    use crate::frontend::instances::main::{get_base_directory, get_instance_directory};
+
+    let mut info = String::new();
+
+    // Instance-specific info
+    info.push_str(&format!("Instance ID: {}\n", instance_id));
+
+    let instance_dir = get_instance_directory(instance_id);
+    info.push_str(&format!("Instance directory: {instance_dir:?}\n"));
+
+    let base_dir = get_base_directory();
+    info.push_str(&format!("Base Dream Launcher directory: {base_dir:?}\n"));
+
+    // Check if the instance directory exists
+    if instance_dir.exists() {
+        info.push_str("Instance directory exists: Yes\n");
+
+        // Check subdirectories
+        let subdirs = [
+            "mods",
+            "config",
+            "saves",
+            "resourcepacks",
+            "shaderpacks",
+            "crash-reports",
+            "logs",
+        ];
+        for subdir in subdirs {
+            let dir_path = instance_dir.join(subdir);
+            if dir_path.exists() {
+                // Count files in a directory
+                if let Ok(entries) = fs::read_dir(&dir_path) {
+                    let count = entries.count();
+                    info.push_str(&format!("{subdir}/: {count} items\n"));
+                } else {
+                    info.push_str(&format!("{subdir}/: exists but can't read\n"));
+                }
+            } else {
+                info.push_str(&format!("{subdir}/: missing\n"));
+            }
+        }
+    } else {
+        info.push_str("Instance directory exists: No\n");
+    }
+
+    // System info
+    info.push_str(&format!("\nOS: {}\n", std::env::consts::OS));
+    info.push_str(&format!("Architecture: {}\n", std::env::consts::ARCH));
 
     Ok(info)
 }

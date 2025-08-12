@@ -4,7 +4,7 @@ use dioxus::prelude::*;
 use tracing::{error, info, warn};
 
 /// Launch Minecraft
-pub fn launch_minecraft(game_status: Signal<GameStatus>, version: &str) {
+pub fn launch_minecraft(game_status: Signal<GameStatus>, version: &str, instance_id: u32) {
     let version_owned = version.to_string();
     let mut game_status_signal = game_status;
 
@@ -25,10 +25,12 @@ pub fn launch_minecraft(game_status: Signal<GameStatus>, version: &str) {
                     .map_err(|e| anyhow::anyhow!("Failed to create runtime: {e}"))?;
 
                 rt.block_on(async {
-                    let mut launcher = MinecraftLauncher::new(None).await.map_err(|e| {
-                        error!("Failed to create launcher: {e}");
-                        e
-                    })?;
+                    let mut launcher = MinecraftLauncher::new(None, Some(instance_id))
+                        .await
+                        .map_err(|e| {
+                            error!("Failed to create launcher: {e}");
+                            e
+                        })?;
 
                     info!("Launcher created successfully");
 
@@ -108,7 +110,8 @@ pub fn launch_minecraft(game_status: Signal<GameStatus>, version: &str) {
                             .map_err(|e| anyhow::anyhow!("Failed to create runtime: {e}"))?;
 
                         rt.block_on(async {
-                            let mut launcher = MinecraftLauncher::new(None).await?;
+                            let mut launcher =
+                                MinecraftLauncher::new(None, Some(instance_id)).await?;
                             launcher.launch(&version_owned).await
                         })
                     }

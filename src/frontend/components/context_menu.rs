@@ -1,7 +1,8 @@
 use crate::backend::utils::assets::AssetLoader;
 use crate::frontend::components::minecraft_launcher::launch_minecraft;
 use crate::frontend::game_state::GameStatus;
-use anyhow::Result;
+use crate::frontend::instances::main::{INSTANCES, open_instance_folder, use_instance_manager};
+
 use dioxus::prelude::*;
 
 #[derive(Props, Clone, PartialEq)]
@@ -10,6 +11,10 @@ pub struct ContextMenuProps {
     pub x: Signal<f64>,
     pub y: Signal<f64>,
     pub game_status: Signal<GameStatus>,
+    pub instance_id: Signal<Option<u32>>,
+    pub show_debug_window: Signal<bool>,
+    pub editing_instance_id: Signal<Option<u32>>,
+    pub editing_text: Signal<String>,
 }
 
 #[component]
@@ -18,8 +23,14 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
     let x = props.x;
     let y = props.y;
     let game_status = props.game_status;
+    let instance_id = props.instance_id;
+    let mut show_debug_window = props.show_debug_window;
+    let mut editing_instance_id = props.editing_instance_id;
+    let mut editing_text = props.editing_text;
     let mut is_hiding = use_signal(|| false);
     let mut should_render = use_signal(|| false);
+
+    let instance_manager = use_instance_manager();
 
     // Watch for show changes and handle animation
     use_effect(move || {
@@ -29,9 +40,8 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
         } else if should_render() {
             // Small delay before starting hide animation
             spawn(async move {
-                // tokio::time::sleep(std::time::Duration::from_millis(10)).await;
                 is_hiding.set(true);
-                // Hide after animation completes (150ms)
+                // Hide after animation completes (150 ms)
                 tokio::time::sleep(std::time::Duration::from_millis(150)).await;
                 should_render.set(false);
                 is_hiding.set(false);
@@ -46,53 +56,82 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
 
     let handle_run_click = move |e: Event<MouseData>| {
         e.stop_propagation();
-        println!("Run clicked, launching Minecraft 1.21.8");
-        show.set(false);
-        // Start Minecraft launch after menu closes
-        spawn(async move {
-            tokio::time::sleep(std::time::Duration::from_millis(160)).await;
-            launch_minecraft(game_status, "1.21.8");
-        });
+        if let Some(id) = instance_id() {
+            println!("Run clicked, launching Minecraft for instance {id}");
+            show.set(false);
+            // Start Minecraft launch after menu closes
+            spawn(async move {
+                tokio::time::sleep(std::time::Duration::from_millis(160)).await;
+                launch_minecraft(game_status, "1.21.8", id);
+            });
+        }
     };
 
     let handle_folder_click = move |e: Event<MouseData>| {
         e.stop_propagation();
-        println!("Folder clicked - opening game folder");
-        show.set(false);
-        // Open game folder after menu closes
-        spawn(async move {
-            tokio::time::sleep(std::time::Duration::from_millis(160)).await;
-            if let Err(e) = open_game_folder().await {
-                println!("Failed to open game folder: {e}");
-            }
-        });
+        if let Some(id) = instance_id() {
+            println!("Folder clicked - opening instance {id} folder");
+            show.set(false);
+            // Open instance folder after menu closes
+            spawn(async move {
+                tokio::time::sleep(std::time::Duration::from_millis(160)).await;
+                if let Err(e) = open_instance_folder(id).await {
+                    println!("Failed to open instance {id} folder: {e}");
+                }
+            });
+        }
     };
 
     let handle_change_click = move |e: Event<MouseData>| {
         e.stop_propagation();
-        println!("Change clicked");
+        if let Some(id) = instance_id() {
+            println!("Change clicked for instance {id}");
+            
+            // Get the current instance name and set up editing
+            let instances = INSTANCES.read();
+            if let Some(instance) = instances.get(&id) {
+                editing_text.set(instance.name.clone());
+                editing_instance_id.set(Some(id));
+            }
+        }
         show.set(false);
     };
 
     let handle_delete_click = move |e: Event<MouseData>| {
         e.stop_propagation();
-        println!("Delete clicked");
+        if let Some(id) = instance_id() {
+            println!("Delete clicked for instance {id}");
+            instance_manager.delete_instance(id);
+        }
         show.set(false);
+    };
+
+    let handle_debug_click = move |e: Event<MouseData>| {
+        e.stop_propagation();
+        if let Some(id) = instance_id() {
+            println!("Debug clicked for instance {id}");
+            show.set(false);
+            show_debug_window.set(true);
+        }
     };
 
     if !should_render() {
         return rsx! {};
     }
 
-    rsx! {
-        div {
-            class: "context-menu-backdrop",
-            onclick: handle_backdrop_click,
+    // Check if we have an instance selected and if debug mode is enabled
+    let has_instance = instance_id().is_some();
 
-            div {
-                class: if is_hiding() { "context-menu context-menu-hide" } else { "context-menu context-menu-show" },
-                style: "left: {x()}px; top: {y()}px;",
-                onclick: |e| e.stop_propagation(),
+    rsx! {
+    div {
+        class: "context-menu-backdrop",
+        onclick: handle_backdrop_click,
+
+        div {
+            class: if is_hiding() { "context-menu context-menu-hide" } else { "context-menu context-menu-show" },
+            style: "left: {x()}px; top: {y()}px;",
+            onclick: |e| e.stop_propagation(),
+
 
                 button {
                     class: "context-menu-button",
@@ -112,48 +151,37 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
                     div { class: "context-menu-text", "Folder" }
                 }
 
-                button {
-                    class: "context-menu-button",
-                    onclick: handle_change_click,
-                    div { class: "context-menu-icon",
-                        img { src: AssetLoader::get_change() }
+                if has_instance {
+                    button {
+                        class: "context-menu-button",
+                        onclick: handle_change_click,
+                        div { class: "context-menu-icon",
+                            img { src: AssetLoader::get_change() }
+                        }
+                        div { class: "context-menu-text", "Change" }
                     }
-                    div { class: "context-menu-text", "Change" }
+
+                    button {
+                        class: "context-menu-button",
+                        onclick: handle_delete_click,
+                        div { class: "context-menu-icon",
+                            img { src: AssetLoader::get_delete() }
+                        }
+                        div { class: "context-menu-text", "Delete" }
+                    }
                 }
 
-                button {
-                    class: "context-menu-button",
-                    onclick: handle_delete_click,
-                    div { class: "context-menu-icon",
-                        img { src: AssetLoader::get_delete() }
+                if instance_manager.is_debug_mode() {
+                    button {
+                        class: "context-menu-button",
+                        onclick: handle_debug_click,
+                        div { class: "context-menu-icon",
+                            img { src: AssetLoader::get_debug() }
+                        }
+                        div { class: "context-menu-text", "Debug" }
                     }
-                    div { class: "context-menu-text", "Delete" }
                 }
             }
         }
     }
-}
-
-/// Open the Minecraft game folder in the system file explorer
-async fn open_game_folder() -> Result<()> {
-    use std::process::Command;
-
-    // Get the Minecraft directory path
-    let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/Users/unknown".to_string());
-    let minecraft_dir = format!("{}/Library/Application Support/minecraft", home_dir);
-
-    // Check if directory exists
-    if !std::path::Path::new(&minecraft_dir).exists() {
-        return Err(anyhow::anyhow!("Minecraft directory not found"));
-    }
-
-    // Open in Finder on macOS
-    let output = Command::new("open").arg(&minecraft_dir).output()?;
-
-    if !output.status.success() {
-        return Err(anyhow::anyhow!("Failed to open folder"));
-    }
-
-    println!("Opened Minecraft folder: {minecraft_dir}");
-    Ok(())
 }

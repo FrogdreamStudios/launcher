@@ -7,9 +7,6 @@ use std::path::{Path, PathBuf};
 /// Name of the main launcher directory.
 const LAUNCHER_DIR: &str = "DreamLauncher";
 
-/// Name of the Minecraft game directory.
-const MINECRAFT_DIR: &str = ".minecraft";
-
 /// Subdirectory for Minecraft versions.
 const VERSIONS: &str = "versions";
 
@@ -37,32 +34,40 @@ const INDEXES: &str = "indexes";
 /// Subdirectory for native libraries.
 const NATIVES: &str = "natives";
 
-/// Get the base launcher directory.
+/// Subdirectory for instances.
+const INSTANCES: &str = "instances";
+
+/// Get the base launcher directory (DreamLauncher).
 #[inline]
 pub fn get_launcher_dir() -> Result<PathBuf> {
-    let base_dir = dirs::data_local_dir()
-        .or_else(dirs::data_dir)
-        .ok_or_else(|| anyhow!("Could not determine data directory"))?;
+    let base_dir = match std::env::consts::OS {
+        "windows" => {
+            dirs::data_dir().ok_or_else(|| anyhow!("Could not determine AppData directory"))?
+        }
+        "macos" => dirs::home_dir()
+            .ok_or_else(|| anyhow!("Could not determine home directory"))?
+            .join("Library/Application Support"),
+        _ => dirs::home_dir().ok_or_else(|| anyhow!("Could not determine home directory"))?,
+    };
     Ok(base_dir.join(LAUNCHER_DIR))
 }
 
-/// Get the Minecraft game directory.
-pub fn get_game_dir(custom_path: Option<PathBuf>) -> Result<PathBuf> {
+/// Get the Minecraft game directory for a specific instance.
+/// If custom_path is provided, it will be used instead of the instance-specific path.
+/// If instance_id is None, returns the shared DreamLauncher directory (for assets, etc.).
+pub fn get_game_dir(custom_path: Option<PathBuf>, instance_id: Option<u32>) -> Result<PathBuf> {
     if let Some(path) = custom_path {
         return Ok(path);
     }
-    let dir = match std::env::consts::OS {
-        "windows" => dirs::data_dir()
-            .ok_or_else(|| anyhow!("Could not determine AppData directory"))?
-            .join(MINECRAFT_DIR),
-        "macos" => dirs::home_dir()
-            .ok_or_else(|| anyhow!("Could not determine home directory"))?
-            .join("Library/Application Support/minecraft"),
-        _ => dirs::home_dir()
-            .ok_or_else(|| anyhow!("Could not determine home directory"))?
-            .join(MINECRAFT_DIR),
-    };
-    Ok(dir)
+
+    let launcher_dir = get_launcher_dir()?;
+
+    match instance_id {
+        Some(id) => Ok(launcher_dir
+            .join(INSTANCES)
+            .join(format!("instance_{}", id))),
+        None => Ok(launcher_dir), // For shared resources like assets
+    }
 }
 
 /// Gets the versions directory within the game directory.
@@ -77,10 +82,10 @@ pub fn get_libraries_dir(game_dir: &Path) -> PathBuf {
     game_dir.join(LIBRARIES)
 }
 
-/// Gets the assets directory within the game directory.
+/// Gets the shared assets directory (always in the main DreamLauncher directory).
 #[inline]
-pub fn get_assets_dir(game_dir: &Path) -> PathBuf {
-    game_dir.join(ASSETS)
+pub fn get_assets_dir() -> Result<PathBuf> {
+    Ok(get_launcher_dir()?.join(ASSETS))
 }
 
 /// Gets the Java installations directory within the launcher directory.
@@ -99,6 +104,12 @@ pub fn get_cache_dir() -> Result<PathBuf> {
 #[inline]
 pub fn get_logs_dir(game_dir: &Path) -> PathBuf {
     game_dir.join(LOGS)
+}
+
+/// Gets the shared logs directory in the main DreamLauncher directory.
+#[inline]
+pub fn get_shared_logs_dir() -> Result<PathBuf> {
+    Ok(get_launcher_dir()?.join(LOGS))
 }
 
 /// Gets the natives directory for a specific Minecraft version.
@@ -123,22 +134,22 @@ pub fn get_version_json_path(game_dir: &Path, version: &str) -> PathBuf {
         .join(format!("{version}.json"))
 }
 
-/// Gets the asset objects directory within the assets directory.
+/// Gets the asset objects directory within the shared assets directory.
 #[inline]
-pub fn get_asset_objects_dir(game_dir: &Path) -> PathBuf {
-    get_assets_dir(game_dir).join(OBJECTS)
+pub fn get_asset_objects_dir() -> Result<PathBuf> {
+    Ok(get_assets_dir()?.join(OBJECTS))
 }
 
-/// Gets the asset indexes directory within the assets directory.
+/// Gets the asset indexes directory within the shared assets directory.
 #[inline]
-pub fn get_asset_indexes_dir(game_dir: &Path) -> PathBuf {
-    get_assets_dir(game_dir).join(INDEXES)
+pub fn get_asset_indexes_dir() -> Result<PathBuf> {
+    Ok(get_assets_dir()?.join(INDEXES))
 }
 
 /// Gets the path to a specific asset file based on its hash.
 #[inline]
-pub fn get_asset_path(game_dir: &Path, hash: &str) -> PathBuf {
-    get_asset_objects_dir(game_dir).join(&hash[..2]).join(hash)
+pub fn get_asset_path(hash: &str) -> Result<PathBuf> {
+    Ok(get_asset_objects_dir()?.join(&hash[..2]).join(hash))
 }
 
 /// Gets the classpath separator for the current platform.
@@ -153,27 +164,81 @@ pub fn get_library_path(game_dir: &Path, library_path: &str) -> PathBuf {
     get_libraries_dir(game_dir).join(library_path)
 }
 
-/// Ensure all necessary directories exist.
+/// Gets the instances directory.
+#[inline]
+pub fn get_instances_dir() -> Result<PathBuf> {
+    Ok(get_launcher_dir()?.join(INSTANCES))
+}
+
+/// Gets the directory for a specific instance.
+#[inline]
+pub fn get_instance_dir(instance_id: u32) -> Result<PathBuf> {
+    Ok(get_instances_dir()?.join(format!("instance_{}", instance_id)))
+}
+
+/// Ensure all necessary directories exist for the launcher.
 ///
-/// Creates all required directories for the launcher and Minecraft game
-/// including versions, libraries, assets, logs, and launcher-specific dirs.
-pub async fn ensure_directories(game_dir: &Path) -> Result<()> {
-    let mut dirs = vec![
-        game_dir.to_path_buf(),
-        get_versions_dir(game_dir),
-        get_libraries_dir(game_dir),
-        get_assets_dir(game_dir),
-        get_asset_objects_dir(game_dir),
-        get_asset_indexes_dir(game_dir),
-        get_logs_dir(game_dir),
+/// Creates all required directories for the launcher including shared assets,
+/// Java, cache, and logs directories.
+pub async fn ensure_launcher_directories() -> Result<()> {
+    let dirs = vec![
+        get_launcher_dir()?,
+        get_assets_dir()?,
+        get_asset_objects_dir()?,
+        get_asset_indexes_dir()?,
+        get_java_dir()?,
+        get_cache_dir()?,
+        get_shared_logs_dir()?,
+        get_instances_dir()?,
     ];
-    dirs.push(get_launcher_dir()?);
-    dirs.push(get_java_dir()?);
-    dirs.push(get_cache_dir()?);
 
     // Create all directories
     for dir in dirs {
         tokio::fs::create_dir_all(&dir).await?;
+    }
+
+    Ok(())
+}
+
+/// Ensure all necessary directories exist for a specific instance.
+///
+/// Creates all required directories for a specific instance including
+/// versions, libraries, logs, and other game-specific directories.
+pub async fn ensure_instance_directories(instance_id: u32) -> Result<()> {
+    let instance_dir = get_instance_dir(instance_id)?;
+
+    let dirs = vec![
+        instance_dir.clone(),
+        get_versions_dir(&instance_dir),
+        get_libraries_dir(&instance_dir),
+        get_logs_dir(&instance_dir),
+        instance_dir.join("mods"),
+        instance_dir.join("config"),
+        instance_dir.join("saves"),
+        instance_dir.join("resourcepacks"),
+        instance_dir.join("shaderpacks"),
+        instance_dir.join("crash-reports"),
+    ];
+
+    // Create all directories
+    for dir in dirs {
+        tokio::fs::create_dir_all(&dir).await?;
+    }
+
+    Ok(())
+}
+
+/// Ensure all necessary directories exist for both launcher and a specific instance.
+///
+/// This is a convenience function that combines ensure_launcher_directories
+/// and ensure_instance_directories.
+pub async fn ensure_directories(instance_id: Option<u32>) -> Result<()> {
+    // Always ensure launcher directories exist
+    ensure_launcher_directories().await?;
+
+    // If instance_id is provided, also ensure instance directories exist
+    if let Some(id) = instance_id {
+        ensure_instance_directories(id).await?;
     }
 
     Ok(())

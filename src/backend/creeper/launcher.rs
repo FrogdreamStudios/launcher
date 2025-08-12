@@ -23,6 +23,7 @@ pub struct MinecraftLauncher {
     game_dir: PathBuf,
     cache_dir: PathBuf,
     manifest: Option<VersionManifest>,
+    instance_id: Option<u32>,
 }
 
 impl MinecraftLauncher {
@@ -35,12 +36,12 @@ impl MinecraftLauncher {
     ///
     /// Initializes the launcher with proper directories and loads
     /// the version manifest from cache or downloads it fresh.
-    pub async fn new(custom_game_dir: Option<PathBuf>) -> Result<Self> {
-        let game_dir = get_game_dir(custom_game_dir)?;
+    pub async fn new(custom_game_dir: Option<PathBuf>, instance_id: Option<u32>) -> Result<Self> {
+        let game_dir = get_game_dir(custom_game_dir, instance_id)?;
         let cache_dir = get_cache_dir()?;
 
         // Ensure all directories exist
-        ensure_directories(&game_dir).await?;
+        ensure_directories(instance_id).await?;
 
         let mut launcher = Self {
             downloader: HttpDownloader::new()?,
@@ -48,6 +49,7 @@ impl MinecraftLauncher {
             game_dir,
             cache_dir,
             manifest: None,
+            instance_id,
         };
 
         // Load cached manifest or fetched a new one
@@ -249,7 +251,7 @@ impl MinecraftLauncher {
             .access_token("null".to_string())
             .user_type("mojang".to_string())
             .version_type(version_type)
-            .assets_dir(get_assets_dir(&self.game_dir))
+            .assets_dir(get_assets_dir()?)
             .libraries(libraries)
             .main_jar(get_version_jar_path(&self.game_dir, version_id))
             .java_major_version(java_major_version)
@@ -936,8 +938,8 @@ impl MinecraftLauncher {
     }
 
     async fn download_assets(&self, version_details: &VersionDetails) -> Result<()> {
-        let asset_index_path = get_asset_indexes_dir(&self.game_dir)
-            .join(format!("{}.json", version_details.asset_index.id));
+        let asset_index_path =
+            get_asset_indexes_dir()?.join(format!("{}.json", version_details.asset_index.id));
 
         // Download asset index
         if !verify_file(
@@ -972,7 +974,7 @@ impl MinecraftLauncher {
         let mut assets_for_virtual = Vec::new();
 
         for (name, asset) in asset_manifest.objects {
-            let asset_path = get_asset_path(&self.game_dir, &asset.hash);
+            let asset_path = get_asset_path(&asset.hash)?;
 
             if !verify_file(&asset_path, Some(asset.size), Some(&asset.hash)).await? {
                 let url = format!(
@@ -1053,7 +1055,7 @@ impl MinecraftLauncher {
             version_details.id, version_details.assets
         );
 
-        let virtual_dir = get_assets_dir(&self.game_dir)
+        let virtual_dir = get_assets_dir()?
             .join("virtual")
             .join(&version_details.assets);
 
@@ -1082,7 +1084,7 @@ impl MinecraftLauncher {
                     virtual_dir.join(name)
                 };
 
-            let asset_path = get_asset_path(&self.game_dir, &asset.hash);
+            let asset_path = get_asset_path(&asset.hash)?;
 
             // Create a parent directory if needed
             ensure_parent_directory(&virtual_path).await?;

@@ -9,7 +9,7 @@ pub fn Navigation(animations_played: bool) -> Element {
     let route = use_route::<Route>();
     let mut last_active_tab = use_signal(|| "Main");
 
-    // Only update active tab for non-chat routes
+    // Only update the active tab for non-chat routes
     let current_tab = match route {
         Route::Auth {} => "Auth",
         Route::Home { .. } => "Main",
@@ -17,10 +17,10 @@ pub fn Navigation(animations_played: bool) -> Element {
         Route::Settings { .. } => "Settings",
         Route::Cloud { .. } => "Cloud",
         Route::New { .. } => "New",
-        Route::Chat { .. } => last_active_tab(), // Keep last active tab when in chat
+        Route::Chat { .. } => last_active_tab(), // Keep the last active tab when in chat
     };
 
-    // Update last active tab only for non-chat routes
+    // Update the last active tab only for non-chat routes
     if !matches!(route, Route::Chat { .. }) {
         last_active_tab.set(current_tab);
     }
@@ -31,7 +31,7 @@ pub fn Navigation(animations_played: bool) -> Element {
     let packs = AssetLoader::get_packs();
     let settings = AssetLoader::get_settings();
     let cloud = AssetLoader::get_cloud();
-    let plus = AssetLoader::get_plus();
+    let add = AssetLoader::get_add();
 
     rsx! {
         nav { class: if !animations_played { "navigation nav-animate" } else { "navigation" },
@@ -63,7 +63,7 @@ pub fn Navigation(animations_played: bool) -> Element {
                 li {
                     class: if active_tab == "New" { "nav-item active nav-item-5" } else { "nav-item nav-item-5" },
                     onclick: move |_| { nav.push("/new"); },
-                    img { class: "nav-icon", src: "{plus}", alt: "New tab" }
+                    img { class: "nav-icon", src: "{add}", alt: "New tab" }
                 }
             }
         }

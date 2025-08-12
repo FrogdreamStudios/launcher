@@ -83,22 +83,85 @@
     top: 247px;
 }
 
-.instance-card:hover {
-    filter: brightness(1.15);
+.instance-card:hover:not(.instance-card-pulsing):not(.editing) {
+    filter: brightness(1.15) !important;
 }
 
 /* Instances Section */
-.instance-card {
+.instances-container {
     position: absolute;
     top: 397px;
     left: 48px;
+    display: grid;
+    grid-template-columns: repeat(7, 80px);
+    grid-template-rows: repeat(2, 80px);
+    gap: 16px;
+    width: calc(7 * 80px + 6 * 16px); /* 7 instances + gaps */
+}
+
+.instance-card {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    cursor: pointer;
+    filter: brightness(1) !important;
+    transition:
+        filter 0.25s ease-out,
+        opacity 0.25s ease-out;
+    position: relative;
+}
+
+.instance-card:not(:hover):not(.instance-card-pulsing):not(.editing) {
+    filter: brightness(1) !important;
+}
+
+.instance-card.editing {
+    opacity: 0.8;
+    filter: brightness(1.1) !important;
+    cursor: default;
+}
+
+.instance-card.editing .instance-level-text {
+    cursor: text;
+}
+
+.instance-card-add {
     width: 80px;
     height: 80px;
     background: #1b1b1b;
     border-radius: 8px;
-    filter: brightness(1);
     cursor: pointer;
+    filter: brightness(1) !important;
     transition: filter 0.25s ease-out;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.instance-card-add:hover {
+    filter: brightness(1.15) !important;
+}
+
+.instance-card-add:not(:hover) {
+    filter: brightness(1) !important;
+}
+
+.instance-add-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    user-select: none;
+}
+
+.instance-add-icon img {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    filter: invert(0.56) sepia(0) saturate(0) hue-rotate(0deg) brightness(0.44);
 }
 
 .instance-card-pulsing {
@@ -107,10 +170,10 @@
 
 @keyframes instance-pulse {
     0% {
-        background: #1b1b1b;
+        filter: brightness(0.9) !important;
     }
     100% {
-        background: #252525;
+        filter: brightness(1.2) !important;
     }
 }
 
@@ -120,13 +183,23 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    font-size: 36px;
     font-weight: 700;
-    color: #38ff10;
+    color: #ffffff;
     font-family: "Gilroy-Bold", Helvetica, Arial, sans-serif;
     pointer-events: none;
     user-select: none;
     z-index: 999;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+/* Instance Name Input for Inline Editing */
+.instance-name-input {
+    /* Styles are applied inline for dynamic sizing */
+}
+
+.instance-name-input:focus {
+    outline: none;
 }
 
 /* Play Together Block */

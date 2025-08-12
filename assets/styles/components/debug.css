@@ -163,7 +163,7 @@
     color: #888;
 }
 
-/* Instance card debug elements */
+/* Instance card debug elements (now handled by instances system)
 .instance-version-indicator {
     position: absolute;
     bottom: 8px;
@@ -195,3 +195,4 @@
 .instance-debug-button:hover {
     background: rgba(220, 53, 69, 1);
 }
+*/
