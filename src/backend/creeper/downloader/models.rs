@@ -16,7 +16,7 @@ pub struct DownloadTask {
 
 impl DownloadTask {
     /// Creates a new download task without SHA1 verification.
-    pub fn new(url: String, destination: std::path::PathBuf) -> Self {
+    pub const fn new(url: String, destination: std::path::PathBuf) -> Self {
         Self {
             url,
             destination,

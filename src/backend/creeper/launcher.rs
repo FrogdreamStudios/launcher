@@ -23,16 +23,17 @@ pub struct MinecraftLauncher {
     game_dir: PathBuf,
     cache_dir: PathBuf,
     manifest: Option<VersionManifest>,
+    #[allow(dead_code)]
     instance_id: Option<u32>,
 }
 
 impl MinecraftLauncher {
     /// Gets the game directory path.
-    pub fn get_game_dir(&self) -> &PathBuf {
+    pub const fn get_game_dir(&self) -> &PathBuf {
         &self.game_dir
     }
 
-    /// Creates a new MinecraftLauncher instance.
+    /// Creates a new `MinecraftLauncher` instance.
     ///
     /// Initializes the launcher with proper directories and loads
     /// the version manifest from cache or downloads it fresh.
@@ -64,7 +65,7 @@ impl MinecraftLauncher {
         Ok(launcher)
     }
 
-    pub(crate) async fn get_available_versions(&self) -> Result<Vec<VersionInfo>> {
+    pub(crate) fn get_available_versions(&self) -> Result<Vec<VersionInfo>> {
         let manifest = self
             .manifest
             .as_ref()
@@ -107,8 +108,8 @@ impl MinecraftLauncher {
         Ok(())
     }
 
-    pub(crate) async fn is_java_available(&self, version: &str) -> Result<bool> {
-        Ok(self.java_manager.is_java_available(version))
+    pub(crate) fn is_java_available(&self, version: &str) -> bool {
+        self.java_manager.is_java_available(version)
     }
 
     pub async fn install_java(&mut self, version: &str) -> Result<()> {
@@ -163,7 +164,7 @@ impl MinecraftLauncher {
             Ok(details) => details,
             Err(e) => {
                 warn!("Failed to download version details: {e}. Checking for offline version");
-                return self.try_offline_mode(version_id).await;
+                return self.try_offline_mode(version_id);
             }
         };
 
@@ -193,7 +194,7 @@ impl MinecraftLauncher {
 
         // Try to verify installation, but don't fail if some files are missing
         match self.verify_installation(&version_details).await {
-            Ok(_) => info!("Version {version_id} prepared successfully"),
+            Ok(()) => info!("Version {version_id} prepared successfully"),
             Err(e) => {
                 warn!("Installation verification failed: {e}. Proceeding anyway");
                 info!("Version {version_id} prepared with warnings");
@@ -207,7 +208,7 @@ impl MinecraftLauncher {
         info!("Launching Minecraft version: {version_id}");
 
         // System diagnostics
-        self.log_system_info()?;
+        self.log_system_info();
 
         let version_info = self.get_version_info(version_id)?;
         let version_type = version_info.version_type.clone();
@@ -235,7 +236,7 @@ impl MinecraftLauncher {
         let java_major_version = self.get_java_major_version(&java_path)?;
 
         // Build library paths
-        let libraries = self.get_library_paths(&version_details)?;
+        let libraries = self.get_library_paths(&version_details);
         info!("Loaded {} libraries", libraries.len());
 
         // Verify critical files exist
@@ -633,7 +634,7 @@ impl MinecraftLauncher {
 
         // Always try to extract natives (even if already downloaded)
         println!("Extracting native libraries...");
-        self.extract_natives(version_details).await?;
+        self.extract_natives(version_details)?;
 
         // Verify extraction
         let extracted_count = std::fs::read_dir(&natives_dir)?.count();
@@ -671,9 +672,8 @@ impl MinecraftLauncher {
                 return Err(anyhow::anyhow!(
                     "Failed to extract any native libraries to {natives_dir:?}. This will cause LWJGL errors."
                 ));
-            } else {
-                info!("After force extraction: {final_count} files in natives directory");
             }
+            info!("After force extraction: {final_count} files in natives directory");
         } else {
             // List extracted files for verification
             info!("Extracted native files:");
@@ -729,7 +729,7 @@ impl MinecraftLauncher {
         Ok(())
     }
 
-    async fn extract_natives(&self, version_details: &VersionDetails) -> Result<()> {
+    fn extract_natives(&self, version_details: &VersionDetails) -> Result<()> {
         let os_name = get_minecraft_os_name();
         let os_arch = get_minecraft_arch();
         let os_features = get_os_features();
@@ -788,12 +788,11 @@ impl MinecraftLauncher {
                                 }
                             }
                             break; // Only extract the first matching classifier
-                        } else {
-                            debug!(
-                                "Native library not found ({}) for {}: {:?}",
-                                classifier, library.name, native_path
-                            );
                         }
+                        debug!(
+                            "Native library not found ({}) for {}: {:?}",
+                            classifier, library.name, native_path
+                        );
                     }
                 }
 
@@ -1152,7 +1151,7 @@ impl MinecraftLauncher {
         Ok(version_dir.exists() && jar_file.exists() && json_file.exists())
     }
 
-    async fn try_offline_mode(&self, version_id: &str) -> Result<()> {
+    fn try_offline_mode(&self, version_id: &str) -> Result<()> {
         info!("Attempting to use offline mode for version {version_id}");
 
         if self.is_version_ready_offline(version_id)? {
@@ -1178,7 +1177,7 @@ impl MinecraftLauncher {
         ))
     }
 
-    fn log_system_info(&self) -> Result<()> {
+    fn log_system_info(&self) {
         use std::process::Command;
 
         info!("=== System Diagnostics ===");
@@ -1208,8 +1207,6 @@ impl MinecraftLauncher {
 
         info!("Game directory: {:?}", self.game_dir);
         info!("Cache directory: {:?}", self.cache_dir);
-
-        Ok(())
     }
 
     fn test_java_version(&self, java_path: &PathBuf) -> Result<()> {
@@ -1322,7 +1319,10 @@ impl MinecraftLauncher {
         Ok(())
     }
 
-    fn get_library_paths(&self, version_details: &VersionDetails) -> Result<Vec<PathBuf>> {
+    fn get_library_paths(
+        &self,
+        version_details: &VersionDetails,
+    ) -> std::vec::Vec<std::path::PathBuf> {
         let os_name = get_minecraft_os_name();
         let os_arch = get_minecraft_arch();
         let os_features = get_os_features();
@@ -1342,6 +1342,6 @@ impl MinecraftLauncher {
             }
         }
 
-        Ok(library_paths)
+        library_paths
     }
 }

@@ -23,24 +23,24 @@ fn markdown_to_html(markdown: &str) -> String {
         }
 
         // Handle headers
-        if trimmed.starts_with("# ") {
+        if let Some(stripped) = trimmed.strip_prefix("# ") {
             if in_paragraph {
                 html.push_str("</p>\n");
                 in_paragraph = false;
             }
-            html.push_str(&format!("<h1>{}</h1>\n", &trimmed[2..]));
-        } else if trimmed.starts_with("## ") {
+            html.push_str(&format!("<h1>{stripped}</h1>\n"));
+        } else if let Some(stripped) = trimmed.strip_prefix("## ") {
             if in_paragraph {
                 html.push_str("</p>\n");
                 in_paragraph = false;
             }
-            html.push_str(&format!("<h2>{}</h2>\n", &trimmed[3..]));
-        } else if trimmed.starts_with("### ") {
+            html.push_str(&format!("<h2>{stripped}</h2>\n"));
+        } else if let Some(stripped) = trimmed.strip_prefix("### ") {
             if in_paragraph {
                 html.push_str("</p>\n");
                 in_paragraph = false;
             }
-            html.push_str(&format!("<h3>{}</h3>\n", &trimmed[4..]));
+            html.push_str(&format!("<h3>{stripped}</h3>\n"));
         } else {
             // Regular text - treat as paragraph
             if !in_paragraph {

@@ -92,7 +92,7 @@
 .context-menu-text {
     position: relative;
     width: fit-content;
-    font-family: "Gilroy-Bold", Helvetica;
+    font-family: "Gilroy-Bold", Helvetica, serif;
     font-weight: 700;
     color: #6f6f6f;
     font-size: 16px;

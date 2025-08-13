@@ -210,7 +210,7 @@ impl MinecraftCommand {
         // Add version-specific JVM arguments
         if let Some(arguments) = &self.version_details.arguments {
             for arg in &arguments.jvm {
-                self.process_argument(cmd, arg, true)?;
+                self.process_argument(cmd, arg, true);
             }
         }
 
@@ -225,7 +225,7 @@ impl MinecraftCommand {
         if let Some(arguments) = &self.version_details.arguments {
             // Modern argument format (1.13+)
             for arg in &arguments.game {
-                self.process_argument(cmd, arg, false)?;
+                self.process_argument(cmd, arg, false);
             }
         } else if let Some(minecraft_arguments) = &self.version_details.minecraft_arguments {
             // Legacy argument format (pre-1.13)
@@ -265,7 +265,7 @@ impl MinecraftCommand {
     /// Processes a single argument, handling strings and conditionals.
     ///
     /// Substitutes variables and adds to the command if the argument is a string or if conditional rules evaluate to true.
-    fn process_argument(&self, cmd: &mut Command, arg: &ArgumentValue, is_jvm: bool) -> Result<()> {
+    fn process_argument(&self, cmd: &mut Command, arg: &ArgumentValue, is_jvm: bool) {
         match arg {
             ArgumentValue::String(s) => {
                 let substituted = self.substitute_variables(s, is_jvm);
@@ -294,8 +294,6 @@ impl MinecraftCommand {
                 }
             }
         }
-
-        Ok(())
     }
 
     /// Checks if all rules match based on OS name, architecture, and features.
@@ -341,7 +339,7 @@ impl MinecraftCommand {
                 legacy_assets_path.display().to_string()
             } else {
                 // Fallback to regular assets directory
-                assets_dir_str.clone()
+                assets_dir_str
             }
         } else if self.version_details.id.as_str() >= "1.7" {
             // For 1.7+ versions, use virtual assets
@@ -677,7 +675,7 @@ impl MinecraftCommand {
     }
 }
 
-/// Builder pattern for creating MinecraftCommand instances.
+/// Builder pattern for creating `MinecraftCommand` instances.
 pub struct CommandBuilder {
     java_path: Option<PathBuf>,
     game_dir: Option<PathBuf>,
@@ -695,7 +693,7 @@ pub struct CommandBuilder {
 }
 
 impl CommandBuilder {
-    /// Creates a new CommandBuilder with default values.
+    /// Creates a new `CommandBuilder` with default values.
     pub fn new() -> Self {
         Self {
             java_path: None,
@@ -781,18 +779,18 @@ impl CommandBuilder {
     }
 
     /// Sets the Java major version.
-    pub fn java_major_version(mut self, java_major_version: u8) -> Self {
+    pub const fn java_major_version(mut self, java_major_version: u8) -> Self {
         self.java_major_version = Some(java_major_version);
         self
     }
 
     /// Sets whether to use Rosetta on macOS.
-    pub fn use_rosetta(mut self, use_rosetta: bool) -> Self {
+    pub const fn use_rosetta(mut self, use_rosetta: bool) -> Self {
         self.use_rosetta = use_rosetta;
         self
     }
 
-    /// Builds a MinecraftCommand from the configured parameters.
+    /// Builds a `MinecraftCommand` from the configured parameters.
     ///
     /// Validates that all required fields are set, applies defaults for optional ones,
     /// and constructs the `CommandConfig` to pass to `MinecraftCommand::new`.

@@ -5,7 +5,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tokio::fs as async_fs;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Instance {
     pub id: u32,
     pub name: String,
@@ -31,27 +31,9 @@ impl Instance {
             level: 28, // Default level
         }
     }
-
-    /// Get the instance directory path.
-    pub fn get_directory(&self) -> PathBuf {
-        get_instance_directory(self.id)
-    }
-
-    /// Ensure instance directory exists.
-    pub fn ensure_directory(&self) -> std::io::Result<PathBuf> {
-        let dir = self.get_directory();
-        fs::create_dir_all(&dir)?;
-        Ok(dir)
-    }
-
-    pub fn with_name(mut self, name: String) -> Self {
-        // Limit name to 7 characters
-        self.name = name.chars().take(7).collect();
-        self
-    }
 }
 
-pub static INSTANCES: GlobalSignal<HashMap<u32, Instance>> = Signal::global(|| HashMap::new());
+pub static INSTANCES: GlobalSignal<HashMap<u32, Instance>> = Signal::global(HashMap::new);
 pub static NEXT_ID: GlobalSignal<u32> = Signal::global(|| 1);
 pub static DEBUG_MODE: GlobalSignal<bool> = Signal::global(|| false);
 pub static INSTANCES_LOADED: GlobalSignal<bool> = Signal::global(|| false);
@@ -60,8 +42,8 @@ pub static INSTANCES_LOADED: GlobalSignal<bool> = Signal::global(|| false);
 pub struct InstanceManager;
 
 impl InstanceManager {
-    pub fn initialize(self) {
-        if !INSTANCES_LOADED.read().clone() {
+    pub fn initialize(&self) {
+        if *INSTANCES_LOADED.read() {
             spawn(async move {
                 if let Err(e) = load_instances().await {
                     println!("Failed to load instances: {e}, creating default instance");
@@ -75,9 +57,9 @@ impl InstanceManager {
         }
     }
 
-    pub fn create_instance(self) -> Option<u32> {
+    pub fn create_instance(&self) -> Option<u32> {
         let mut instances = INSTANCES.write();
-        let current_id = NEXT_ID.read().clone();
+        let current_id = *NEXT_ID.read();
 
         // Check if we can create more instances (max 14)
         if instances.len() >= 14 {
@@ -90,9 +72,7 @@ impl InstanceManager {
 
         // Create instance directories
         if let Err(e) = create_instance_directories(instance_id) {
-            println!(
-                "Warning: Failed to create directories for instance {instance_id}: {e}"
-            );
+            println!("Warning: Failed to create directories for instance {instance_id}: {e}");
         } else {
             println!("Created directories for instance {instance_id}");
         }
@@ -113,7 +93,7 @@ impl InstanceManager {
         Some(instance_id)
     }
 
-    pub fn delete_instance(self, id: u32) -> bool {
+    pub fn delete_instance(&self, id: u32) -> bool {
         let mut instances = INSTANCES.write();
         let removed = instances.remove(&id).is_some();
 
@@ -130,7 +110,7 @@ impl InstanceManager {
 
             // Save instances to disk
             let instances_clone = instances.clone();
-            let next_id = NEXT_ID.read().clone();
+            let next_id = *NEXT_ID.read();
             drop(instances); // Release the write lock
             spawn(async move {
                 if let Err(e) = save_instances(&instances_clone, next_id).await {
@@ -142,7 +122,7 @@ impl InstanceManager {
         removed
     }
 
-    pub fn rename_instance(self, id: u32, new_name: String) -> bool {
+    pub fn rename_instance(&self, id: u32, new_name: &str) -> bool {
         let mut instances = INSTANCES.write();
         let renamed = if let Some(instance) = instances.get_mut(&id) {
             instance.name = new_name.chars().take(7).collect();
@@ -154,7 +134,7 @@ impl InstanceManager {
         if renamed {
             // Save instances to disk
             let instances_clone = instances.clone();
-            let next_id = NEXT_ID.read().clone();
+            let next_id = *NEXT_ID.read();
             drop(instances); // Release the write lock
             spawn(async move {
                 if let Err(e) = save_instances(&instances_clone, next_id).await {
@@ -166,20 +146,20 @@ impl InstanceManager {
         renamed
     }
 
-    pub fn toggle_debug_mode(self) {
-        let current = DEBUG_MODE.read().clone();
+    pub fn toggle_debug_mode(&self) {
+        let current = *DEBUG_MODE.read();
         *DEBUG_MODE.write() = !current;
     }
 
-    pub fn is_debug_mode(self) -> bool {
-        DEBUG_MODE.read().clone()
+    pub fn is_debug_mode(&self) -> bool {
+        *DEBUG_MODE.read()
     }
 
-    pub fn can_create_instance(self) -> bool {
+    pub fn can_create_instance(&self) -> bool {
         INSTANCES.read().len() < 14
     }
 
-    pub fn get_instances_sorted(self) -> Vec<Instance> {
+    pub fn get_instances_sorted(&self) -> Vec<Instance> {
         let instances = INSTANCES.read();
         let mut sorted: Vec<Instance> = instances.values().cloned().collect();
         sorted.sort_by_key(|i| i.id);
@@ -193,7 +173,7 @@ pub fn use_instance_manager() -> InstanceManager {
     manager
 }
 
-/// Get the base DreamLauncher directory.
+/// Get the base `DreamLauncher` directory.
 pub fn get_base_directory() -> PathBuf {
     let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/Users/unknown".to_string());
     Path::new(&home_dir).join("Library/Application Support/DreamLauncher")

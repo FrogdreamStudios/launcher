@@ -43,17 +43,16 @@ pub fn Layout() -> Element {
 
     // Inline editing state
     let mut editing_instance_id = use_signal(|| None::<u32>);
-    let mut editing_text = use_signal(|| String::new());
+    let mut editing_text = use_signal(String::new);
 
     // Determine current page and update last active if not in chat
     let current_page = match route {
-        Route::Home { .. } => "Home",
+        Route::Home { .. } | Route::Auth { .. } => "Home",
         Route::Packs { .. } => "Packs",
         Route::Settings { .. } => "Settings",
         Route::Cloud { .. } => "Cloud",
         Route::New { .. } => "New",
         Route::Chat { .. } => last_active_page(), // Keep last active when in chat
-        _ => "Home",
     };
 
     // Update the last active page only for non-chat routes
@@ -217,7 +216,7 @@ pub fn Layout() -> Element {
                                                     6 => "22px",
                                                     _ => "18px",
                                                 };
-                                                format!("background: transparent; border: none; color: #ffffff !important; text-align: center; font-size: {}; font-weight: 700; font-family: 'Gilroy-Bold', Helvetica, Arial, sans-serif; width: 100%; outline: none; z-index: 1000; padding: 0 8px; margin: 0; box-sizing: border-box; -webkit-text-fill-color: #ffffff !important; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);", font_size)
+                                                format!("background: transparent; border: none; color: #ffffff !important; text-align: center; font-size: {font_size}; font-weight: 700; font-family: 'Gilroy-Bold', Helvetica, Arial, sans-serif; width: 100%; outline: none; z-index: 1000; padding: 0 8px; margin: 0; box-sizing: border-box; -webkit-text-fill-color: #ffffff !important; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);")
                                             },
                                             oninput: move |e| {
                                                 editing_text.set(e.value().chars().take(7).collect());
@@ -227,7 +226,7 @@ pub fn Layout() -> Element {
                                                 move |e| {
                                                     match e.key() {
                                                         Key::Enter => {
-                                                            instance_manager.rename_instance(instance_id, editing_text());
+                                                            instance_manager.rename_instance(instance_id, &editing_text());
                                                             editing_instance_id.set(None);
                                                             editing_text.set(String::new());
                                                         },
@@ -243,7 +242,7 @@ pub fn Layout() -> Element {
                                                 let instance_id = instance.id;
                                                 move |_| {
                                                     if !editing_text().is_empty() {
-                                                        instance_manager.rename_instance(instance_id, editing_text());
+                                                        instance_manager.rename_instance(instance_id, &editing_text());
                                                     }
                                                     editing_instance_id.set(None);
                                                     editing_text.set(String::new());
@@ -262,7 +261,7 @@ pub fn Layout() -> Element {
                                                     6 => "22px",
                                                     _ => "18px",
                                                 };
-                                                format!("font-size: {}; padding: 0 16px;", font_size)
+                                                format!("font-size: {font_size}; padding: 0 16px;")
                                             },
                                             ondoubleclick: {
                                                 let instance_id = instance.id;

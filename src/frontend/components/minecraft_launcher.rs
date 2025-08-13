@@ -1,6 +1,7 @@
 use crate::backend::creeper::launcher::MinecraftLauncher;
 use crate::frontend::game_state::GameStatus;
 use dioxus::prelude::*;
+
 use tracing::{error, info, warn};
 
 /// Launch Minecraft
@@ -66,13 +67,7 @@ pub fn launch_minecraft(game_status: Signal<GameStatus>, version: &str, instance
                     }
 
                     // Check Java availability
-                    let java_available = launcher
-                        .is_java_available(&version_owned)
-                        .await
-                        .unwrap_or_else(|e| {
-                            warn!("Failed to check Java availability: {e}, continuing anyway...");
-                            true
-                        });
+                    let java_available = launcher.is_java_available(&version_owned);
 
                     if !java_available {
                         info!("Java not available for version {version_owned}, installing...");

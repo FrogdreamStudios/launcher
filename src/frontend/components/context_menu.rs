@@ -86,7 +86,7 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
         e.stop_propagation();
         if let Some(id) = instance_id() {
             println!("Change clicked for instance {id}");
-            
+
             // Get the current instance name and set up editing
             let instances = INSTANCES.read();
             if let Some(instance) = instances.get(&id) {

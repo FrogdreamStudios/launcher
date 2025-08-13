@@ -10,9 +10,9 @@ version = "1.0.0-beta.1"
 edition = "2024"
 
 [dependencies]
-dioxus = { version = "0.7.0-alpha.3", features = ["desktop"] }
-dioxus-router = "0.7.0-alpha.3"
-dioxus-desktop = { version = "0.7.0-alpha.3", default-features = false }
+dioxus = { version = "0.7.0-rc.0", features = ["desktop"] }
+dioxus-router = "0.7.0-rc.0"
+dioxus-desktop = { version = "0.7.0-rc.0", default-features = false }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.142"
 tokio = { version = "1.47.1", features = [
@@ -24,7 +24,7 @@ tokio = { version = "1.47.1", features = [
     "macros",
 ] }
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
-reqwest = { version = "0.12.22", features = [
+reqwest = { version = "0.12.23", features = [
     "json",
     "stream",
     "native-tls",
@@ -41,7 +41,7 @@ dirs = "6.0.0"
 hex = "0.4.3"
 which = "8.0.0"
 tracing = "0.1.41"
-anyhow = "1.0.98"
+anyhow = "1.0.99"
 image = { version = "0.25.6", default-features = false, features = ["png"] }
 tao = "0.34.0"
 zip = { version = "4.3.0", default-features = false, features = ["deflate"] }
@@ -57,15 +57,29 @@ desktop = ["dioxus/desktop"]
 incremental = true
 
 [lints.clippy]
-correctness = { level = "warn", priority = -1 }
-suspicious = { level = "warn", priority = -1 }
-unwrap_used = "warn"
-expect_used = "warn"
-panic = "warn"
-todo = "warn"
+correctness = { level = "deny", priority = -1 }
+suspicious = { level = "deny", priority = -1 }
+perf = { level = "deny", priority = -1 }
+complexity = { level = "deny", priority = -1 }
+style = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
 
-pedantic = { level = "allow", priority = -1 }
-nursery = { level = "allow", priority = -1 }
-complexity = { level = "allow", priority = -1 }
-perf = { level = "allow", priority = -1 }
-style = { level = "allow", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+large_stack_arrays = "deny"
+large_types_passed_by_value = "deny"
+box_collection = "deny"
+vec_box = "deny"
+rc_buffer = "deny"
+rc_mutex = "deny"
+redundant_clone = "deny"
+unnecessary_to_owned = "deny"
+unnecessary_box_returns = "deny"
+needless_collect = "deny"
+needless_borrow = "deny"
+needless_pass_by_value = "deny"
+implicit_clone = "deny"
+clone_on_copy = "deny"

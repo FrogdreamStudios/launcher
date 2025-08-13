@@ -44,7 +44,7 @@ impl JavaManager {
         minecraft_version: &str,
     ) -> Result<(PathBuf, bool)> {
         let required_java = JavaRuntime::get_required_java_version(minecraft_version);
-        let needs_x86_64 = self.needs_x86_64_java(minecraft_version);
+        let needs_x86_64 = Self::needs_x86_64_java(minecraft_version);
 
         info!(
             "Minecraft version {minecraft_version} requires Java {required_java} (x86_64: {needs_x86_64})"
@@ -60,12 +60,11 @@ impl JavaManager {
                 let exe_path = runtime.get_executable_path();
                 if exe_path.exists() {
                     return Ok((exe_path, true));
-                } else {
-                    info!(
-                        "Installed x86_64 Java runtime not found at {exe_path:?}, removing from cache"
-                    );
-                    Some(runtime.major_version)
                 }
+                info!(
+                    "Installed x86_64 Java runtime not found at {exe_path:?}, removing from cache"
+                );
+                Some(runtime.major_version)
             } else {
                 None
             }
@@ -74,13 +73,12 @@ impl JavaManager {
             let exe_path = runtime.get_executable_path();
             if exe_path.exists() {
                 return Ok((exe_path, false));
-            } else {
-                info!(
-                    "Installed Java runtime not found at {:?}, removing from cache",
-                    exe_path
-                );
-                Some(runtime.major_version)
             }
+            info!(
+                "Installed Java runtime not found at {:?}, removing from cache",
+                exe_path
+            );
+            Some(runtime.major_version)
         } else {
             None
         };
@@ -116,13 +114,14 @@ impl JavaManager {
             match self.install_x86_64_java_runtime(required_java).await {
                 Ok(()) => {
                     // Get the newly installed runtime
-                    if let Some(runtime) = self.x86_64_runtimes.get(&required_java) {
-                        Ok((runtime.get_executable_path(), true))
-                    } else {
-                        Err(anyhow::anyhow!(
-                            "Failed to install x86_64 Java {required_java} runtime"
-                        ))
-                    }
+                    self.x86_64_runtimes.get(&required_java).map_or_else(
+                        || {
+                            Err(anyhow::anyhow!(
+                                "Failed to install x86_64 Java {required_java} runtime"
+                            ))
+                        },
+                        |runtime| Ok((runtime.get_executable_path(), true)),
+                    )
                 }
                 Err(e) => {
                     warn!("Failed to download x86_64 Java {required_java}: {e}");
@@ -140,12 +139,11 @@ impl JavaManager {
                                     which::which("java").unwrap_or_else(|_| "java".into());
                             }
                             return Ok((system_java.get_executable_path(), false));
-                        } else {
-                            warn!(
-                                "System Java {} is not compatible with required Java {}",
-                                system_java.major_version, required_java
-                            );
                         }
+                        warn!(
+                            "System Java {} is not compatible with required Java {}",
+                            system_java.major_version, required_java
+                        );
                     }
 
                     Err(anyhow::anyhow!(
@@ -159,14 +157,15 @@ impl JavaManager {
             match self.install_java_runtime(required_java).await {
                 Ok(()) => {
                     // Get the newly installed runtime
-                    if let Some(runtime) = self.installed_runtimes.get(&required_java) {
-                        Ok((runtime.get_executable_path(), false))
-                    } else {
-                        Err(anyhow::anyhow!(
-                            "Failed to install Java {} runtime",
-                            required_java
-                        ))
-                    }
+                    self.installed_runtimes.get(&required_java).map_or_else(
+                        || {
+                            Err(anyhow::anyhow!(
+                                "Failed to install Java {} runtime",
+                                required_java
+                            ))
+                        },
+                        |runtime| Ok((runtime.get_executable_path(), false)),
+                    )
                 }
                 Err(e) => {
                     warn!("Failed to download native Java {}: {}", required_java, e);
@@ -207,12 +206,11 @@ impl JavaManager {
                                     which::which("java").unwrap_or_else(|_| "java".into());
                             }
                             return Ok((system_java.get_executable_path(), false));
-                        } else {
-                            warn!(
-                                "System Java {} is not compatible with required Java {}",
-                                system_java.major_version, required_java
-                            );
                         }
+                        warn!(
+                            "System Java {} is not compatible with required Java {}",
+                            system_java.major_version, required_java
+                        );
                     }
 
                     Err(anyhow::anyhow!(
@@ -238,21 +236,21 @@ impl JavaManager {
             .min_by_key(|runtime| runtime.major_version)
     }
 
-    /// Determines if a Minecraft version needs x86_64 Java on Apple Silicon
+    /// Determines if a Minecraft version needs `x86_64` Java on Apple Silicon
     /// due to incompatible native libraries.
-    fn needs_x86_64_java(&self, minecraft_version: &str) -> bool {
+    fn needs_x86_64_java(minecraft_version: &str) -> bool {
         // Only applies to Apple Silicon (ARM64) systems
         if std::env::consts::ARCH != "aarch64" || std::env::consts::OS != "macos" {
             return false;
         }
 
         // Handle snapshots and special versions first
-        if self.is_modern_snapshot_or_version(minecraft_version) {
+        if Self::is_modern_snapshot_or_version(minecraft_version) {
             return false; // Modern snapshots support ARM64 natively
         }
 
         // Parse Minecraft version
-        if let Ok((major, minor, _patch)) = self.parse_minecraft_version(minecraft_version) {
+        if let Ok((major, minor, _patch)) = Self::parse_minecraft_version(minecraft_version) {
             // Versions before 1.19 typically have x86_64-only natives
             // This is a conservative approach - some versions between 1.16-1.19 might work
             matches!((major, minor), (1, m) if m < 19)
@@ -263,7 +261,7 @@ impl JavaManager {
     }
 
     /// Check if this is a modern snapshot or version that supports ARM64 natively
-    fn is_modern_snapshot_or_version(&self, version: &str) -> bool {
+    fn is_modern_snapshot_or_version(version: &str) -> bool {
         let version_lower = version.to_lowercase();
 
         // Handle snapshots (e.g., "25w31a", "24w44a", "23w31a")
@@ -279,7 +277,7 @@ impl JavaManager {
         // Handle pre-releases and release candidates
         if (version_lower.contains("-pre") || version_lower.contains("-rc"))
             && let Ok(parsed) =
-                self.parse_minecraft_version(version_lower.split('-').next().unwrap_or(version))
+                Self::parse_minecraft_version(version_lower.split('-').next().unwrap_or(version))
         {
             return parsed >= (1, 19, 0); // 1.19+ support ARM64
         }
@@ -290,7 +288,7 @@ impl JavaManager {
         }
 
         // Check if it's a regular version that supports ARM64
-        if let Ok(parsed) = self.parse_minecraft_version(version) {
+        if let Ok(parsed) = Self::parse_minecraft_version(version) {
             return parsed >= (1, 19, 0);
         }
 
@@ -298,7 +296,7 @@ impl JavaManager {
         true
     }
 
-    fn parse_minecraft_version(&self, version: &str) -> Result<(u8, u8, u8)> {
+    fn parse_minecraft_version(version: &str) -> Result<(u8, u8, u8)> {
         let parts: Vec<&str> = version.split('.').collect();
 
         if parts.len() >= 2 {
@@ -320,7 +318,7 @@ impl JavaManager {
     }
 
     pub async fn install_java_runtime(&mut self, java_version: u8) -> Result<()> {
-        let manifest = self.fetch_azul_manifest()?;
+        let manifest = Self::fetch_azul_manifest();
 
         let os = AzulPackage::get_os_name();
         let arch = AzulPackage::get_arch_name();
@@ -347,10 +345,15 @@ impl JavaManager {
         );
 
         // Determine file extension from URL
-        let file_extension = if package.download_url.ends_with(".zip") {
+        let file_extension = if Path::new(&package.download_url)
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("zip"))
+        {
             "zip"
         } else if package.download_url.ends_with(".tar.gz")
-            || package.download_url.ends_with(".tgz")
+            || Path::new(&package.download_url)
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("tgz"))
         {
             "tar.gz"
         } else {
@@ -411,7 +414,7 @@ impl JavaManager {
         remove_file_if_exists(&download_path).await?;
 
         // Detect the extracted runtime
-        let java_executable = self.find_java_executable(&extract_path)?;
+        let java_executable = Self::find_java_executable(&extract_path)?;
         if let Some(runtime) = JavaRuntime::from_path(&java_executable)? {
             self.installed_runtimes.insert(java_version, runtime);
             info!("Successfully installed Java {} runtime", java_version);
@@ -423,9 +426,10 @@ impl JavaManager {
     }
 
     pub async fn install_x86_64_java_runtime(&mut self, java_version: u8) -> Result<()> {
-        let manifest = self.fetch_azul_manifest()?;
+        let manifest = Self::fetch_azul_manifest();
 
         let os = AzulPackage::get_os_name();
+        #[allow(clippy::no_effect_underscore_binding)]
         let _arch = "x64"; // Force x86_64 architecture
 
         let package = manifest
@@ -448,10 +452,15 @@ impl JavaManager {
         );
 
         // Determine file extension from URL
-        let file_extension = if package.download_url.ends_with(".zip") {
+        let file_extension = if Path::new(&package.download_url)
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("zip"))
+        {
             "zip"
         } else if package.download_url.ends_with(".tar.gz")
-            || package.download_url.ends_with(".tgz")
+            || Path::new(&package.download_url)
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("tgz"))
         {
             "tar.gz"
         } else {
@@ -519,7 +528,7 @@ impl JavaManager {
         remove_file_if_exists(&download_path).await?;
 
         // Detect the extracted runtime
-        let java_executable = self.find_java_executable(&extract_path)?;
+        let java_executable = Self::find_java_executable(&extract_path)?;
         if let Some(runtime) = JavaRuntime::from_path(&java_executable)? {
             self.x86_64_runtimes.insert(java_version, runtime);
             info!(
@@ -550,28 +559,27 @@ impl JavaManager {
                     .file_name()
                     .and_then(|name| name.to_str())
                     .is_some_and(|name| name.starts_with("java-"))
-                && let Ok(java_executable) = self.find_java_executable(&path)
+                && let Ok(java_executable) = Self::find_java_executable(&path)
+                && let Some(runtime) = JavaRuntime::from_path(&java_executable)?
             {
-                if let Some(runtime) = JavaRuntime::from_path(&java_executable)? {
-                    let is_x86_64 = path
-                        .file_name()
-                        .and_then(|name| name.to_str())
-                        .is_some_and(|name| name.contains("-x64"));
+                let is_x86_64 = path
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .is_some_and(|name| name.contains("-x64"));
 
-                    let major_version: u8 = runtime.major_version;
+                let major_version: u8 = runtime.major_version;
 
-                    debug!(
-                        "Found installed {} Java {} runtime at {:?}",
-                        if is_x86_64 { "x86_64" } else { "native" },
-                        major_version,
-                        path
-                    );
+                debug!(
+                    "Found installed {} Java {} runtime at {:?}",
+                    if is_x86_64 { "x86_64" } else { "native" },
+                    major_version,
+                    path
+                );
 
-                    if is_x86_64 {
-                        self.x86_64_runtimes.insert(major_version, runtime);
-                    } else {
-                        self.installed_runtimes.insert(major_version, runtime);
-                    }
+                if is_x86_64 {
+                    self.x86_64_runtimes.insert(major_version, runtime);
+                } else {
+                    self.installed_runtimes.insert(major_version, runtime);
                 }
             }
         }
@@ -584,13 +592,14 @@ impl JavaManager {
         Ok(())
     }
 
-    fn fetch_azul_manifest(&self) -> Result<AzulJavaManifest> {
+    fn fetch_azul_manifest() -> AzulJavaManifest {
+        #[allow(clippy::no_effect_underscore_binding)]
         let _manifest_url = "https://api.azul.com/zulu/download/community/v1.0/bundles/";
 
-        Ok(self.create_fallback_manifest())
+        Self::create_fallback_manifest()
     }
 
-    fn create_fallback_manifest(&self) -> AzulJavaManifest {
+    fn create_fallback_manifest() -> AzulJavaManifest {
         let packages = vec![
             // Java 8 packages
             AzulPackage {
@@ -600,7 +609,7 @@ impl JavaManager {
                 os: "windows".to_string(),
                 arch: "x64".to_string(),
                 download_url: "https://cdn.azul.com/zulu/bin/zulu8.62.0.19-ca-jdk8.0.332-win_x64.zip".to_string(),
-                sha256_hash: "".to_string(),
+                sha256_hash: String::new(),
                 size: 104_857_600,
             },
             AzulPackage {
@@ -610,7 +619,7 @@ impl JavaManager {
                 os: "macos".to_string(),
                 arch: "x64".to_string(),
                 download_url: "https://cdn.azul.com/zulu/bin/zulu8.62.0.19-ca-jdk8.0.332-macosx_x64.tar.gz".to_string(),
-                sha256_hash: "".to_string(),
+                sha256_hash: String::new(),
                 size: 104_857_600,
             },
             AzulPackage {
@@ -620,7 +629,7 @@ impl JavaManager {
                 os: "macos".to_string(),
                 arch: "arm64".to_string(),
                 download_url: "https://cdn.azul.com/zulu/bin/zulu8.62.0.19-ca-jdk8.0.332-macosx_aarch64.tar.gz".to_string(),
-                sha256_hash: "".to_string(),
+                sha256_hash: String::new(),
                 size: 104_857_600,
             },
             AzulPackage {
@@ -630,7 +639,7 @@ impl JavaManager {
                 os: "linux".to_string(),
                 arch: "x64".to_string(),
                 download_url: "https://cdn.azul.com/zulu/bin/zulu8.62.0.19-ca-jdk8.0.332-linux_x64.tar.gz".to_string(),
-                sha256_hash: "".to_string(),
+                sha256_hash: String::new(),
                 size: 104_857_600,
             },
             // Java 17 packages
@@ -641,7 +650,7 @@ impl JavaManager {
                 os: "windows".to_string(),
                 arch: "x64".to_string(),
                 download_url: "https://cdn.azul.com/zulu/bin/zulu17.34.19-ca-jdk17.0.3-win_x64.zip".to_string(),
-                sha256_hash: "".to_string(),
+                sha256_hash: String::new(),
                 size: 183_500_800,
             },
             AzulPackage {
@@ -651,7 +660,7 @@ impl JavaManager {
                 os: "macos".to_string(),
                 arch: "x64".to_string(),
                 download_url: "https://cdn.azul.com/zulu/bin/zulu17.34.19-ca-jdk17.0.3-macosx_x64.tar.gz".to_string(),
-                sha256_hash: "".to_string(),
+                sha256_hash: String::new(),
                 size: 183_500_800,
             },
             AzulPackage {
@@ -661,7 +670,7 @@ impl JavaManager {
                 os: "macos".to_string(),
                 arch: "arm64".to_string(),
                 download_url: "https://cdn.azul.com/zulu/bin/zulu17.34.19-ca-jdk17.0.3-macosx_aarch64.tar.gz".to_string(),
-                sha256_hash: "".to_string(),
+                sha256_hash: String::new(),
                 size: 183_500_800,
             },
             AzulPackage {
@@ -671,7 +680,7 @@ impl JavaManager {
                 os: "linux".to_string(),
                 arch: "x64".to_string(),
                 download_url: "https://cdn.azul.com/zulu/bin/zulu17.34.19-ca-jdk17.0.3-linux_x64.tar.gz".to_string(),
-                sha256_hash: "".to_string(),
+                sha256_hash: String::new(),
                 size: 183_500_800,
             },
             // Java 21 packages
@@ -682,7 +691,7 @@ impl JavaManager {
                 os: "windows".to_string(),
                 arch: "x64".to_string(),
                 download_url: "https://cdn.azul.com/zulu/bin/zulu21.36.17-ca-jdk21.0.4-win_x64.zip".to_string(),
-                sha256_hash: "".to_string(),
+                sha256_hash: String::new(),
                 size: 200_000_000,
             },
             AzulPackage {
@@ -692,7 +701,7 @@ impl JavaManager {
                 os: "macos".to_string(),
                 arch: "x64".to_string(),
                 download_url: "https://cdn.azul.com/zulu/bin/zulu21.36.17-ca-jdk21.0.4-macosx_x64.tar.gz".to_string(),
-                sha256_hash: "".to_string(),
+                sha256_hash: String::new(),
                 size: 200_000_000,
             },
             AzulPackage {
@@ -702,7 +711,7 @@ impl JavaManager {
                 os: "macos".to_string(),
                 arch: "arm64".to_string(),
                 download_url: "https://cdn.azul.com/zulu/bin/zulu21.36.17-ca-jdk21.0.4-macosx_aarch64.tar.gz".to_string(),
-                sha256_hash: "".to_string(),
+                sha256_hash: String::new(),
                 size: 200_000_000,
             },
             AzulPackage {
@@ -712,7 +721,7 @@ impl JavaManager {
                 os: "linux".to_string(),
                 arch: "x64".to_string(),
                 download_url: "https://cdn.azul.com/zulu/bin/zulu21.36.17-ca-jdk21.0.4-linux_x64.tar.gz".to_string(),
-                sha256_hash: "".to_string(),
+                sha256_hash: String::new(),
                 size: 200_000_000,
             },
         ];
@@ -720,7 +729,7 @@ impl JavaManager {
         AzulJavaManifest { packages }
     }
 
-    fn find_java_executable(&self, java_dir: &Path) -> Result<PathBuf> {
+    fn find_java_executable(java_dir: &Path) -> Result<PathBuf> {
         let executable_name = if cfg!(windows) { "java.exe" } else { "java" };
 
         // Look for common locations within the Java installation
@@ -771,7 +780,7 @@ impl JavaManager {
 
     pub fn is_java_available(&self, minecraft_version: &str) -> bool {
         let required_java = JavaRuntime::get_required_java_version(minecraft_version);
-        let needs_x86_64 = self.needs_x86_64_java(minecraft_version);
+        let needs_x86_64 = Self::needs_x86_64_java(minecraft_version);
 
         // For modern snapshots requiring Java 21, always prefer downloading managed Java
         // instead of using system Java to ensure compatibility

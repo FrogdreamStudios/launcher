@@ -1,6 +1,6 @@
 use dioxus::prelude::*;
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum GameStatus {
     Idle,
     Launching,
@@ -14,7 +14,7 @@ impl Default for GameStatus {
 }
 
 impl GameStatus {
-    pub fn is_active(&self) -> bool {
+    pub const fn is_active(&self) -> bool {
         matches!(self, GameStatus::Launching | GameStatus::Running)
     }
 }

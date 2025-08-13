@@ -65,15 +65,20 @@ impl ProgressTracker {
         let total = self.total.load(Ordering::Relaxed);
 
         if total == 0 {
-            info!("{}: {} bytes", self.name, self.format_bytes(current));
+            info!("{}: {} bytes", self.name, Self::format_bytes(current));
         } else {
-            let percentage = (current as f64 / total as f64 * 100.0).round() as u8;
+            #[allow(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                clippy::cast_precision_loss
+            )]
+            let percentage = ((current as f64 / total as f64) * 100.0).round() as u8;
             info!(
                 "{}: {}% ({}/{})",
                 self.name,
                 percentage,
-                self.format_bytes(current),
-                self.format_bytes(total)
+                Self::format_bytes(current),
+                Self::format_bytes(total)
             );
         }
     }
@@ -86,14 +91,15 @@ impl ProgressTracker {
         info!(
             "{}: Complete - {} in {:.1}s",
             self.name,
-            self.format_bytes(current),
+            Self::format_bytes(current),
             elapsed.as_secs_f64()
         );
     }
 
     /// Formats byte count into human-readable size.
-    fn format_bytes(&self, bytes: u64) -> String {
+    fn format_bytes(bytes: u64) -> String {
         const UNITS: &[&str] = &["B", "KB", "MB", "GB"];
+        #[allow(clippy::cast_precision_loss)]
         let mut size = bytes as f64;
         let mut unit_index = 0;
 
@@ -103,7 +109,10 @@ impl ProgressTracker {
         }
 
         if unit_index == 0 {
-            format!("{} {}", size as u64, UNITS[unit_index])
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            {
+                format!("{} {}", size as u64, UNITS[unit_index])
+            }
         } else {
             format!("{:.1} {}", size, UNITS[unit_index])
         }

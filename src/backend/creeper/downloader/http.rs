@@ -143,7 +143,7 @@ impl HttpDownloader {
                     .await
                     .map_err(|e| anyhow::anyhow!("Semaphore error: {e}"))?;
 
-                let downloader = HttpDownloader { client };
+                let downloader = Self { client };
                 downloader
                     .download_file(
                         &task.url,
@@ -189,12 +189,12 @@ impl HttpDownloader {
                             ));
                         }
 
-                        let wait_time = Duration::from_secs(2_u64.pow(retries as u32));
+                        let wait_time =
+                            Duration::from_secs(2_u64.pow(u32::try_from(retries).unwrap_or(10)));
                         warn!(
                             "Rate limited, waiting {wait_time:?} before retry {retries}/{MAX_RETRIES}"
                         );
                         tokio::time::sleep(wait_time).await;
-                        continue;
                     }
                     status => {
                         return Err(anyhow::anyhow!("HTTP {status} for {url}"));
@@ -210,7 +210,6 @@ impl HttpDownloader {
 
                     warn!("Network error, retrying {retries}/{MAX_RETRIES} for {url}: {e}");
                     tokio::time::sleep(Duration::from_secs(1 + retries as u64)).await;
-                    continue;
                 }
             }
         }

@@ -78,7 +78,7 @@ pub fn Auth() -> Element {
                                         r#type: "text",
                                         value: "{username()}",
                                         maxlength: "16",
-                                        oninput: move |e| username.set(e.value().clone()),
+                                        oninput: move |e| username.set(e.value()),
                                         onkeypress: on_keypress,
                                         placeholder: "Offline account",
                                         autofocus: true

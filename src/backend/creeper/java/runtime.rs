@@ -98,7 +98,7 @@ impl JavaRuntime {
                     java_path
                         .parent()
                         .and_then(|p| p.parent())
-                        .unwrap_or(java_path.parent().unwrap_or(java_path))
+                        .unwrap_or_else(|| java_path.parent().unwrap_or(java_path))
                         .to_path_buf()
                 } else {
                     java_path.to_path_buf()
@@ -128,7 +128,7 @@ impl JavaRuntime {
         // Detect architecture
         let architecture = Self::detect_architecture();
 
-        Ok(Some(JavaRuntime {
+        Ok(Some(Self {
             path: PathBuf::new(),
             version,
             major_version,
@@ -153,18 +153,21 @@ impl JavaRuntime {
     fn get_major_version(version: &str) -> u8 {
         if version.starts_with("1.") {
             // Java 8 and below use the format "1.X.Y"
-            version
-                .chars()
-                .nth(2)
-                .and_then(|c| c.to_digit(10))
-                .unwrap_or(8) as u8
+            #[allow(clippy::cast_possible_truncation)]
+            {
+                version
+                    .chars()
+                    .nth(2)
+                    .and_then(|c| c.to_digit(10))
+                    .map_or(8, |d| d as u8)
+            }
         } else {
             // Java 9+ use format "X.Y.Z"
             version
                 .split('.')
                 .next()
                 .and_then(|s| s.parse().ok())
-                .unwrap_or(8)
+                .unwrap_or(17)
         }
     }
 
@@ -191,7 +194,7 @@ impl JavaRuntime {
         }
     }
 
-    pub fn is_compatible_with_minecraft(&self, required_major: u8) -> bool {
+    pub const fn is_compatible_with_minecraft(&self, required_major: u8) -> bool {
         // Java compatibility ranges for Minecraft versions
         match required_major {
             8 => self.major_version >= 8 && self.major_version <= 21, // Java 8-21 for older versions
@@ -406,7 +409,6 @@ impl AzulPackage {
 
     pub fn get_arch_name() -> &'static str {
         match std::env::consts::ARCH {
-            "x86_64" => "x64",
             "aarch64" => "arm64",
             "x86" => "x86",
             _ => "x64", // Default to x64

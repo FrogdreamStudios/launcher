@@ -22,7 +22,7 @@ pub struct ChatData {
 #[component]
 pub fn Chat(username: String) -> Element {
     // TODO: use mock data
-    let username_clone = username.clone();
+    let username_clone = username;
     let chat_data = use_memo(move || get_chat_data(&username_clone));
 
     rsx! {

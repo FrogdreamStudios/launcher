@@ -53,7 +53,7 @@ pub fn DebugWindow(
             )
         } else {
             (
-                format!("Debug Panel - Instance {}", id),
+                format!("Debug Panel - Instance {id}"),
                 "Instance not found".to_string(),
             )
         }
@@ -227,7 +227,7 @@ pub fn DebugWindow(
                             move |_| {
                                 spawn(async move {
                                     let result = if let Some(id) = current_instance_id {
-                                        get_instance_info(id).await
+                                        Ok(get_instance_info(id))
                                     } else {
                                         get_system_info().await
                                     };
@@ -248,13 +248,13 @@ pub fn DebugWindow(
 
 async fn load_available_versions() -> anyhow::Result<Vec<VersionInfo>> {
     let launcher = MinecraftLauncher::new(None, None).await?;
-    launcher.get_available_versions().await
+    launcher.get_available_versions()
 }
 
 async fn update_and_load_versions() -> anyhow::Result<Vec<VersionInfo>> {
     let mut launcher = MinecraftLauncher::new(None, None).await?;
     launcher.update_manifest().await?;
-    launcher.get_available_versions().await
+    launcher.get_available_versions()
 }
 
 async fn delete_launcher_files() -> anyhow::Result<()> {
@@ -346,13 +346,13 @@ async fn get_system_info() -> anyhow::Result<String> {
     Ok(info)
 }
 
-async fn get_instance_info(instance_id: u32) -> anyhow::Result<String> {
+fn get_instance_info(instance_id: u32) -> String {
     use crate::frontend::instances::main::{get_base_directory, get_instance_directory};
 
     let mut info = String::new();
 
     // Instance-specific info
-    info.push_str(&format!("Instance ID: {}\n", instance_id));
+    info.push_str(&format!("Instance ID: {instance_id}\n"));
 
     let instance_dir = get_instance_directory(instance_id);
     info.push_str(&format!("Instance directory: {instance_dir:?}\n"));
@@ -396,17 +396,16 @@ async fn get_instance_info(instance_id: u32) -> anyhow::Result<String> {
     info.push_str(&format!("\nOS: {}\n", std::env::consts::OS));
     info.push_str(&format!("Architecture: {}\n", std::env::consts::ARCH));
 
-    Ok(info)
+    info
 }
 
 fn format_date(date_str: &str) -> String {
-    if let Some(date_part) = date_str.split('T').next() {
-        date_part.to_string()
-    } else {
-        date_str.to_string()
-    }
+    date_str
+        .split('T')
+        .next()
+        .map_or_else(|| date_str.to_string(), |date_part| date_part.to_string())
 }
 
 pub fn use_version_selection() -> Signal<VersionSelection> {
-    use_signal(|| VersionSelection::default())
+    use_signal(VersionSelection::default)
 }

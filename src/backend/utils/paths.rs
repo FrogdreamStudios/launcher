@@ -37,7 +37,7 @@ const NATIVES: &str = "natives";
 /// Subdirectory for instances.
 const INSTANCES: &str = "instances";
 
-/// Get the base launcher directory (DreamLauncher).
+/// Get the base launcher directory (`DreamLauncher`).
 #[inline]
 pub fn get_launcher_dir() -> Result<PathBuf> {
     let base_dir = match std::env::consts::OS {
@@ -53,8 +53,8 @@ pub fn get_launcher_dir() -> Result<PathBuf> {
 }
 
 /// Get the Minecraft game directory for a specific instance.
-/// If custom_path is provided, it will be used instead of the instance-specific path.
-/// If instance_id is None, returns the shared DreamLauncher directory (for assets, etc.).
+/// If `custom_path` is provided, it will be used instead of the instance-specific path.
+/// If `instance_id` is None, it returns the shared `DreamLauncher` directory (for assets, etc.).
 pub fn get_game_dir(custom_path: Option<PathBuf>, instance_id: Option<u32>) -> Result<PathBuf> {
     if let Some(path) = custom_path {
         return Ok(path);
@@ -65,7 +65,7 @@ pub fn get_game_dir(custom_path: Option<PathBuf>, instance_id: Option<u32>) -> R
     match instance_id {
         Some(id) => Ok(launcher_dir
             .join(INSTANCES)
-            .join(format!("instance_{}", id))),
+            .join(format!("instance_{id}"))),
         None => Ok(launcher_dir), // For shared resources like assets
     }
 }
@@ -82,7 +82,7 @@ pub fn get_libraries_dir(game_dir: &Path) -> PathBuf {
     game_dir.join(LIBRARIES)
 }
 
-/// Gets the shared assets directory (always in the main DreamLauncher directory).
+/// Gets the shared assets directory (always in the main `DreamLauncher` directory).
 #[inline]
 pub fn get_assets_dir() -> Result<PathBuf> {
     Ok(get_launcher_dir()?.join(ASSETS))
@@ -106,7 +106,7 @@ pub fn get_logs_dir(game_dir: &Path) -> PathBuf {
     game_dir.join(LOGS)
 }
 
-/// Gets the shared logs directory in the main DreamLauncher directory.
+/// Gets the shared logs directory in the main `DreamLauncher` directory.
 #[inline]
 pub fn get_shared_logs_dir() -> Result<PathBuf> {
     Ok(get_launcher_dir()?.join(LOGS))
@@ -154,7 +154,7 @@ pub fn get_asset_path(hash: &str) -> Result<PathBuf> {
 
 /// Gets the classpath separator for the current platform.
 #[inline]
-pub fn get_classpath_separator() -> &'static str {
+pub const fn get_classpath_separator() -> &'static str {
     if cfg!(windows) { ";" } else { ":" }
 }
 
@@ -173,12 +173,12 @@ pub fn get_instances_dir() -> Result<PathBuf> {
 /// Gets the directory for a specific instance.
 #[inline]
 pub fn get_instance_dir(instance_id: u32) -> Result<PathBuf> {
-    Ok(get_instances_dir()?.join(format!("instance_{}", instance_id)))
+    Ok(get_instances_dir()?.join(format!("instance_{instance_id}")))
 }
 
 /// Ensure all necessary directories exist for the launcher.
 ///
-/// Creates all required directories for the launcher including shared assets,
+/// Creates all required directories for the launcher, including shared assets,
 /// Java, cache, and logs directories.
 pub async fn ensure_launcher_directories() -> Result<()> {
     let dirs = vec![
@@ -230,8 +230,8 @@ pub async fn ensure_instance_directories(instance_id: u32) -> Result<()> {
 
 /// Ensure all necessary directories exist for both launcher and a specific instance.
 ///
-/// This is a convenience function that combines ensure_launcher_directories
-/// and ensure_instance_directories.
+/// This is a convenience function that combines `ensure_launcher_directories`
+/// and `ensure_instance_directories`.
 pub async fn ensure_directories(instance_id: Option<u32>) -> Result<()> {
     // Always ensure launcher directories exist
     ensure_launcher_directories().await?;
