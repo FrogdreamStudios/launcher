@@ -1,8 +1,11 @@
-use crate::backend::utils::assets::AssetLoader;
-use crate::frontend::components::minecraft_launcher::launch_minecraft;
-use crate::frontend::game_state::GameStatus;
-use crate::frontend::instances::main::{INSTANCES, open_instance_folder, use_instance_manager};
-
+use crate::{
+    backend::utils::assets::AssetLoader,
+    frontend::{
+        components::minecraft_launcher::launch_minecraft,
+        game_state::GameStatus,
+        instances::main::{INSTANCES, open_instance_folder, use_instance_manager},
+    },
+};
 use dioxus::prelude::*;
 
 #[derive(Props, Clone, PartialEq)]

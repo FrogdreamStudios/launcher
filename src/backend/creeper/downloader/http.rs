@@ -1,17 +1,19 @@
 //! HTTP downloader implementation with progress tracking.
 
-use super::progress::ProgressTracker;
-use crate::backend::creeper::downloader::models::DownloadTask;
-use crate::backend::utils::file_utils::{ensure_parent_directory, verify_file};
+use std::{path::Path, time::Duration};
+
 use anyhow::Result;
 use futures_util::StreamExt;
 use reqwest::Client;
 use sha1::{Digest, Sha1};
-use std::path::Path;
-use std::time::Duration;
-use tokio::fs::File;
-use tokio::io::AsyncWriteExt;
+use tokio::{fs::File, io::AsyncWriteExt};
 use tracing::{debug, warn};
+
+use super::progress::ProgressTracker;
+use crate::backend::{
+    creeper::downloader::models::DownloadTask,
+    utils::file_utils::{ensure_parent_directory, verify_file},
+};
 
 /// HTTP downloader with progress tracking and file verification.
 pub struct HttpDownloader {

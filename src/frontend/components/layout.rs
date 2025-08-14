@@ -1,19 +1,18 @@
-use crate::backend::utils::assets::AssetLoader;
-use crate::backend::utils::css_loader::CssLoader;
-use crate::backend::utils::route::Route;
-use crate::frontend::components::{
-    chat_sidebar::ChatSidebar,
-    context_menu::ContextMenu,
-    debug_window::{DebugWindow, use_version_selection},
-    minecraft_launcher::launch_minecraft,
-    navigation::Navigation,
-    news::News,
-    standalone_logo::StandaloneLogo,
+use crate::backend::utils::{assets::AssetLoader, css_loader::CssLoader, route::Route};
+use crate::frontend::{
+    components::{
+        chat_sidebar::ChatSidebar,
+        context_menu::ContextMenu,
+        debug_window::{DebugWindow, use_version_selection},
+        minecraft_launcher::launch_minecraft,
+        navigation::Navigation,
+        news::News,
+        standalone_logo::StandaloneLogo,
+    },
+    game_state::{GameStatus, use_game_state},
+    instances::main::use_instance_manager,
 };
-use crate::frontend::game_state::{GameStatus, use_game_state};
-use crate::frontend::instances::main::use_instance_manager;
-use dioxus::prelude::Key;
-use dioxus::prelude::*;
+use dioxus::prelude::{Key, *};
 use dioxus_router::{components::Outlet, use_route};
 
 #[component]

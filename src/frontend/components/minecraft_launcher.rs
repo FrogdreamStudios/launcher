@@ -1,7 +1,5 @@
-use crate::backend::creeper::launcher::MinecraftLauncher;
-use crate::frontend::game_state::GameStatus;
+use crate::{backend::creeper::launcher::MinecraftLauncher, frontend::game_state::GameStatus};
 use dioxus::prelude::*;
-
 use tracing::{error, info, warn};
 
 /// Launch Minecraft

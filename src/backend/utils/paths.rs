@@ -1,8 +1,9 @@
 //! Path utilities for Minecraft launcher directories.
 
+use std::path::{Path, PathBuf};
+
 use anyhow::{Result, anyhow};
 use dirs;
-use std::path::{Path, PathBuf};
 
 /// Name of the main launcher directory.
 const LAUNCHER_DIR: &str = "DreamLauncher";
@@ -63,9 +64,7 @@ pub fn get_game_dir(custom_path: Option<PathBuf>, instance_id: Option<u32>) -> R
     let launcher_dir = get_launcher_dir()?;
 
     match instance_id {
-        Some(id) => Ok(launcher_dir
-            .join(INSTANCES)
-            .join(format!("instance_{id}"))),
+        Some(id) => Ok(launcher_dir.join(INSTANCES).join(format!("instance_{id}"))),
         None => Ok(launcher_dir), // For shared resources like assets
     }
 }

@@ -34,12 +34,15 @@
 //! ```
 
 use anyhow::Result;
-use std::path::PathBuf;
-use std::process::Command;
+use std::{path::PathBuf, process::Command};
 
-use crate::backend::creeper::models::{ArgumentValue, ArgumentValueInner, VersionDetails};
-use crate::backend::utils::os::{get_minecraft_arch, get_minecraft_os_name, get_os_features};
-use crate::backend::utils::paths::{get_classpath_separator, get_natives_dir};
+use crate::backend::{
+    creeper::models::{ArgumentValue, ArgumentValueInner, VersionDetails},
+    utils::{
+        os::{get_minecraft_arch, get_minecraft_os_name, get_os_features},
+        paths::{get_classpath_separator, get_natives_dir},
+    },
+};
 
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;

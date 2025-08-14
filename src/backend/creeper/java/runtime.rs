@@ -5,8 +5,10 @@
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::{
+    path::{Path, PathBuf},
+    process::Command,
+};
 use tracing::{debug, info, warn};
 
 /// Information about a Java runtime installation.
@@ -23,13 +25,13 @@ pub struct JavaRuntime {
 }
 
 /// Manifest containing available Azul Java packages for download.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AzulJavaManifest {
     pub packages: Vec<AzulPackage>,
 }
 
 /// Individual Java package from Azul with download information.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AzulPackage {
     pub id: String,
     pub name: String,

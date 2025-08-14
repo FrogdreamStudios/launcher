@@ -3,8 +3,9 @@
 //! Extract different types of archives like ZIP and TAR.GZ files.
 //! It can detect archive types by extension or by reading file headers.
 
-use anyhow::Result;
 use std::path::Path;
+
+use anyhow::Result;
 use tokio::fs as async_fs;
 use tracing::{debug, info};
 

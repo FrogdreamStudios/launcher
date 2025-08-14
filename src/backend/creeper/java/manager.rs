@@ -1,19 +1,25 @@
 //! Java runtime management and utilities.
 
 use anyhow::{Context, Result};
-use std::collections::HashMap;
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashMap,
+    fs,
+    path::{Path, PathBuf},
+};
 use tokio::fs as async_fs;
 use tracing::{debug, error, info, warn};
 
 use super::runtime::{AzulJavaManifest, AzulPackage, JavaRuntime};
-use crate::backend::creeper::downloader::{HttpDownloader, ProgressTracker};
-use crate::backend::utils::archive_utils::extract_archive;
-use crate::backend::utils::file_utils::{
-    ensure_directory, get_file_size, remove_dir_if_exists, remove_file_if_exists,
+use crate::backend::{
+    creeper::downloader::{HttpDownloader, ProgressTracker},
+    utils::{
+        archive_utils::extract_archive,
+        file_utils::{
+            ensure_directory, get_file_size, remove_dir_if_exists, remove_file_if_exists,
+        },
+        paths::get_java_dir,
+    },
 };
-use crate::backend::utils::paths::get_java_dir;
 
 pub struct JavaManager {
     downloader: HttpDownloader,

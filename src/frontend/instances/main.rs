@@ -81,11 +81,13 @@ impl InstanceManager {
         *NEXT_ID.write() = current_id + 1;
 
         // Save instances to disk
-        let instances_clone = instances.clone();
-        let next_id = current_id + 1;
+        let instances_data = InstancesData {
+            instances: instances.clone(),
+            next_id: current_id + 1,
+        };
         drop(instances); // Release the write lock
         spawn(async move {
-            if let Err(e) = save_instances(&instances_clone, next_id).await {
+            if let Err(e) = save_instances_data(&instances_data).await {
                 println!("Failed to save instances: {e}");
             }
         });
@@ -109,11 +111,13 @@ impl InstanceManager {
             }
 
             // Save instances to disk
-            let instances_clone = instances.clone();
-            let next_id = *NEXT_ID.read();
+            let instances_data = InstancesData {
+                instances: instances.clone(),
+                next_id: *NEXT_ID.read(),
+            };
             drop(instances); // Release the write lock
             spawn(async move {
-                if let Err(e) = save_instances(&instances_clone, next_id).await {
+                if let Err(e) = save_instances_data(&instances_data).await {
                     println!("Failed to save instances: {e}");
                 }
             });
@@ -133,11 +137,13 @@ impl InstanceManager {
 
         if renamed {
             // Save instances to disk
-            let instances_clone = instances.clone();
-            let next_id = *NEXT_ID.read();
+            let instances_data = InstancesData {
+                instances: instances.clone(),
+                next_id: *NEXT_ID.read(),
+            };
             drop(instances); // Release the write lock
             spawn(async move {
-                if let Err(e) = save_instances(&instances_clone, next_id).await {
+                if let Err(e) = save_instances_data(&instances_data).await {
                     println!("Failed to save instances: {e}");
                 }
             });
@@ -208,8 +214,8 @@ pub fn create_instance_directories(instance_id: u32) -> std::io::Result<PathBuf>
     Ok(instance_dir)
 }
 
-/// Save instances to the disk.
-async fn save_instances(instances: &HashMap<u32, Instance>, next_id: u32) -> anyhow::Result<()> {
+/// Save instances data to the disk.
+async fn save_instances_data(data: &InstancesData) -> anyhow::Result<()> {
     let config_path = get_instances_config_path();
 
     // Ensure the parent directory exists
@@ -217,12 +223,7 @@ async fn save_instances(instances: &HashMap<u32, Instance>, next_id: u32) -> any
         async_fs::create_dir_all(parent).await?;
     }
 
-    let data = InstancesData {
-        instances: instances.clone(),
-        next_id,
-    };
-
-    let json = serde_json::to_string_pretty(&data)?;
+    let json = serde_json::to_string_pretty(data)?;
     async_fs::write(config_path, json).await?;
 
     println!("Instances saved successfully");

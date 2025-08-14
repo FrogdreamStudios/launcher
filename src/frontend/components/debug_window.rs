@@ -1,8 +1,10 @@
-use crate::backend::creeper::launcher::MinecraftLauncher;
-use crate::backend::creeper::models::VersionInfo;
-use crate::frontend::components::minecraft_launcher::launch_minecraft;
-use crate::frontend::game_state::GameStatus;
-use crate::frontend::instances::main::INSTANCES;
+use crate::{
+    backend::creeper::{launcher::MinecraftLauncher, models::VersionInfo},
+    frontend::{
+        components::minecraft_launcher::launch_minecraft, game_state::GameStatus,
+        instances::main::INSTANCES,
+    },
+};
 use dioxus::prelude::*;
 use std::fs;
 use tracing::{error, info};
@@ -248,13 +250,13 @@ pub fn DebugWindow(
 
 async fn load_available_versions() -> anyhow::Result<Vec<VersionInfo>> {
     let launcher = MinecraftLauncher::new(None, None).await?;
-    launcher.get_available_versions()
+    Ok(launcher.get_available_versions()?.to_vec())
 }
 
 async fn update_and_load_versions() -> anyhow::Result<Vec<VersionInfo>> {
     let mut launcher = MinecraftLauncher::new(None, None).await?;
     launcher.update_manifest().await?;
-    launcher.get_available_versions()
+    Ok(launcher.get_available_versions()?.to_vec())
 }
 
 async fn delete_launcher_files() -> anyhow::Result<()> {

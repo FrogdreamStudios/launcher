@@ -1,28 +1,28 @@
 //! Core Minecraft launcher implementation.
 
 use anyhow::Result;
-use std::path::PathBuf;
-use std::process::Stdio;
+use std::{path::PathBuf, process::Stdio, sync::Arc};
 use tracing::{debug, error, info, warn};
 
-use super::downloader::{HttpDownloader, ProgressTracker};
-use super::java::JavaManager;
-use super::models::{AssetManifest, AssetObject, VersionDetails, VersionInfo, VersionManifest};
-use crate::backend::creeper::downloader::models::DownloadTask;
-use crate::backend::utils::command::CommandBuilder;
-use crate::backend::utils::file_utils::{ensure_directory, ensure_parent_directory, verify_file};
-use crate::backend::utils::os::{
-    get_all_native_classifiers, get_minecraft_arch, get_minecraft_os_name, get_os_features,
+use super::{
+    downloader::{HttpDownloader, ProgressTracker, models::DownloadTask},
+    java::JavaManager,
+    models::{AssetManifest, AssetObject, VersionDetails, VersionInfo, VersionManifest},
 };
-use crate::backend::utils::paths::*;
+use crate::backend::utils::{
+    command::CommandBuilder,
+    file_utils::{ensure_directory, ensure_parent_directory, verify_file},
+    os::{get_all_native_classifiers, get_minecraft_arch, get_minecraft_os_name, get_os_features},
+    paths::*,
+};
 
 /// Main Minecraft launcher that handles downloading and launching game instances.
 pub struct MinecraftLauncher {
-    downloader: HttpDownloader,
+    downloader: Arc<HttpDownloader>,
     java_manager: JavaManager,
     game_dir: PathBuf,
     cache_dir: PathBuf,
-    manifest: Option<VersionManifest>,
+    manifest: Option<Arc<VersionManifest>>,
     #[allow(dead_code)]
     instance_id: Option<u32>,
 }
@@ -45,7 +45,7 @@ impl MinecraftLauncher {
         ensure_directories(instance_id).await?;
 
         let mut launcher = Self {
-            downloader: HttpDownloader::new()?,
+            downloader: Arc::new(HttpDownloader::new()?),
             java_manager: JavaManager::new().await?,
             game_dir,
             cache_dir,
@@ -65,13 +65,13 @@ impl MinecraftLauncher {
         Ok(launcher)
     }
 
-    pub(crate) fn get_available_versions(&self) -> Result<Vec<VersionInfo>> {
+    pub(crate) fn get_available_versions(&self) -> Result<&[VersionInfo]> {
         let manifest = self
             .manifest
             .as_ref()
             .ok_or_else(|| anyhow::anyhow!("Version manifest not loaded"))?;
 
-        Ok(manifest.versions.clone())
+        Ok(&manifest.versions)
     }
 
     pub async fn update_manifest(&mut self) -> Result<()> {
@@ -87,7 +87,7 @@ impl MinecraftLauncher {
         let manifest_json = serde_json::to_string_pretty(&manifest)?;
         tokio::fs::write(&manifest_path, manifest_json).await?;
 
-        self.manifest = Some(manifest);
+        self.manifest = Some(Arc::new(manifest));
         info!("Version manifest updated successfully");
 
         Ok(())
@@ -99,7 +99,7 @@ impl MinecraftLauncher {
         if manifest_path.exists() {
             let manifest_content = tokio::fs::read_to_string(&manifest_path).await?;
             let manifest: VersionManifest = serde_json::from_str(&manifest_content)?;
-            self.manifest = Some(manifest);
+            self.manifest = Some(Arc::new(manifest));
             debug!("Loaded cached version manifest");
         } else {
             return Err(anyhow::anyhow!("No cached manifest found"));
@@ -861,7 +861,7 @@ impl MinecraftLauncher {
                 && let Some(exclude) = &rules.exclude
             {
                 for pattern in exclude {
-                    if file_path.to_string_lossy().contains(pattern) {
+                    if file_path.to_string_lossy().contains(pattern.as_str()) {
                         debug!(
                             "Excluding file {} due to pattern {}",
                             file_path.display(),
@@ -986,8 +986,8 @@ impl MinecraftLauncher {
                     .push(DownloadTask::new(url, asset_path).with_sha1(asset.hash.clone()));
             }
 
-            // Store asset info for virtual assets creation
-            assets_for_virtual.push((name, asset));
+            // Store asset info for virtual assets creation (use references to avoid cloning)
+            assets_for_virtual.push((name.clone(), asset.clone()));
         }
 
         if !download_tasks.is_empty() {

@@ -3,8 +3,7 @@
 //! Load and cache base64-encoded images that are embedded at compile time.
 //! All assets are loaded at once and cached for fast access throughout the application.
 
-use std::collections::HashMap;
-use std::sync::OnceLock;
+use std::{collections::HashMap, sync::OnceLock};
 
 /// Global cache for storing loaded assets as base64 data URLs.
 static ASSET_CACHE: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
@@ -33,7 +32,7 @@ macro_rules! asset_getter {
         #[doc = $doc]
         #[inline(always)]
         pub fn $fn_name() -> &'static str {
-            Self::get($asset_name)
+            Self::get_lazy($asset_name)
         }
     };
 }
@@ -45,9 +44,9 @@ macro_rules! asset_getter {
 pub struct AssetLoader;
 
 impl AssetLoader {
-    /// Initializes the asset cache with all embedded images.
-    pub fn init() {
-        let assets = [
+    /// Gets all available assets lazily when needed.
+    fn get_all_assets() -> HashMap<&'static str, &'static str> {
+        [
             asset_entry!("logo", "other/logo"),
             asset_entry!("home", "buttons/home"),
             asset_entry!("packs", "buttons/packs"),
@@ -62,19 +61,17 @@ impl AssetLoader {
             asset_entry!("folder", "buttons/folder"),
             asset_entry!("debug", "buttons/debug"),
             asset_entry!("add", "buttons/add"),
-        ];
-
-        if ASSET_CACHE.set(assets.into_iter().collect()).is_err() {
-            tracing::warn!("Asset cache was already initialized");
-        }
+        ]
+        .into_iter()
+        .collect()
     }
 
-    /// Gets an asset by name as a base64 data URL.
+    /// Gets an asset by name as a base64 data URL with lazy loading.
     #[inline(always)]
-    pub fn get(asset_name: &str) -> &'static str {
+    pub fn get_lazy(asset_name: &str) -> &'static str {
         ASSET_CACHE
-            .get()
-            .and_then(|cache| cache.get(asset_name))
+            .get_or_init(|| Self::get_all_assets())
+            .get(asset_name)
             .copied()
             .unwrap_or("data:image/png;base64,")
     }
@@ -97,14 +94,4 @@ impl AssetLoader {
     asset_getter!(get_folder, "folder", "Gets the folder icon.");
     asset_getter!(get_debug, "debug", "Gets the debug icon.");
     asset_getter!(get_add, "add", "Gets the add icon.");
-}
-
-/// Ensures that assets are loaded into a cache.
-///
-/// Checks if assets are already loaded and initializes
-/// them if they haven't been loaded yet.
-pub fn ensure_assets_loaded() {
-    if ASSET_CACHE.get().is_none() {
-        AssetLoader::init();
-    }
 }

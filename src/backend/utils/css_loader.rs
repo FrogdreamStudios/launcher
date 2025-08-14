@@ -3,8 +3,7 @@
 //! Load and cache CSS stylesheets that are embedded at compile time.
 //! Styles can be loaded individually or combined for different parts of the application.
 
-use std::collections::HashMap;
-use std::sync::OnceLock;
+use std::{collections::HashMap, sync::OnceLock};
 
 /// Global cache for storing loaded CSS styles.
 static CSS_CACHE: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
@@ -40,9 +39,9 @@ macro_rules! css_getter {
 pub struct CssLoader;
 
 impl CssLoader {
-    /// Initializes the CSS cache with all embedded stylesheets.
-    pub fn init() {
-        let styles = [
+    /// Gets all available CSS styles lazily when needed.
+    fn get_all_styles() -> HashMap<&'static str, &'static str> {
+        [
             css_entry!("base", "base.css"),
             css_entry!("animations", "animations.css"),
             css_entry!("auth", "auth.css"),
@@ -54,24 +53,32 @@ impl CssLoader {
             css_entry!("news", "components/news.css"),
             css_entry!("context_menu", "components/context_menu.css"),
             css_entry!("debug", "components/debug.css"),
-        ];
-
-        let _ = CSS_CACHE.set(styles.into_iter().collect());
+        ]
+        .into_iter()
+        .collect()
     }
 
-    /// Returns a CSS style by name.
+    /// Returns a CSS style by name with lazy loading.
     #[inline(always)]
     pub fn get(style_name: &str) -> Option<&'static str> {
-        CSS_CACHE.get()?.get(style_name).copied()
+        CSS_CACHE
+            .get_or_init(|| Self::get_all_styles())
+            .get(style_name)
+            .copied()
     }
 
     /// Combines multiple styles into a single string.
     pub fn combine(styles: &[&str]) -> String {
-        styles
-            .iter()
-            .filter_map(|&name| Self::get(name))
-            .collect::<Vec<_>>()
-            .join("\n")
+        let mut result = String::new();
+        for &name in styles {
+            if let Some(style) = Self::get(name) {
+                if !result.is_empty() {
+                    result.push('\n');
+                }
+                result.push_str(style);
+            }
+        }
+        result
     }
 
     /// Gets all main application styles combined into one string.
@@ -104,11 +111,4 @@ macro_rules! include_styles {
     ($($style:expr),*) => {
         $crate::backend::utils::css_loader::CssLoader::combine(&[$($style),*])
     };
-}
-
-/// Ensures that CSS styles are loaded into a cache.
-pub fn ensure_css_loaded() {
-    if CSS_CACHE.get().is_none() {
-        CssLoader::init();
-    }
 }

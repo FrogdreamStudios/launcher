@@ -1,17 +1,17 @@
 mod backend;
 mod frontend;
 
-use crate::backend::utils::{
-    assets::ensure_assets_loaded, css_loader::ensure_css_loaded, route::Route,
-};
+use std::sync::OnceLock;
+
 use dioxus::{LaunchBuilder, prelude::*};
 use dioxus_desktop::{Config, LogicalSize, WindowBuilder};
 use dioxus_router::Router;
 use image::GenericImageView;
-use std::sync::OnceLock;
 use tao::window::Icon;
 use tokio::runtime::Runtime;
 use tracing_subscriber::EnvFilter;
+
+use crate::backend::utils::route::Route;
 
 static RUNTIME: OnceLock<Runtime> = OnceLock::new();
 
@@ -20,9 +20,6 @@ fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::new("warn,hyper=warn,h2=warn"))
         .init();
-
-    ensure_css_loaded();
-    ensure_assets_loaded();
 
     // Set icon on macOS
     #[cfg(target_os = "macos")]

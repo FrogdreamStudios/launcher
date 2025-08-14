@@ -1,9 +1,8 @@
-use crate::backend::utils::assets::AssetLoader;
-use crate::frontend::components::auth_layout::AuthLayout;
-use crate::frontend::ui::auth::auth_context::AuthState;
-use dioxus::events::KeyboardEvent;
-use dioxus::hooks::use_signal;
-use dioxus::prelude::*;
+use crate::{
+    backend::utils::assets::AssetLoader,
+    frontend::{components::auth_layout::AuthLayout, ui::auth::auth_context::AuthState},
+};
+use dioxus::{events::KeyboardEvent, prelude::*};
 use dioxus_router::use_navigator;
 use std::time::Duration;
 use tokio::time::sleep;

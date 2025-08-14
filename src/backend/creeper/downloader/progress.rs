@@ -1,8 +1,12 @@
 //! Progress tracking utilities for downloads.
 
-use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::{Duration, Instant};
+use std::{
+    sync::{
+        Arc,
+        atomic::{AtomicU64, Ordering},
+    },
+    time::{Duration, Instant},
+};
 use tracing::info;
 
 /// Tracks download progress and display updates.
