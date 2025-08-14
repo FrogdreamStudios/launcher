@@ -2,10 +2,10 @@
 
 use std::{path::Path, time::Duration};
 
+use crate::backend::utils::stream::ResponseChunkExt;
 use crate::utils::Result;
 use crate::utils::{Digest, Sha1};
 use crate::{log_debug, log_warn, simple_error};
-use futures_util::StreamExt;
 use reqwest::Client;
 use tokio::{fs::File, io::AsyncWriteExt};
 
@@ -75,12 +75,12 @@ impl HttpDownloader {
         }
 
         let mut file = File::create(destination).await?;
-        let mut stream = response.bytes_stream();
+        let mut stream = response.chunk_stream();
         let mut downloaded = 0u64;
         let mut hasher = expected_sha1.map(|_| Sha1::new());
 
-        while let Some(chunk) = stream.next().await {
-            let chunk = chunk?;
+        while let Some(chunk_result) = stream.next().await {
+            let chunk = chunk_result?;
 
             file.write_all(&chunk).await?;
             downloaded += chunk.len() as u64;

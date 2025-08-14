@@ -19,3 +19,5 @@ pub mod os;
 pub mod paths;
 /// Application routing system.
 pub mod route;
+/// Lightweight stream utilities.
+pub mod stream;

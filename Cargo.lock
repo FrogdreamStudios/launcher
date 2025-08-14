@@ -9,7 +9,6 @@ dependencies = [
  "dioxus",
  "dioxus-desktop",
  "dioxus-router",
- "futures-util",
  "reqwest",
  "serde",
  "serde_json",
