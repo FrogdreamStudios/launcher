@@ -391,9 +391,7 @@ impl JavaRuntime {
 
             Ok((major, minor, patch))
         } else {
-            Err(simple_error!(
-                "Invalid Minecraft version format: {version}"
-            ))
+            Err(simple_error!("Invalid Minecraft version format: {version}"))
         }
     }
 }

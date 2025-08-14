@@ -2,11 +2,11 @@
 
 use std::{path::Path, time::Duration};
 
+use crate::backend::utils::http::{Client, StatusCode};
 use crate::backend::utils::stream::ResponseChunkExt;
 use crate::utils::Result;
 use crate::utils::{Digest, Sha1};
 use crate::{log_debug, log_warn, simple_error};
-use reqwest::Client;
 use tokio::{fs::File, io::AsyncWriteExt};
 
 use super::progress::ProgressTracker;
@@ -59,7 +59,7 @@ impl HttpDownloader {
 
         log_debug!("Downloading {url} to {destination:?}");
 
-        let response = self.client.get(url).send().await?;
+        let response = self.client.get(url).await?;
 
         if !response.status().is_success() {
             return Err(simple_error!(
@@ -178,13 +178,13 @@ impl HttpDownloader {
         let mut retries = 0;
 
         loop {
-            match self.client.get(url).send().await {
+            match self.client.get(url).await {
                 Ok(response) => match response.status() {
-                    reqwest::StatusCode::OK => {
+                    StatusCode::Ok => {
                         let json = response.json::<T>().await?;
                         return Ok(json);
                     }
-                    reqwest::StatusCode::TOO_MANY_REQUESTS => {
+                    StatusCode::TooManyRequests => {
                         retries += 1;
                         if retries > MAX_RETRIES {
                             return Err(simple_error!(

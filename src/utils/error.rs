@@ -35,8 +35,8 @@ impl From<serde_json::Error> for Error {
     }
 }
 
-impl From<reqwest::Error> for Error {
-    fn from(err: reqwest::Error) -> Self {
+impl From<crate::backend::utils::http::Error> for Error {
+    fn from(err: crate::backend::utils::http::Error) -> Self {
         Error::new(format!("HTTP error: {err}"))
     }
 }

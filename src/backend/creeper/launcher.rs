@@ -1282,10 +1282,7 @@ impl MinecraftLauncher {
         Ok(())
     }
 
-    fn get_library_paths(
-        &self,
-        version_details: &VersionDetails,
-    ) -> Vec<PathBuf> {
+    fn get_library_paths(&self, version_details: &VersionDetails) -> Vec<PathBuf> {
         let os_name = get_minecraft_os_name();
         let os_arch = get_minecraft_arch();
         let os_features = get_os_features();
