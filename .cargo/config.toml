@@ -34,6 +34,8 @@ pre-commit = [
     "-D",
     "warnings",
 ]
+# macOS compression alias
+# cargo macos-compress - run: ./scripts/compress-macos.sh build
 
 # Cross-platform builds
 build-linux = "build --release --target x86_64-unknown-linux-gnu"

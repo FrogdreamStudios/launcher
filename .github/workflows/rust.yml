@@ -92,6 +92,9 @@ jobs:
             upx --best --lzma target/release/DreamLauncher.exe
           elif [[ "${{ runner.os }}" == "Linux" ]]; then
             upx --best --lzma target/release/DreamLauncher
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            chmod +x scripts/compress-macos.sh
+            ./scripts/compress-macos.sh compress target/release/DreamLauncher
           fi
 
       - name: Package
