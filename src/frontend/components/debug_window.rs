@@ -349,7 +349,8 @@ async fn get_system_info() -> crate::utils::Result<String> {
 }
 
 fn get_instance_info(instance_id: u32) -> String {
-    use crate::frontend::instances::main::{get_base_directory, get_instance_directory};
+    use crate::backend::utils::paths::get_launcher_dir;
+    use crate::frontend::instances::main::get_instance_directory;
 
     let mut info = String::new();
 
@@ -359,7 +360,7 @@ fn get_instance_info(instance_id: u32) -> String {
     let instance_dir = get_instance_directory(instance_id);
     info.push_str(&format!("Instance directory: {instance_dir:?}\n"));
 
-    let base_dir = get_base_directory();
+    let base_dir = get_launcher_dir().unwrap_or_else(|_| std::path::PathBuf::from("DreamLauncher"));
     info.push_str(&format!("Base Dream Launcher directory: {base_dir:?}\n"));
 
     // Check if the instance directory exists

@@ -238,7 +238,7 @@ impl MinecraftCommand {
             // Parse arguments while preserving quoted strings
             let mut current_arg = String::new();
             let mut in_quotes = false;
-            let chars = args.chars().peekable();
+            let chars = args.chars();
 
             for ch in chars {
                 match ch {
@@ -278,7 +278,7 @@ impl MinecraftCommand {
                 }
             }
             ArgumentValue::Conditional { rules, value } => {
-                if self.evaluate_rules(rules) {
+                if Self::evaluate_rules(rules) {
                     match value {
                         ArgumentValueInner::String(s) => {
                             let substituted = self.substitute_variables(s, is_jvm);
@@ -301,7 +301,7 @@ impl MinecraftCommand {
     }
 
     /// Checks if all rules match based on OS name, architecture, and features.
-    fn evaluate_rules(&self, rules: &[crate::backend::creeper::models::Rule]) -> bool {
+    fn evaluate_rules(rules: &[crate::backend::creeper::models::Rule]) -> bool {
         let os_name = get_minecraft_os_name();
         let os_arch = get_minecraft_arch();
         let features = get_os_features();

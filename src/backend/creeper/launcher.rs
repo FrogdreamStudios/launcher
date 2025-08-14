@@ -232,8 +232,8 @@ impl MinecraftLauncher {
         }
 
         // Test the Java version and get a major version
-        self.test_java_version(&java_path)?;
-        let java_major_version = self.get_java_major_version(&java_path)?;
+        Self::test_java_version(&java_path)?;
+        let java_major_version = Self::get_java_major_version(&java_path)?;
 
         // Build library paths
         let libraries = self.get_library_paths(&version_details);
@@ -701,7 +701,7 @@ impl MinecraftLauncher {
         Ok(())
     }
 
-    fn create_dylib_symlinks(&self, natives_dir: &PathBuf) -> Result<()> {
+    fn create_dylib_symlinks(natives_dir: &PathBuf) -> Result<()> {
         // On macOS, old LWJGL versions (2.x) use .jnilib extension, but modern Java expects .dylib
         // Create symlinks from .dylib to .jnilib files for compatibility
         if cfg!(target_os = "macos") {
@@ -828,7 +828,7 @@ impl MinecraftLauncher {
         );
 
         // Create .dylib symlinks for .jnilib files on macOS
-        self.create_dylib_symlinks(&natives_dir)?;
+        Self::create_dylib_symlinks(&natives_dir)?;
 
         Ok(())
     }
@@ -1172,7 +1172,7 @@ impl MinecraftLauncher {
         log_info!("Cache directory: {:?}", self.cache_dir);
     }
 
-    fn test_java_version(&self, java_path: &PathBuf) -> Result<()> {
+    fn test_java_version(java_path: &PathBuf) -> Result<()> {
         use std::process::Command;
 
         log_info!("Testing Java installation...");
@@ -1186,7 +1186,7 @@ impl MinecraftLauncher {
         log_info!("Java version info: {version_info}");
 
         // Extract a major version for better compatibility checking
-        let major_version = self.get_java_major_version(java_path).unwrap_or(8);
+        let major_version = Self::get_java_major_version(java_path).unwrap_or(8);
 
         // Provide version-specific guidance
         if major_version >= 24 {
@@ -1202,7 +1202,7 @@ impl MinecraftLauncher {
         Ok(())
     }
 
-    fn get_java_major_version(&self, java_path: &PathBuf) -> Result<u8> {
+    fn get_java_major_version(java_path: &PathBuf) -> Result<u8> {
         use std::process::Command;
 
         let output = Command::new(java_path)
@@ -1285,7 +1285,7 @@ impl MinecraftLauncher {
     fn get_library_paths(
         &self,
         version_details: &VersionDetails,
-    ) -> std::vec::Vec<std::path::PathBuf> {
+    ) -> Vec<PathBuf> {
         let os_name = get_minecraft_os_name();
         let os_arch = get_minecraft_arch();
         let os_features = get_os_features();

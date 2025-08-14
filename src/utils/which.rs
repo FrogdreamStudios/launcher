@@ -5,7 +5,6 @@ use std::path::{Path, PathBuf};
 #[derive(Debug)]
 pub enum WhichError {
     NotFound,
-    PathNotUnicode,
     IoError(std::io::Error),
 }
 
@@ -13,7 +12,6 @@ impl std::fmt::Display for WhichError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::NotFound => write!(f, "Executable not found"),
-            Self::PathNotUnicode => write!(f, "Path contains invalid Unicode"),
             Self::IoError(e) => write!(f, "IO error: {e}"),
         }
     }
