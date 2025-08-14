@@ -35,15 +35,15 @@ pre-commit = [
     "warnings",
 ]
 
-# UPX compression aliases
-compress = "!f() { ./scripts/test-compression.sh compress target/release/DreamLauncher; }; f"
-compress-test = "!f() { ./scripts/test-compression.sh test; }; f"
-build-compressed = "!f() { cargo build --release && ./scripts/test-compression.sh compress target/release/DreamLauncher; }; f"
+# UPX compression aliases (use scripts directly)
+# cargo compress - run: ./scripts/test-compression.sh compress target/release/DreamLauncher
+# cargo compress-test - run: ./scripts/test-compression.sh test
+# cargo build-compressed - run: cargo build --release && ./scripts/test-compression.sh compress target/release/DreamLauncher
 
-# Cross-platform static builds
-build-linux-static = "build --release --target x86_64-unknown-linux-gnu"
-build-windows-static = "build --release --target x86_64-pc-windows-gnu"
-build-macos-static = "build --release --target x86_64-apple-darwin"
+# Cross-platform builds
+build-linux = "build --release --target x86_64-unknown-linux-gnu"
+build-windows = "build --release --target x86_64-pc-windows-gnu"
+build-macos = "build --release --target x86_64-apple-darwin"
 
 [build]
 rustflags = ["-C", "target-cpu=native"]
@@ -51,16 +51,6 @@ rustflags = ["-C", "target-cpu=native"]
 [target.'cfg(target_os = "macos")']
 rustflags = ["-C", "link-arg=-Wl,-rpath,@loader_path"]
 
-[target.'cfg(target_os = "linux")']
-rustflags = [
-    "-C",
-    "link-arg=-static-libstdc++",
-    "-C",
-    "link-arg=-static-libgcc",
-]
-
-[target.'cfg(target_os = "windows")']
-rustflags = ["-C", "target-feature=+crt-static"]
 
 [env]
 RUST_LOG = "info"

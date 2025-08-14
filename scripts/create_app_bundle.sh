@@ -35,9 +35,7 @@ else
     APP_PATH="target/$BUILD_TYPE/$APP_NAME.app"
 fi
 
-[[ ! -f "$EXECUTABLE_PATH" ]] && { echo "Executable not found: $EXECUTABLE_PATH"; exit 1; }
-
-echo "Creating app bundle: $APP_PATH"
+[[ ! -f "$EXECUTABLE_PATH" ]] && exit 1
 
 rm -rf "$APP_PATH"
 mkdir -p "$APP_PATH/Contents/MacOS" "$APP_PATH/Contents/Resources"
@@ -79,5 +77,3 @@ if [[ -f "assets/icons/app_icon.icns" ]]; then
     cp "assets/icons/app_icon.icns" "$APP_PATH/Contents/Resources/"
     plutil -insert CFBundleIconFile -string "app_icon.icns" "$APP_PATH/Contents/Info.plist"
 fi
-
-echo "App bundle created: $APP_PATH"

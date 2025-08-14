@@ -24,14 +24,26 @@ jobs:
 
       - name: Dependencies
         if: matrix.os == 'ubuntu-24.04'
-        run: sudo apt-get update && sudo apt-get install -y \
-          libgtk-3-dev libglib2.0-dev libsoup-3.0-dev libssl-dev \
-          libjavascriptcoregtk-4.1-dev libwebkit2gtk-4.1-dev libxdo-dev \
-          pkg-config build-essential curl xdotool upx-ucl bc
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: >
+            libgtk-3-dev
+            libglib2.0-dev
+            libsoup-3.0-dev
+            libssl-dev
+            libjavascriptcoregtk-4.1-dev
+            libwebkit2gtk-4.1-dev
+            libxdo-dev
+            pkg-config
+            build-essential
+            curl
+            xdotool
+            upx-ucl
+          version: 1
 
       - name: Install macOS dependencies
         if: matrix.os == 'macos-14'
-        run: brew install create-dmg upx bc
+        run: brew install create-dmg upx
 
       - name: Install Windows dependencies
         if: matrix.os == 'windows-2025'
@@ -74,19 +86,18 @@ jobs:
         run: cargo build --release --locked --features "desktop"
 
       - name: Compress binary
+        shell: bash
         run: |
           if [[ "${{ runner.os }}" == "Windows" ]]; then
-            BINARY="target/release/DreamLauncher.exe"
-            upx --best --lzma "$BINARY"
+            upx --best --lzma target/release/DreamLauncher.exe
           elif [[ "${{ runner.os }}" == "macOS" ]]; then
-            BINARY="target/release/DreamLauncher"
-            upx --best --lzma --force-macos "$BINARY"
+            upx --best --lzma --force-macos target/release/DreamLauncher
           else
-            BINARY="target/release/DreamLauncher"
-            upx --best --lzma "$BINARY"
+            upx --best --lzma target/release/DreamLauncher
           fi
 
       - name: Package
+        shell: bash
         run: |
           mkdir -p dist
           if [[ "${{ runner.os }}" == "Windows" ]]; then
@@ -95,6 +106,7 @@ jobs:
           elif [[ "${{ runner.os }}" == "macOS" ]]; then
             chmod +x scripts/create_app_bundle.sh
             ./scripts/create_app_bundle.sh
+            find "target/release/Dream Launcher.app" -exec xattr -d com.apple.quarantine {} \; 2>/dev/null || true
             codesign --force --deep --sign - "target/release/Dream Launcher.app"
             create-dmg \
               --volname "Dream Launcher" \
