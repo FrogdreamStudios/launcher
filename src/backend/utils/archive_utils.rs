@@ -5,11 +5,11 @@
 
 use std::path::Path;
 
-use anyhow::Result;
+use crate::utils::Result;
+use crate::{log_debug, log_info, simple_error};
 use tokio::fs as async_fs;
-use tracing::{debug, info};
 
-use crate::backend::utils::file_utils::{ensure_directory, ensure_parent_directory};
+use crate::backend::utils::file_utils::ensure_directory;
 
 /// Extracts an archive based on its file extension.
 ///
@@ -27,7 +27,7 @@ pub async fn extract_archive<P: AsRef<Path>>(archive_path: P, extract_path: P) -
         .and_then(|s| s.to_str())
         .unwrap_or("");
 
-    info!("Extracting archive: {filename}");
+    log_info!("Extracting archive: {filename}");
 
     // Check for compound extensions first, then single extensions
     if filename.ends_with(".tar.gz") || filename.ends_with(".tgz") {
@@ -39,7 +39,7 @@ pub async fn extract_archive<P: AsRef<Path>>(archive_path: P, extract_path: P) -
         extract_archive_by_content(archive_path, extract_path).await?;
     }
 
-    info!("Archive extracted successfully to {extract_path:?}");
+    log_info!("Archive extracted successfully to {extract_path:?}");
     Ok(())
 }
 
@@ -48,41 +48,9 @@ pub async fn extract_zip<P: AsRef<Path>>(archive_path: P, extract_path: P) -> Re
     let archive_path = archive_path.as_ref();
     let extract_path = extract_path.as_ref();
 
-    use std::io::Read;
-
-    // Open the ZIP file
-    let file = std::fs::File::open(archive_path)
-        .map_err(|e| anyhow::anyhow!("Failed to open ZIP archive {archive_path:?}: {e}"))?;
-
-    let mut archive = zip::ZipArchive::new(file)
-        .map_err(|e| anyhow::anyhow!("Failed to read ZIP archive {archive_path:?}: {e}"))?;
-
-    // Extract each file in the archive
-    for i in 0..archive.len() {
-        let mut file = archive
-            .by_index(i)
-            .map_err(|e| anyhow::anyhow!("Failed to read ZIP entry {i}: {e}"))?;
-
-        let outpath = extract_path.join(file.mangled_name());
-
-        if file.name().ends_with('/') {
-            // This is a directory
-            ensure_directory(&outpath).await?;
-        } else {
-            // This is a file
-            ensure_parent_directory(&outpath).await?;
-
-            let mut outfile = async_fs::File::create(&outpath).await?;
-            let mut buffer = Vec::new();
-            file.read_to_end(&mut buffer)?;
-
-            use tokio::io::AsyncWriteExt;
-            outfile.write_all(&buffer).await?;
-            outfile.flush().await?;
-        }
-
-        debug!("Extracted: {outpath:?}");
-    }
+    // Use our custom archive extraction utility
+    crate::utils::extract_zip(archive_path, extract_path).await?;
+    log_info!("Successfully extracted ZIP archive: {:?}", archive_path);
 
     Ok(())
 }
@@ -92,25 +60,9 @@ pub async fn extract_tar_gz<P: AsRef<Path>>(archive_path: P, extract_path: P) ->
     let archive_path = archive_path.as_ref();
     let extract_path = extract_path.as_ref();
 
-    use flate2::read::GzDecoder;
-    use tar::Archive;
-
-    // Open and decompress the tar.gz file
-    let tar_gz = std::fs::File::open(archive_path)?;
-    let tar = GzDecoder::new(tar_gz);
-    let mut archive = Archive::new(tar);
-
-    // Extract each entry in the archive
-    for entry in archive.entries()? {
-        let mut entry = entry?;
-        let path = entry.path()?;
-        let target_path = extract_path.join(&*path);
-
-        // Make sure parent directory exists
-        ensure_parent_directory(&target_path).await?;
-        entry.unpack(&target_path)?;
-        debug!("Extracted: {target_path:?}");
-    }
+    // Use our custom archive extraction utility
+    crate::utils::extract_tar_gz(archive_path, extract_path).await?;
+    log_info!("Successfully extracted TAR.GZ archive: {:?}", archive_path);
 
     Ok(())
 }
@@ -132,25 +84,28 @@ pub async fn extract_archive_by_content<P: AsRef<Path>>(
 
     use tokio::io::AsyncReadExt;
     if file.read_exact(&mut header).await.is_err() {
-        return Err(anyhow::anyhow!("File too small to read header"));
+        return Err(simple_error!("File too small to read header"));
     }
 
     // Check magic numbers (file signatures)
     if header[0] == 0x50 && header[1] == 0x4B && header[2] == 0x03 && header[3] == 0x04 {
         // ZIP file magic number: PK...
-        debug!("Detected ZIP format");
+        log_debug!("Detected ZIP format");
         extract_zip(archive_path, extract_path).await?;
     } else if header[0] == 0x1F && header[1] == 0x8B {
         // GZIP magic number (probably tar.gz)
-        debug!("Detected GZIP format");
+        log_debug!("Detected GZIP format");
         extract_tar_gz(archive_path, extract_path).await?;
     } else {
         // Unknown format or corrupted file
-        debug!(
+        log_debug!(
             "Unknown format. Header: {:02X} {:02X} {:02X} {:02X}",
-            header[0], header[1], header[2], header[3]
+            header[0],
+            header[1],
+            header[2],
+            header[3]
         );
-        return Err(anyhow::anyhow!(
+        return Err(simple_error!(
             "Unrecognized archive format. Header: {:02X} {:02X} {:02X} {:02X}",
             header[0],
             header[1],

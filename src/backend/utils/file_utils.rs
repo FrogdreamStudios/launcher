@@ -3,18 +3,18 @@
 //! This module provides async file operations including directory creation,
 //! file verification with SHA1 hashing, and Minecraft-specific file checks.
 
-use anyhow::Result;
-use sha1::{Digest, Sha1};
+use crate::utils::Result;
+use crate::utils::{Digest, Sha1};
+use crate::{log_debug, log_info};
 use std::path::Path;
 use tokio::fs;
-use tracing::{debug, info};
 
 /// Ensures a directory exists, creating it and all parent directories if necessary.
 pub async fn ensure_directory<P: AsRef<Path>>(path: P) -> Result<()> {
     let path = path.as_ref();
     if !path.exists() {
         fs::create_dir_all(path).await?;
-        debug!("Created directory: {path:?}");
+        log_debug!("Created directory: {path:?}");
     }
     Ok(())
 }
@@ -44,7 +44,7 @@ pub async fn verify_file<P: AsRef<Path>>(
     if let Some(expected_size) = expected_size {
         let metadata = fs::metadata(path).await?;
         if metadata.len() != expected_size {
-            debug!(
+            log_debug!(
                 "File size mismatch for {:?}: expected {}, got {}",
                 path,
                 expected_size,
@@ -59,10 +59,10 @@ pub async fn verify_file<P: AsRef<Path>>(
         let content = fs::read(path).await?;
         let mut hasher = Sha1::new();
         hasher.update(&content);
-        let computed_hash = hex::encode(hasher.finalize());
+        let computed_hash = crate::utils::hex_encode(hasher.finalize());
 
         if computed_hash != expected_sha1 {
-            debug!("SHA1 mismatch for {path:?}: expected {expected_sha1}, got {computed_hash}");
+            log_debug!("SHA1 mismatch for {path:?}: expected {expected_sha1}, got {computed_hash}");
             return Ok(false);
         }
     }
@@ -75,7 +75,7 @@ pub async fn remove_file_if_exists<P: AsRef<Path>>(path: P) -> Result<()> {
     let path = path.as_ref();
     if path.exists() {
         fs::remove_file(path).await?;
-        debug!("Removed file: {path:?}");
+        log_debug!("Removed file: {path:?}");
     }
     Ok(())
 }
@@ -85,7 +85,7 @@ pub async fn remove_dir_if_exists<P: AsRef<Path>>(path: P) -> Result<()> {
     let path = path.as_ref();
     if path.exists() {
         fs::remove_dir_all(path).await?;
-        info!("Removed directory: {path:?}");
+        log_info!("Removed directory: {path:?}");
     }
     Ok(())
 }

@@ -1,13 +1,13 @@
 //! Java runtime management and utilities.
 
-use anyhow::{Context, Result};
+use crate::utils::Result;
+use crate::{log_debug, log_error, log_info, log_warn, simple_error};
 use std::{
     collections::HashMap,
     fs,
     path::{Path, PathBuf},
 };
 use tokio::fs as async_fs;
-use tracing::{debug, error, info, warn};
 
 use super::runtime::{AzulJavaManifest, AzulPackage, JavaRuntime};
 use crate::backend::{
@@ -52,14 +52,14 @@ impl JavaManager {
         let required_java = JavaRuntime::get_required_java_version(minecraft_version);
         let needs_x86_64 = Self::needs_x86_64_java(minecraft_version);
 
-        info!(
+        log_info!(
             "Minecraft version {minecraft_version} requires Java {required_java} (x86_64: {needs_x86_64})"
         );
 
         // Check if we already have a compatible runtime
         let invalid_runtime_version = if needs_x86_64 {
             if let Some(runtime) = self.get_compatible_x86_64_runtime(required_java) {
-                info!(
+                log_info!(
                     "Using existing x86_64 Java {} runtime",
                     runtime.major_version
                 );
@@ -67,7 +67,7 @@ impl JavaManager {
                 if exe_path.exists() {
                     return Ok((exe_path, true));
                 }
-                info!(
+                log_info!(
                     "Installed x86_64 Java runtime not found at {exe_path:?}, removing from cache"
                 );
                 Some(runtime.major_version)
@@ -75,15 +75,12 @@ impl JavaManager {
                 None
             }
         } else if let Some(runtime) = self.get_compatible_runtime(required_java) {
-            info!("Using existing Java {} runtime", runtime.major_version);
+            log_info!("Using existing Java {} runtime", runtime.major_version);
             let exe_path = runtime.get_executable_path();
             if exe_path.exists() {
                 return Ok((exe_path, false));
             }
-            info!(
-                "Installed Java runtime not found at {:?}, removing from cache",
-                exe_path
-            );
+            log_info!("Installed Java runtime not found at {exe_path:?}, removing from cache");
             Some(runtime.major_version)
         } else {
             None
@@ -103,17 +100,17 @@ impl JavaManager {
             && let Some(mut system_java) = JavaRuntime::detect_system_java()?
             && system_java.is_compatible_with_minecraft(required_java)
         {
-            info!("Using system Java {} runtime", system_java.major_version);
+            log_info!("Using system Java {} runtime", system_java.major_version);
             // Set the correct path for system Java
             if system_java.path.as_os_str().is_empty() {
-                system_java.path = which::which("java").unwrap_or_else(|_| "java".into());
+                system_java.path = crate::utils::which("java").unwrap_or_else(|_| "java".into());
             }
             return Ok((system_java.get_executable_path(), false));
         }
 
         // Download and install the required Java
         if needs_x86_64 {
-            info!(
+            log_info!(
                 "Downloading x86_64 Java {required_java} runtime for Minecraft {minecraft_version}"
             );
 
@@ -122,7 +119,7 @@ impl JavaManager {
                     // Get the newly installed runtime
                     self.x86_64_runtimes.get(&required_java).map_or_else(
                         || {
-                            Err(anyhow::anyhow!(
+                            Err(simple_error!(
                                 "Failed to install x86_64 Java {required_java} runtime"
                             ))
                         },
@@ -130,98 +127,96 @@ impl JavaManager {
                     )
                 }
                 Err(e) => {
-                    warn!("Failed to download x86_64 Java {required_java}: {e}");
-                    warn!("Attempting to use system Java as fallback...");
+                    log_warn!("Failed to download x86_64 Java {required_java}: {e}");
+                    log_warn!("Attempting to use system Java as fallback...");
 
                     // Try system Java as a fallback
                     if let Some(mut system_java) = JavaRuntime::detect_system_java()? {
                         if system_java.is_compatible_with_minecraft(required_java) {
-                            info!(
+                            log_info!(
                                 "Using system Java {} as fallback",
                                 system_java.major_version
                             );
                             if system_java.path.as_os_str().is_empty() {
                                 system_java.path =
-                                    which::which("java").unwrap_or_else(|_| "java".into());
+                                    crate::utils::which("java").unwrap_or_else(|_| "java".into());
                             }
                             return Ok((system_java.get_executable_path(), false));
                         }
-                        warn!(
+                        log_warn!(
                             "System Java {} is not compatible with required Java {}",
-                            system_java.major_version, required_java
+                            system_java.major_version,
+                            required_java
                         );
                     }
 
-                    Err(anyhow::anyhow!(
+                    Err(simple_error!(
                         "Failed to install x86_64 Java {required_java} and no compatible system Java found"
                     ))
                 }
             }
         } else {
-            info!("Downloading Java {required_java} runtime for Minecraft {minecraft_version}");
+            log_info!("Downloading Java {required_java} runtime for Minecraft {minecraft_version}");
 
             match self.install_java_runtime(required_java).await {
                 Ok(()) => {
                     // Get the newly installed runtime
                     self.installed_runtimes.get(&required_java).map_or_else(
                         || {
-                            Err(anyhow::anyhow!(
-                                "Failed to install Java {} runtime",
-                                required_java
+                            Err(simple_error!(
+                                "Failed to install Java {required_java} runtime"
                             ))
                         },
                         |runtime| Ok((runtime.get_executable_path(), false)),
                     )
                 }
                 Err(e) => {
-                    warn!("Failed to download native Java {}: {}", required_java, e);
+                    log_warn!("Failed to download native Java {required_java}: {e}");
 
                     // For modern versions requiring Java 21, try x86_64 as a fallback
                     if required_java >= 21 {
-                        warn!(
-                            "Attempting to download x86_64 Java {} as fallback...",
-                            required_java
+                        log_warn!(
+                            "Attempting to download x86_64 Java {required_java} as fallback..."
                         );
                         match self.install_x86_64_java_runtime(required_java).await {
                             Ok(()) => {
                                 if let Some(runtime) = self.x86_64_runtimes.get(&required_java) {
-                                    info!(
-                                        "Successfully installed x86_64 Java {} as fallback",
-                                        required_java
+                                    log_info!(
+                                        "Successfully installed x86_64 Java {required_java} as fallback"
                                     );
                                     return Ok((runtime.get_executable_path(), true));
                                 }
                             }
                             Err(x86_err) => {
-                                warn!("x86_64 fallback also failed: {}", x86_err);
+                                log_warn!("x86_64 fallback also failed: {x86_err}");
                             }
                         }
                     }
 
-                    warn!("Attempting to use system Java as fallback...");
+                    log_warn!("Attempting to use system Java as fallback...");
 
                     // Try system Java as a fallback
                     if let Some(mut system_java) = JavaRuntime::detect_system_java()? {
                         if system_java.is_compatible_with_minecraft(required_java) {
-                            info!(
+                            log_info!(
                                 "Using system Java {} as fallback",
                                 system_java.major_version
                             );
                             if system_java.path.as_os_str().is_empty() {
                                 system_java.path =
-                                    which::which("java").unwrap_or_else(|_| "java".into());
+                                    crate::utils::which("java").unwrap_or_else(|_| "java".into());
                             }
                             return Ok((system_java.get_executable_path(), false));
                         }
-                        warn!(
+                        log_warn!(
                             "System Java {} is not compatible with required Java {}",
-                            system_java.major_version, required_java
+                            system_java.major_version,
+                            required_java
                         );
                     }
 
-                    Err(anyhow::anyhow!(
-                        "Failed to install Java {} and no compatible system Java found",
-                        required_java
+                    Err(simple_error!(
+                        "Failed to install Java {required_java} and no compatible system Java found"
                     ))
                 }
             }
@@ -316,10 +311,7 @@ impl JavaManager {
 
             Ok((major, minor, patch))
         } else {
-            Err(anyhow::anyhow!(
-                "Invalid Minecraft version format: {}",
-                version
-            ))
+            Err(simple_error!("Invalid Minecraft version format: {version}"))
         }
     }
 
@@ -334,16 +326,10 @@ impl JavaManager {
             .iter()
             .find(|pkg| pkg.matches_requirements(java_version, os, arch))
             .ok_or_else(|| {
-                anyhow::anyhow!(
-                    "No Azul {} Java {} package found for {} {}",
-                    arch,
-                    java_version,
-                    os,
-                    arch
-                )
+                simple_error!("No Azul {arch} Java {java_version} package found for {os} {arch}")
             })?;
 
-        info!(
+        log_info!(
             "Found Java {} package: {} ({} MB)",
             java_version,
             package.name,
@@ -373,9 +359,10 @@ impl JavaManager {
         let extract_path = self.java_dir.join(format!("java-{java_version}"));
 
         // Download the package
-        info!(
+        log_info!(
             "Downloading Java {} from: {}",
-            java_version, package.download_url
+            java_version,
+            package.download_url
         );
 
         let mut progress = ProgressTracker::new(format!("Java {java_version}"));
@@ -389,28 +376,28 @@ impl JavaManager {
             )
             .await
         {
-            error!("Failed to download Java {}: {}", java_version, e);
+            log_error!("Failed to download Java {java_version}: {e}");
             let _ = remove_file_if_exists(&download_path).await;
             return Err(e);
         }
 
         // Verify the downloaded file
         let file_size = get_file_size(&download_path).await?;
-        info!("Downloaded Java {java_version} archive: {file_size} bytes");
+        log_info!("Downloaded Java {java_version} archive: {file_size} bytes");
 
         if file_size < 1024 * 1024 {
-            error!("Downloaded file is too small ({file_size}B), likely corrupted",);
+            log_error!("Downloaded file is too small ({file_size}B), likely corrupted",);
             let _ = async_fs::remove_file(&download_path).await;
-            return Err(anyhow::anyhow!(
+            return Err(simple_error!(
                 "Downloaded Java archive is too small, likely corrupted"
             ));
         }
 
         // Extract the package
-        info!("Extracting Java {java_version} runtime...");
+        log_info!("Extracting Java {java_version} runtime...");
         // Extract the archive
         if let Err(e) = extract_archive(&download_path, &extract_path).await {
-            error!("Failed to extract Java {}: {}", java_version, e);
+            log_error!("Failed to extract Java {java_version}: {e}");
             let _ = remove_file_if_exists(&download_path).await;
             let _ = remove_dir_if_exists(&extract_path).await;
             return Err(e);
@@ -423,9 +410,9 @@ impl JavaManager {
         let java_executable = Self::find_java_executable(&extract_path)?;
         if let Some(runtime) = JavaRuntime::from_path(&java_executable)? {
             self.installed_runtimes.insert(java_version, runtime);
-            info!("Successfully installed Java {} runtime", java_version);
+            log_info!("Successfully installed Java {java_version} runtime");
         } else {
-            error!("Failed to detect installed Java {} runtime", java_version);
+            log_error!("Failed to detect installed Java {java_version} runtime");
         }
 
         Ok(())
@@ -443,14 +430,10 @@ impl JavaManager {
             .iter()
             .find(|pkg| pkg.matches_requirements(java_version, os, "x64"))
             .ok_or_else(|| {
-                anyhow::anyhow!(
-                    "No Azul x64 Java {} package found for {} x64",
-                    java_version,
-                    os
-                )
+                simple_error!("No Azul x64 Java {java_version} package found for {os} x64")
             })?;
 
-        info!(
+        log_info!(
             "Found x86_64 Java {} package: {} ({} MB)",
             java_version,
             package.name,
@@ -480,9 +463,10 @@ impl JavaManager {
         let extract_path = self.java_dir.join(format!("java-{java_version}-x64"));
 
         // Download the package
-        info!(
+        log_info!(
             "Downloading x86_64 Java {} from: {}",
-            java_version, package.download_url
+            java_version,
+            package.download_url
         );
         let mut progress = ProgressTracker::new(format!("x86_64 Java {java_version}"));
 
@@ -497,34 +481,28 @@ impl JavaManager {
             )
             .await
         {
-            error!("Failed to download x86_64 Java {}: {}", java_version, e);
+            log_error!("Failed to download x86_64 Java {java_version}: {e}");
             let _ = remove_file_if_exists(&download_path).await;
             return Err(e);
         }
 
         // Verify the downloaded file
         let file_size = async_fs::metadata(&download_path).await?.len();
-        info!(
-            "Downloaded x86_64 Java {} archive: {} bytes",
-            java_version, file_size
-        );
+        log_info!("Downloaded x86_64 Java {java_version} archive: {file_size} bytes");
 
         if file_size < 1024 * 1024 {
-            error!(
-                "Downloaded file is too small ({}B), likely corrupted",
-                file_size
-            );
+            log_error!("Downloaded file is too small ({file_size}B), likely corrupted");
             let _ = async_fs::remove_file(&download_path).await;
-            return Err(anyhow::anyhow!(
+            return Err(simple_error!(
                 "Downloaded x86_64 Java archive is too small, likely corrupted"
             ));
         }
 
         // Extract the package
-        info!("Extracting Java {java_version} runtime...");
+        log_info!("Extracting Java {java_version} runtime...");
         // Extract the archive
         if let Err(e) = extract_archive(&download_path, &extract_path).await {
-            error!("Failed to extract Java {}: {}", java_version, e);
+            log_error!("Failed to extract Java {java_version}: {e}");
             let _ = remove_file_if_exists(&download_path).await;
             let _ = remove_dir_if_exists(&extract_path).await;
             return Err(e);
@@ -537,15 +515,9 @@ impl JavaManager {
         let java_executable = Self::find_java_executable(&extract_path)?;
         if let Some(runtime) = JavaRuntime::from_path(&java_executable)? {
             self.x86_64_runtimes.insert(java_version, runtime);
-            info!(
-                "Successfully installed x86_64 Java {} runtime",
-                java_version
-            );
+            log_info!("Successfully installed x86_64 Java {java_version} runtime");
         } else {
-            error!(
-                "Failed to detect installed x86_64 Java {} runtime",
-                java_version
-            );
+            log_error!("Failed to detect installed x86_64 Java {java_version} runtime");
         }
 
         Ok(())
@@ -575,7 +547,7 @@ impl JavaManager {
 
                 let major_version: u8 = runtime.major_version;
 
-                debug!(
+                log_debug!(
                     "Found installed {} Java {} runtime at {:?}",
                     if is_x86_64 { "x86_64" } else { "native" },
                     major_version,
@@ -590,7 +562,7 @@ impl JavaManager {
             }
         }
 
-        info!(
+        log_info!(
             "Found {} native and {} x86_64 installed Java runtimes",
             self.installed_runtimes.len(),
             self.x86_64_runtimes.len()
@@ -759,8 +731,8 @@ impl JavaManager {
     }
 
     pub fn find_java_recursive(dir: &Path, executable_name: &str) -> Result<PathBuf> {
-        for entry in
-            fs::read_dir(dir).with_context(|| format!("Failed to read dir: {}", dir.display()))?
+        for entry in fs::read_dir(dir)
+            .map_err(|e| simple_error!("Failed to read dir {}: {}", dir.display(), e))?
         {
             let entry = entry?;
             let path = entry.path();
@@ -778,7 +750,7 @@ impl JavaManager {
             }
         }
 
-        Err(anyhow::anyhow!(
+        Err(simple_error!(
             "Java executable not found in {}",
             dir.display()
         ))

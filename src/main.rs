@@ -1,15 +1,14 @@
 mod backend;
 mod frontend;
+mod utils;
 
 use std::sync::OnceLock;
 
 use dioxus::{LaunchBuilder, prelude::*};
 use dioxus_desktop::{Config, LogicalSize, WindowBuilder};
 use dioxus_router::Router;
-use image::GenericImageView;
-use tao::window::Icon;
+
 use tokio::runtime::Runtime;
-use tracing_subscriber::EnvFilter;
 
 use crate::backend::utils::route::Route;
 
@@ -17,9 +16,7 @@ static RUNTIME: OnceLock<Runtime> = OnceLock::new();
 
 fn main() {
     // Logging
-    tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::new("warn,hyper=warn,h2=warn"))
-        .init();
+    crate::utils::logging::init_from_env();
 
     // Set icon on macOS
     #[cfg(target_os = "macos")]
@@ -45,8 +42,7 @@ fn main() {
                 .with_title("Dream Launcher")
                 .with_inner_size(size)
                 .with_min_inner_size(size)
-                .with_resizable(false)
-                .with_window_icon(load_icon()),
+                .with_resizable(false),
         )
         .with_menu(None);
 
@@ -66,17 +62,6 @@ fn set_macos_icon() {
                 .output();
         }
     }
-}
-
-fn load_icon() -> Option<Icon> {
-    let icon_bytes = include_bytes!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/assets/images/other/icon_64.png"
-    ));
-    image::load_from_memory(icon_bytes).ok().and_then(|img| {
-        let (w, h) = img.dimensions();
-        Icon::from_rgba(img.into_rgba8().into_raw(), w, h).ok()
-    })
 }
 
 #[component]
