@@ -7,10 +7,33 @@ BUNDLE_ID="com.frogdream.dreamlauncher"
 EXECUTABLE_NAME="DreamLauncher"
 BUILD_TYPE="release"
 
-[[ "$1" == "--debug" || "$1" == "-d" ]] && BUILD_TYPE="debug"
-
-EXECUTABLE_PATH="target/$BUILD_TYPE/$EXECUTABLE_NAME"
-APP_PATH="target/$BUILD_TYPE/$APP_NAME.app"
+# Check if custom binary path is provided
+if [[ -n "$1" && "$1" != "--debug" && "$1" != "-d" ]]; then
+    EXECUTABLE_PATH="$1"
+    # Extract build type from path for app bundle location
+    if [[ "$EXECUTABLE_PATH" == *"/debug/"* ]]; then
+        BUILD_TYPE="debug"
+    elif [[ "$EXECUTABLE_PATH" == *"/release/"* ]]; then
+        BUILD_TYPE="release"
+    else
+        # For cross-compilation targets, use the target directory
+        BUILD_TYPE=$(dirname "$EXECUTABLE_PATH" | sed 's|target/||' | sed 's|/[^/]*$||')
+        if [[ -z "$BUILD_TYPE" ]]; then
+            BUILD_TYPE="release"
+        fi
+    fi
+else
+    [[ "$1" == "--debug" || "$1" == "-d" ]] && BUILD_TYPE="debug"
+    EXECUTABLE_PATH="target/$BUILD_TYPE/$EXECUTABLE_NAME"
+fi
+# Set app bundle path based on executable path
+if [[ "$EXECUTABLE_PATH" == target/*/release/* || "$EXECUTABLE_PATH" == target/*/debug/* ]]; then
+    # Cross-compilation target
+    TARGET_DIR=$(dirname "$EXECUTABLE_PATH")
+    APP_PATH="$TARGET_DIR/$APP_NAME.app"
+else
+    APP_PATH="target/$BUILD_TYPE/$APP_NAME.app"
+fi
 
 [[ ! -f "$EXECUTABLE_PATH" ]] && { echo "Executable not found: $EXECUTABLE_PATH"; exit 1; }
 

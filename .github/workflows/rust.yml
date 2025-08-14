@@ -24,21 +24,18 @@ jobs:
 
       - name: Dependencies
         if: matrix.os == 'ubuntu-24.04'
-        uses: awalsh128/cache-apt-pkgs-action@v1
-        with:
-          packages: >
-            libgtk-3-dev
-            libglib2.0-dev
-            libsoup-3.0-dev
-            libssl-dev
-            libjavascriptcoregtk-4.1-dev
-            libwebkit2gtk-4.1-dev
-            libxdo-dev
-            pkg-config
-            build-essential
-            curl
-            xdotool
-          version: 1
+        run: sudo apt-get update && sudo apt-get install -y \
+          libgtk-3-dev libglib2.0-dev libsoup-3.0-dev libssl-dev \
+          libjavascriptcoregtk-4.1-dev libwebkit2gtk-4.1-dev libxdo-dev \
+          pkg-config build-essential curl xdotool upx-ucl bc
+
+      - name: Install macOS dependencies
+        if: matrix.os == 'macos-14'
+        run: brew install create-dmg upx bc
+
+      - name: Install Windows dependencies
+        if: matrix.os == 'windows-2025'
+        run: choco install upx
 
       - name: Cache Rust
         uses: actions/cache@v4
@@ -47,62 +44,58 @@ jobs:
             ~/.rustup
             ~/.cargo/bin
           key: ${{ runner.os }}-rustup-${{ hashFiles('rust-toolchain.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-rustup-
+          restore-keys: ${{ runner.os }}-rustup-
 
       - name: Cache Cargo Registry
         uses: actions/cache@v4
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-registry-
+          restore-keys: ${{ runner.os }}-cargo-registry-
 
       - name: Cache Cargo Git
         uses: actions/cache@v4
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-git-
+          restore-keys: ${{ runner.os }}-cargo-git-
 
       - name: Cache Target Dir
         uses: actions/cache@v4
         with:
           path: target
           key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}-desktop
-          restore-keys: |
-            ${{ runner.os }}-target-
+          restore-keys: ${{ runner.os }}-target-
 
       - name: Setup Rust
         run: rustup show
 
-      - name: Install macOS dependencies
-        if: matrix.os == 'macos-14'
-        run: brew install create-dmg
-
       - name: Build
-        shell: bash
+        run: cargo build --release --locked --features "desktop"
+
+      - name: Compress binary
         run: |
-          cargo build --release --locked --features "desktop"
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            BINARY="target/release/DreamLauncher.exe"
+            upx --best --lzma "$BINARY"
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            BINARY="target/release/DreamLauncher"
+            upx --best --lzma --force-macos "$BINARY"
+          else
+            BINARY="target/release/DreamLauncher"
+            upx --best --lzma "$BINARY"
+          fi
 
       - name: Package
-        shell: bash
         run: |
           mkdir -p dist
           if [[ "${{ runner.os }}" == "Windows" ]]; then
             cp target/release/DreamLauncher.exe dist/
             powershell -Command "Compress-Archive -Path dist/DreamLauncher.exe -DestinationPath DreamLauncher-windows.zip"
           elif [[ "${{ runner.os }}" == "macOS" ]]; then
-            # Use our app bundle creation script
             chmod +x scripts/create_app_bundle.sh
             ./scripts/create_app_bundle.sh
-
-            # Sign the app bundle
-            find "target/release/Dream Launcher.app" -exec xattr -d com.apple.quarantine {} \; 2>/dev/null || true
             codesign --force --deep --sign - "target/release/Dream Launcher.app"
-
-            # Create DMG
             create-dmg \
               --volname "Dream Launcher" \
               --window-pos 200 120 \
@@ -112,12 +105,8 @@ jobs:
               --hide-extension "Dream Launcher.app" \
               --app-drop-link 600 185 \
               "DreamLauncher-macOS.dmg" \
-              "target/release/Dream Launcher.app" 2>/dev/null || {
-                # Fallback if create-dmg fails
-                hdiutil create -volname "Dream Launcher" -srcfolder "target/release/Dream Launcher.app" -ov -format UDZO "DreamLauncher-macOS.dmg"
-              }
-
-            # Sign DMG
+              "target/release/Dream Launcher.app" 2>/dev/null || \
+              hdiutil create -volname "Dream Launcher" -srcfolder "target/release/Dream Launcher.app" -ov -format UDZO "DreamLauncher-macOS.dmg"
             codesign --force --sign - "DreamLauncher-macOS.dmg"
           else
             cp target/release/DreamLauncher dist/
