@@ -35,11 +35,6 @@ pre-commit = [
     "warnings",
 ]
 
-# UPX compression aliases (use scripts directly)
-# cargo compress - run: ./scripts/test-compression.sh compress target/release/DreamLauncher
-# cargo compress-test - run: ./scripts/test-compression.sh test
-# cargo build-compressed - run: cargo build --release && ./scripts/test-compression.sh compress target/release/DreamLauncher
-
 # Cross-platform builds
 build-linux = "build --release --target x86_64-unknown-linux-gnu"
 build-windows = "build --release --target x86_64-pc-windows-gnu"

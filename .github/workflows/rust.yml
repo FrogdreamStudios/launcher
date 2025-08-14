@@ -22,7 +22,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Dependencies
+      - name: Install Linux dependencies
         if: matrix.os == 'ubuntu-24.04'
         uses: awalsh128/cache-apt-pkgs-action@v1
         with:
@@ -90,9 +90,7 @@ jobs:
         run: |
           if [[ "${{ runner.os }}" == "Windows" ]]; then
             upx --best --lzma target/release/DreamLauncher.exe
-          elif [[ "${{ runner.os }}" == "macOS" ]]; then
-            upx --best --lzma --force-macos target/release/DreamLauncher
-          else
+          elif [[ "${{ runner.os }}" == "Linux" ]]; then
             upx --best --lzma target/release/DreamLauncher
           fi
 
