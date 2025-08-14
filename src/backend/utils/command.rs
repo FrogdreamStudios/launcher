@@ -7,7 +7,7 @@
 //!
 //! #### Example:
 //! ```rust
-//! use anyhow::Result;
+//! use crate::utils::Result;
 //! use std::path::PathBuf;
 //! use crate::backend::creeper::models::VersionDetails;
 //! use crate::backend::command::CommandBuilder;
@@ -33,7 +33,8 @@
 //! }
 //! ```
 
-use anyhow::Result;
+use crate::simple_error;
+use crate::utils::Result;
 use std::{path::PathBuf, process::Command};
 
 use crate::backend::{
@@ -237,7 +238,7 @@ impl MinecraftCommand {
             // Parse arguments while preserving quoted strings
             let mut current_arg = String::new();
             let mut in_quotes = false;
-            let chars = args.chars().peekable();
+            let chars = args.chars();
 
             for ch in chars {
                 match ch {
@@ -277,7 +278,7 @@ impl MinecraftCommand {
                 }
             }
             ArgumentValue::Conditional { rules, value } => {
-                if self.evaluate_rules(rules) {
+                if Self::evaluate_rules(rules) {
                     match value {
                         ArgumentValueInner::String(s) => {
                             let substituted = self.substitute_variables(s, is_jvm);
@@ -300,7 +301,7 @@ impl MinecraftCommand {
     }
 
     /// Checks if all rules match based on OS name, architecture, and features.
-    fn evaluate_rules(&self, rules: &[crate::backend::creeper::models::Rule]) -> bool {
+    fn evaluate_rules(rules: &[crate::backend::creeper::models::Rule]) -> bool {
         let os_name = get_minecraft_os_name();
         let os_arch = get_minecraft_arch();
         let features = get_os_features();
@@ -801,13 +802,13 @@ impl CommandBuilder {
         let config = CommandConfig {
             java_path: self
                 .java_path
-                .ok_or_else(|| anyhow::anyhow!("Java path not set"))?,
+                .ok_or_else(|| simple_error!("Java path not set"))?,
             game_dir: self
                 .game_dir
-                .ok_or_else(|| anyhow::anyhow!("Game directory not set"))?,
+                .ok_or_else(|| simple_error!("Game directory not set"))?,
             version_details: self
                 .version_details
-                .ok_or_else(|| anyhow::anyhow!("Version details not set"))?,
+                .ok_or_else(|| simple_error!("Version details not set"))?,
             username: self.username.unwrap_or_else(|| "Player".to_string()),
             uuid: self
                 .uuid
@@ -817,11 +818,11 @@ impl CommandBuilder {
             version_type: self.version_type,
             assets_dir: self
                 .assets_dir
-                .ok_or_else(|| anyhow::anyhow!("Assets directory not set"))?,
+                .ok_or_else(|| simple_error!("Assets directory not set"))?,
             libraries: self.libraries,
             main_jar: self
                 .main_jar
-                .ok_or_else(|| anyhow::anyhow!("Main jar not set"))?,
+                .ok_or_else(|| simple_error!("Main jar not set"))?,
             java_major_version: self.java_major_version.unwrap_or(8),
             use_rosetta: self.use_rosetta,
         };

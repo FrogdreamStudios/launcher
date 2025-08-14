@@ -2,12 +2,12 @@
 
 use std::{path::Path, time::Duration};
 
-use anyhow::Result;
-use futures_util::StreamExt;
-use reqwest::Client;
-use sha1::{Digest, Sha1};
+use crate::backend::utils::http::{Client, StatusCode};
+use crate::backend::utils::stream::ResponseChunkExt;
+use crate::utils::Result;
+use crate::utils::{Digest, Sha1};
+use crate::{log_debug, log_warn, simple_error};
 use tokio::{fs::File, io::AsyncWriteExt};
-use tracing::{debug, warn};
 
 use super::progress::ProgressTracker;
 use crate::backend::{
@@ -50,20 +50,21 @@ impl HttpDownloader {
     ) -> Result<()> {
         // Check if the file already exists and has the correct hash
         if verify_file(destination, None, expected_sha1).await? {
-            debug!("File already exists with correct hash: {destination:?}");
+            log_debug!("File already exists with correct hash: {destination:?}");
             return Ok(());
         }
 
         // Create parent directories if they don't exist
         ensure_parent_directory(destination).await?;
 
-        debug!("Downloading {url} to {destination:?}");
+        log_debug!("Downloading {url} to {destination:?}");
 
-        let response = self.client.get(url).send().await?;
+        let response = self.client.get(url).await?;
 
         if !response.status().is_success() {
-            return Err(anyhow::anyhow!(
-                "Failed to download {url}: HTTP {}",
+            return Err(simple_error!(
+                "Failed to download {}: HTTP {}",
+                url,
                 response.status()
             ));
         }
@@ -74,12 +75,12 @@ impl HttpDownloader {
         }
 
         let mut file = File::create(destination).await?;
-        let mut stream = response.bytes_stream();
+        let mut stream = response.chunk_stream();
         let mut downloaded = 0u64;
         let mut hasher = expected_sha1.map(|_| Sha1::new());
 
-        while let Some(chunk) = stream.next().await {
-            let chunk = chunk?;
+        while let Some(chunk_result) = stream.next().await {
+            let chunk = chunk_result?;
 
             file.write_all(&chunk).await?;
             downloaded += chunk.len() as u64;
@@ -98,30 +99,30 @@ impl HttpDownloader {
 
         // Verify file size
         let file_size = tokio::fs::metadata(destination).await?.len();
-        debug!("Downloaded file size: {file_size} bytes");
+        log_debug!("Downloaded file size: {file_size} bytes");
 
         if file_size == 0 {
             tokio::fs::remove_file(destination).await?;
-            return Err(anyhow::anyhow!("Downloaded file is empty: {url}"));
+            return Err(simple_error!("Downloaded file is empty: {url}"));
         }
 
         // Verify archive format for Java downloads
         if (url.contains("java") || destination.to_string_lossy().contains("java"))
             && let Err(e) = self.verify_archive_format(destination).await
         {
-            warn!("Archive format verification failed for {url}: {e}");
+            log_warn!("Archive format verification failed for {url}: {e}");
         }
 
         // Verify SHA1 if provided
         if let (Some(expected), Some(hasher)) = (expected_sha1, hasher) {
-            let computed_hash = hex::encode(hasher.finalize());
+            let computed_hash = crate::utils::hex_encode(hasher.finalize());
             if computed_hash != expected {
                 tokio::fs::remove_file(destination).await?;
-                return Err(anyhow::anyhow!(
+                return Err(simple_error!(
                     "Hash mismatch for {url}: expected {expected}, got {computed_hash}"
                 ));
             }
-            debug!("SHA1 verification passed for {url}");
+            log_debug!("SHA1 verification passed for {url}");
         }
 
         Ok(())
@@ -143,7 +144,7 @@ impl HttpDownloader {
                 let _permit = semaphore
                     .acquire()
                     .await
-                    .map_err(|e| anyhow::anyhow!("Semaphore error: {e}"))?;
+                    .map_err(|_e| simple_error!("Semaphore error: {e}"))?;
 
                 let downloader = Self { client };
                 downloader
@@ -163,7 +164,7 @@ impl HttpDownloader {
         for handle in handles {
             handle
                 .await
-                .map_err(|e| anyhow::anyhow!("Task join error: {e}"))??;
+                .map_err(|_e| simple_error!("Task join error: {e}"))??;
         }
 
         Ok(())
@@ -177,40 +178,40 @@ impl HttpDownloader {
         let mut retries = 0;
 
         loop {
-            match self.client.get(url).send().await {
+            match self.client.get(url).await {
                 Ok(response) => match response.status() {
-                    reqwest::StatusCode::OK => {
+                    StatusCode::Ok => {
                         let json = response.json::<T>().await?;
                         return Ok(json);
                     }
-                    reqwest::StatusCode::TOO_MANY_REQUESTS => {
+                    StatusCode::TooManyRequests => {
                         retries += 1;
                         if retries > MAX_RETRIES {
-                            return Err(anyhow::anyhow!(
+                            return Err(simple_error!(
                                 "Failed to fetch {url} after {MAX_RETRIES} retries: HTTP 429 Too Many Requests"
                             ));
                         }
 
                         let wait_time =
                             Duration::from_secs(2_u64.pow(u32::try_from(retries).unwrap_or(10)));
-                        warn!(
+                        log_warn!(
                             "Rate limited, waiting {wait_time:?} before retry {retries}/{MAX_RETRIES}"
                         );
                         tokio::time::sleep(wait_time).await;
                     }
-                    status => {
-                        return Err(anyhow::anyhow!("HTTP {status} for {url}"));
+                    _status => {
+                        return Err(simple_error!("HTTP {status} for {url}"));
                     }
                 },
                 Err(e) => {
                     retries += 1;
                     if retries > MAX_RETRIES {
-                        return Err(anyhow::anyhow!(
+                        return Err(simple_error!(
                             "Network error after {MAX_RETRIES} retries for {url}: {e}"
                         ));
                     }
 
-                    warn!("Network error, retrying {retries}/{MAX_RETRIES} for {url}: {e}");
+                    log_warn!("Network error, retrying {retries}/{MAX_RETRIES} for {url}: {e}");
                     tokio::time::sleep(Duration::from_secs(1 + retries as u64)).await;
                 }
             }
@@ -224,19 +225,19 @@ impl HttpDownloader {
         let mut header = [0u8; 4];
 
         if file.read_exact(&mut header).await.is_err() {
-            return Err(anyhow::anyhow!("File too small to read header"));
+            return Err(simple_error!("File too small to read header"));
         }
 
         // Check for known archive formats
         match &header {
             // ZIP signature
             [0x50, 0x4B, 0x03, 0x04] | [0x50, 0x4B, 0x05, 0x06] | [0x50, 0x4B, 0x07, 0x08] => {
-                debug!("Detected ZIP archive format");
+                log_debug!("Detected ZIP archive format");
                 Ok(())
             }
             // TAR.GZ signature (gzip magic number)
             [0x1F, 0x8B, _, _] => {
-                debug!("Detected TAR.GZ archive format");
+                log_debug!("Detected TAR.GZ archive format");
                 Ok(())
             }
             // TAR signature (check at offset 257)
@@ -244,10 +245,10 @@ impl HttpDownloader {
                 let mut tar_header = [0u8; 5];
                 let _ = file.read_exact(&mut tar_header).await;
                 if &tar_header == b"ustar" {
-                    debug!("Detected TAR archive format");
+                    log_debug!("Detected TAR archive format");
                     Ok(())
                 } else {
-                    Err(anyhow::anyhow!("Unknown archive format"))
+                    Err(simple_error!("Unknown archive format"))
                 }
             }
         }

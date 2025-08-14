@@ -7,14 +7,35 @@ BUNDLE_ID="com.frogdream.dreamlauncher"
 EXECUTABLE_NAME="DreamLauncher"
 BUILD_TYPE="release"
 
-[[ "$1" == "--debug" || "$1" == "-d" ]] && BUILD_TYPE="debug"
+# Check if custom binary path is provided
+if [[ -n "$1" && "$1" != "--debug" && "$1" != "-d" ]]; then
+    EXECUTABLE_PATH="$1"
+    # Extract build type from path for app bundle location
+    if [[ "$EXECUTABLE_PATH" == *"/debug/"* ]]; then
+        BUILD_TYPE="debug"
+    elif [[ "$EXECUTABLE_PATH" == *"/release/"* ]]; then
+        BUILD_TYPE="release"
+    else
+        # For cross-compilation targets, use the target directory
+        BUILD_TYPE=$(dirname "$EXECUTABLE_PATH" | sed 's|target/||' | sed 's|/[^/]*$||')
+        if [[ -z "$BUILD_TYPE" ]]; then
+            BUILD_TYPE="release"
+        fi
+    fi
+else
+    [[ "$1" == "--debug" || "$1" == "-d" ]] && BUILD_TYPE="debug"
+    EXECUTABLE_PATH="target/$BUILD_TYPE/$EXECUTABLE_NAME"
+fi
+# Set app bundle path based on executable path
+if [[ "$EXECUTABLE_PATH" == target/*/release/* || "$EXECUTABLE_PATH" == target/*/debug/* ]]; then
+    # Cross-compilation target
+    TARGET_DIR=$(dirname "$EXECUTABLE_PATH")
+    APP_PATH="$TARGET_DIR/$APP_NAME.app"
+else
+    APP_PATH="target/$BUILD_TYPE/$APP_NAME.app"
+fi
 
-EXECUTABLE_PATH="target/$BUILD_TYPE/$EXECUTABLE_NAME"
-APP_PATH="target/$BUILD_TYPE/$APP_NAME.app"
-
-[[ ! -f "$EXECUTABLE_PATH" ]] && { echo "Executable not found: $EXECUTABLE_PATH"; exit 1; }
-
-echo "Creating app bundle: $APP_PATH"
+[[ ! -f "$EXECUTABLE_PATH" ]] && exit 1
 
 rm -rf "$APP_PATH"
 mkdir -p "$APP_PATH/Contents/MacOS" "$APP_PATH/Contents/Resources"
@@ -56,5 +77,3 @@ if [[ -f "assets/icons/app_icon.icns" ]]; then
     cp "assets/icons/app_icon.icns" "$APP_PATH/Contents/Resources/"
     plutil -insert CFBundleIconFile -string "app_icon.icns" "$APP_PATH/Contents/Info.plist"
 fi
-
-echo "App bundle created: $APP_PATH"

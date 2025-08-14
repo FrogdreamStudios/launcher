@@ -3,13 +3,13 @@
 //! This module provides utilities to detect, download, and manage
 //! Java runtimes for running Minecraft with the correct Java version.
 
-use anyhow::Result;
+use crate::utils::Result;
+use crate::{log_debug, log_info, log_warn, simple_error};
 use serde::{Deserialize, Serialize};
 use std::{
     path::{Path, PathBuf},
     process::Command,
 };
-use tracing::{debug, info, warn};
 
 /// Information about a Java runtime installation.
 ///
@@ -50,9 +50,9 @@ impl JavaRuntime {
     pub fn detect_system_java() -> Result<Option<Self>> {
         // Try to find java using which/where
         let java_path = if cfg!(windows) {
-            which::which("java.exe").or_else(|_| which::which("java"))
+            crate::utils::which("java.exe").or_else(|_| crate::utils::which("java"))
         } else {
-            which::which("java")
+            crate::utils::which("java")
         };
 
         match java_path {
@@ -69,13 +69,13 @@ impl JavaRuntime {
                         })
                     }
                     Err(_) => {
-                        debug!("Failed to execute java at {path:?}");
+                        log_debug!("Failed to execute java at {path:?}");
                         Ok(None)
                     }
                 }
             }
             Err(_) => {
-                debug!("System Java not found in PATH");
+                log_debug!("System Java not found in PATH");
                 Ok(None)
             }
         }
@@ -146,7 +146,7 @@ impl JavaRuntime {
             return Ok(version_line[start + 1..start + 1 + end].to_string());
         }
 
-        Err(anyhow::anyhow!(
+        Err(simple_error!(
             "Could not parse Java version from: {version_line}"
         ))
     }
@@ -234,11 +234,11 @@ impl JavaRuntime {
 
     /// Get required Java version for Minecraft version.
     pub fn get_required_java_version(minecraft_version: &str) -> u8 {
-        info!("Determining Java version for Minecraft {minecraft_version}");
+        log_info!("Determining Java version for Minecraft {minecraft_version}");
 
         // Handle snapshots and pre-releases first
         if Self::is_modern_snapshot_or_prerelease(minecraft_version) {
-            info!("Detected modern snapshot/pre-release: {minecraft_version} -> Java 21");
+            log_info!("Detected modern snapshot/pre-release: {minecraft_version} -> Java 21");
             return 21; // Modern snapshots require Java 21
         }
 
@@ -247,34 +247,36 @@ impl JavaRuntime {
             match version {
                 // Minecraft 1.21+ requires Java 21
                 v if v >= (1, 21, 0) => {
-                    info!("Minecraft {}.{}.{} (≥ 1.21.0) -> Java 21", v.0, v.1, v.2);
+                    log_info!("Minecraft {}.{}.{} (≥ 1.21.0) -> Java 21", v.0, v.1, v.2);
                     21
                 }
                 // Minecraft 1.20.5+ requires Java 21
                 v if v >= (1, 20, 5) => {
-                    info!("Minecraft {}.{}.{} (≥ 1.20.5) -> Java 21", v.0, v.1, v.2);
+                    log_info!("Minecraft {}.{}.{} (≥ 1.20.5) -> Java 21", v.0, v.1, v.2);
                     21
                 }
                 // Minecraft 1.18+ requires Java 17
                 v if v >= (1, 18, 0) => {
-                    info!("Minecraft {}.{}.{} (≥ 1.18.0) -> Java 17", v.0, v.1, v.2);
+                    log_info!("Minecraft {}.{}.{} (≥ 1.18.0) -> Java 17", v.0, v.1, v.2);
                     17
                 }
                 // Minecraft 1.17+ requires Java 17
                 v if v >= (1, 17, 0) => {
-                    info!("Minecraft {}.{}.{} (≥ 1.17.0) -> Java 17", v.0, v.1, v.2);
+                    log_info!("Minecraft {}.{}.{} (≥ 1.17.0) -> Java 17", v.0, v.1, v.2);
                     17
                 }
                 // Minecraft 1.12-1.16 works with Java 8
                 v if v >= (1, 12, 0) => {
-                    info!("Minecraft {}.{}.{} (≥ 1.12.0) -> Java 8", v.0, v.1, v.2);
+                    log_info!("Minecraft {}.{}.{} (≥ 1.12.0) -> Java 8", v.0, v.1, v.2);
                     8
                 }
                 // Older versions (1.11 and below) use Java 8
                 _ => {
-                    info!(
+                    log_info!(
                         "Minecraft {}.{}.{} (legacy) -> Java 8",
-                        version.0, version.1, version.2
+                        version.0,
+                        version.1,
+                        version.2
                     );
                     8
                 }
@@ -282,7 +284,9 @@ impl JavaRuntime {
         } else {
             // For unknown versions, assume modern (Java 21)
             // This handles cases where version parsing fails, but it's likely a newer version
-            warn!("Failed to parse Minecraft version '{minecraft_version}', defaulting to Java 21");
+            log_warn!(
+                "Failed to parse Minecraft version '{minecraft_version}', defaulting to Java 21"
+            );
             21
         }
     }
@@ -387,10 +391,7 @@ impl JavaRuntime {
 
             Ok((major, minor, patch))
         } else {
-            Err(anyhow::anyhow!(
-                "Invalid Minecraft version format: {}",
-                version
-            ))
+            Err(simple_error!("Invalid Minecraft version format: {version}"))
         }
     }
 }

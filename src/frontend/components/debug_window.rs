@@ -5,9 +5,9 @@ use crate::{
         instances::main::INSTANCES,
     },
 };
+use crate::{log_error, log_info, simple_error};
 use dioxus::prelude::*;
 use std::fs;
-use tracing::{error, info};
 
 #[derive(Clone)]
 pub struct VersionSelection {
@@ -73,7 +73,7 @@ pub fn DebugWindow(
             spawn(async move {
                 match load_available_versions().await {
                     Ok(versions) => vs.available_versions.set(versions),
-                    Err(e) => error!("Failed to load versions: {e}"),
+                    Err(e) => log_error!("Failed to load versions: {e}"),
                 }
                 vs.is_loading.set(false);
             });
@@ -178,9 +178,9 @@ pub fn DebugWindow(
                                         match update_and_load_versions().await {
                                             Ok(versions) => {
                                                 available_versions.set(versions);
-                                                info!("Manifest updated");
+                                                log_info!("Manifest updated");
                                             }
-                                            Err(e) => error!("Failed to update versions: {e}"),
+                                            Err(e) => log_error!("Failed to update versions: {e}"),
                                         }
                                         is_loading.set(false);
                                     });
@@ -201,8 +201,8 @@ pub fn DebugWindow(
                                     is_deleting.set(true);
                                     spawn(async move {
                                         match delete_launcher_files().await {
-                                            Ok(_) => info!("Launcher files deleted"),
-                                            Err(e) => error!("Failed to delete files: {e}"),
+                                            Ok(_) => log_info!("Launcher files deleted"),
+                                            Err(e) => log_error!("Failed to delete files: {e}"),
                                         }
                                         is_deleting.set(false);
                                     });
@@ -235,7 +235,7 @@ pub fn DebugWindow(
                                     };
                                     match result {
                                         Ok(info) => system_info.set(info),
-                                        Err(e) => error!("Failed to get system info: {e}"),
+                                        Err(e) => log_error!("Failed to get system info: {e}"),
                                     }
                                 });
                             }
@@ -248,24 +248,24 @@ pub fn DebugWindow(
     }
 }
 
-async fn load_available_versions() -> anyhow::Result<Vec<VersionInfo>> {
+async fn load_available_versions() -> crate::utils::Result<Vec<VersionInfo>> {
     let launcher = MinecraftLauncher::new(None, None).await?;
     Ok(launcher.get_available_versions()?.to_vec())
 }
 
-async fn update_and_load_versions() -> anyhow::Result<Vec<VersionInfo>> {
+async fn update_and_load_versions() -> crate::utils::Result<Vec<VersionInfo>> {
     let mut launcher = MinecraftLauncher::new(None, None).await?;
     launcher.update_manifest().await?;
     Ok(launcher.get_available_versions()?.to_vec())
 }
 
-async fn delete_launcher_files() -> anyhow::Result<()> {
-    info!("Starting launcher files deletion...");
+async fn delete_launcher_files() -> crate::utils::Result<()> {
+    log_info!("Starting launcher files deletion...");
 
     let launcher = MinecraftLauncher::new(None, None).await?;
     let game_dir = launcher.get_game_dir();
 
-    info!("Game directory: {game_dir:?}");
+    log_info!("Game directory: {game_dir:?}");
 
     let directories = [
         ("versions", game_dir.join("versions")),
@@ -281,21 +281,21 @@ async fn delete_launcher_files() -> anyhow::Result<()> {
     for (name, path) in &directories {
         if path.exists() {
             total_found += 1;
-            info!("Found {name} directory: {path:?}");
+            log_info!("Found {name} directory: {path:?}");
         }
     }
 
     if total_found == 0 {
-        info!("No launcher files found to delete");
+        log_info!("No launcher files found to delete");
         return Ok(());
     }
 
-    info!("Found {total_found} directories to delete");
+    log_info!("Found {total_found} directories to delete");
 
     // Delete directories with progress
     for (name, path) in &directories {
         if path.exists() {
-            info!(
+            log_info!(
                 "Deleting {} directory... ({}/{})",
                 name,
                 deleted_count + 1,
@@ -305,21 +305,21 @@ async fn delete_launcher_files() -> anyhow::Result<()> {
             match fs::remove_dir_all(path) {
                 Ok(_) => {
                     deleted_count += 1;
-                    info!("✓ Successfully deleted {name} directory");
+                    log_info!("✓ Successfully deleted {name} directory");
                 }
                 Err(e) => {
-                    error!("✗ Failed to delete {name} directory: {e}");
-                    return Err(anyhow::anyhow!("Failed to delete {name} directory: {e}"));
+                    log_error!("✗ Failed to delete {name} directory: {e}");
+                    return Err(simple_error!("Failed to delete {name} directory: {e}"));
                 }
             }
         }
     }
 
-    info!("Deletion complete! Removed {deleted_count} directories");
+    log_info!("Deletion complete! Removed {deleted_count} directories");
     Ok(())
 }
 
-async fn get_system_info() -> anyhow::Result<String> {
+async fn get_system_info() -> crate::utils::Result<String> {
     let launcher = MinecraftLauncher::new(None, None).await?;
     let game_dir = launcher.get_game_dir();
 
@@ -349,7 +349,8 @@ async fn get_system_info() -> anyhow::Result<String> {
 }
 
 fn get_instance_info(instance_id: u32) -> String {
-    use crate::frontend::instances::main::{get_base_directory, get_instance_directory};
+    use crate::backend::utils::paths::get_launcher_dir;
+    use crate::frontend::instances::main::get_instance_directory;
 
     let mut info = String::new();
 
@@ -359,7 +360,7 @@ fn get_instance_info(instance_id: u32) -> String {
     let instance_dir = get_instance_directory(instance_id);
     info.push_str(&format!("Instance directory: {instance_dir:?}\n"));
 
-    let base_dir = get_base_directory();
+    let base_dir = get_launcher_dir().unwrap_or_else(|_| std::path::PathBuf::from("DreamLauncher"));
     info.push_str(&format!("Base Dream Launcher directory: {base_dir:?}\n"));
 
     // Check if the instance directory exists

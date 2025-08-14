@@ -13,9 +13,13 @@ pub mod command;
 pub mod css_loader;
 /// File system operations and utilities.
 pub mod file_utils;
+/// Simple HTTP client utilities.
+pub mod http;
 /// OS detection and compatibility.
 pub mod os;
 /// Path utilities for Minecraft directories.
 pub mod paths;
 /// Application routing system.
 pub mod route;
+/// Lightweight stream utilities.
+pub mod stream;

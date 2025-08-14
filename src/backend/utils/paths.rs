@@ -2,8 +2,9 @@
 
 use std::path::{Path, PathBuf};
 
-use anyhow::{Result, anyhow};
-use dirs;
+use crate::simple_error;
+use crate::utils::Result;
+use crate::utils::{data_dir, home_dir};
 
 /// Name of the main launcher directory.
 const LAUNCHER_DIR: &str = "DreamLauncher";
@@ -43,12 +44,12 @@ const INSTANCES: &str = "instances";
 pub fn get_launcher_dir() -> Result<PathBuf> {
     let base_dir = match std::env::consts::OS {
         "windows" => {
-            dirs::data_dir().ok_or_else(|| anyhow!("Could not determine AppData directory"))?
+            data_dir().ok_or_else(|| simple_error!("Could not determine AppData directory"))?
         }
-        "macos" => dirs::home_dir()
-            .ok_or_else(|| anyhow!("Could not determine home directory"))?
+        "macos" => home_dir()
+            .ok_or_else(|| simple_error!("Could not determine home directory"))?
             .join("Library/Application Support"),
-        _ => dirs::home_dir().ok_or_else(|| anyhow!("Could not determine home directory"))?,
+        _ => home_dir().ok_or_else(|| simple_error!("Could not determine home directory"))?,
     };
     Ok(base_dir.join(LAUNCHER_DIR))
 }

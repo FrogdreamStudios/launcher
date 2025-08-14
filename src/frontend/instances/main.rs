@@ -1,8 +1,10 @@
+use crate::backend::utils::paths::get_launcher_dir;
+use crate::simple_error;
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use tokio::fs as async_fs;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -42,8 +44,8 @@ pub static INSTANCES_LOADED: GlobalSignal<bool> = Signal::global(|| false);
 pub struct InstanceManager;
 
 impl InstanceManager {
-    pub fn initialize(&self) {
-        if *INSTANCES_LOADED.read() {
+    pub fn initialize() {
+        if !*INSTANCES_LOADED.read() {
             spawn(async move {
                 if let Err(e) = load_instances().await {
                     println!("Failed to load instances: {e}, creating default instance");
@@ -57,7 +59,7 @@ impl InstanceManager {
         }
     }
 
-    pub fn create_instance(&self) -> Option<u32> {
+    pub fn create_instance() -> Option<u32> {
         let mut instances = INSTANCES.write();
         let current_id = *NEXT_ID.read();
 
@@ -95,7 +97,7 @@ impl InstanceManager {
         Some(instance_id)
     }
 
-    pub fn delete_instance(&self, id: u32) -> bool {
+    pub fn delete_instance(id: u32) -> bool {
         let mut instances = INSTANCES.write();
         let removed = instances.remove(&id).is_some();
 
@@ -126,7 +128,7 @@ impl InstanceManager {
         removed
     }
 
-    pub fn rename_instance(&self, id: u32, new_name: &str) -> bool {
+    pub fn rename_instance(id: u32, new_name: &str) -> bool {
         let mut instances = INSTANCES.write();
         let renamed = if let Some(instance) = instances.get_mut(&id) {
             instance.name = new_name.chars().take(7).collect();
@@ -152,20 +154,20 @@ impl InstanceManager {
         renamed
     }
 
-    pub fn toggle_debug_mode(&self) {
+    pub fn toggle_debug_mode() {
         let current = *DEBUG_MODE.read();
         *DEBUG_MODE.write() = !current;
     }
 
-    pub fn is_debug_mode(&self) -> bool {
+    pub fn is_debug_mode() -> bool {
         *DEBUG_MODE.read()
     }
 
-    pub fn can_create_instance(&self) -> bool {
+    pub fn can_create_instance() -> bool {
         INSTANCES.read().len() < 14
     }
 
-    pub fn get_instances_sorted(&self) -> Vec<Instance> {
+    pub fn get_instances_sorted() -> Vec<Instance> {
         let instances = INSTANCES.read();
         let mut sorted: Vec<Instance> = instances.values().cloned().collect();
         sorted.sort_by_key(|i| i.id);
@@ -173,26 +175,18 @@ impl InstanceManager {
     }
 }
 
-pub fn use_instance_manager() -> InstanceManager {
-    let manager = InstanceManager;
-    manager.initialize();
-    manager
-}
-
-/// Get the base `DreamLauncher` directory.
-pub fn get_base_directory() -> PathBuf {
-    let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/Users/unknown".to_string());
-    Path::new(&home_dir).join("Library/Application Support/DreamLauncher")
-}
-
 /// Get the directory for a specific instance.
 pub fn get_instance_directory(instance_id: u32) -> PathBuf {
-    get_base_directory().join(format!("instances/instance_{instance_id}"))
+    get_launcher_dir()
+        .unwrap_or_else(|_| PathBuf::from("DreamLauncher"))
+        .join(format!("instances/instance_{instance_id}"))
 }
 
 /// Get the path to the instances' configuration file.
 pub fn get_instances_config_path() -> PathBuf {
-    get_base_directory().join("instances.json")
+    get_launcher_dir()
+        .unwrap_or_else(|_| PathBuf::from("DreamLauncher"))
+        .join("instances.json")
 }
 
 /// Create all necessary directories for an instance.
@@ -215,7 +209,7 @@ pub fn create_instance_directories(instance_id: u32) -> std::io::Result<PathBuf>
 }
 
 /// Save instances data to the disk.
-async fn save_instances_data(data: &InstancesData) -> anyhow::Result<()> {
+async fn save_instances_data(data: &InstancesData) -> crate::utils::Result<()> {
     let config_path = get_instances_config_path();
 
     // Ensure the parent directory exists
@@ -231,7 +225,7 @@ async fn save_instances_data(data: &InstancesData) -> anyhow::Result<()> {
 }
 
 /// Load instances from disk.
-async fn load_instances() -> anyhow::Result<()> {
+async fn load_instances() -> crate::utils::Result<()> {
     let config_path = get_instances_config_path();
 
     if !config_path.exists() {
@@ -254,7 +248,7 @@ async fn load_instances() -> anyhow::Result<()> {
 }
 
 /// Open instance folder in system file explorer.
-pub async fn open_instance_folder(instance_id: u32) -> anyhow::Result<()> {
+pub async fn open_instance_folder(instance_id: u32) -> crate::utils::Result<()> {
     use std::process::Command;
 
     let instance_dir = get_instance_directory(instance_id);
@@ -268,7 +262,7 @@ pub async fn open_instance_folder(instance_id: u32) -> anyhow::Result<()> {
     let output = Command::new("open").arg(&instance_dir).output()?;
 
     if !output.status.success() {
-        return Err(anyhow::anyhow!("Failed to open instance folder"));
+        return Err(simple_error!("Failed to open instance folder"));
     }
 
     println!("Opened instance {instance_id} folder: {instance_dir:?}");

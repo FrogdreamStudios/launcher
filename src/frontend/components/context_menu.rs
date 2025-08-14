@@ -3,7 +3,7 @@ use crate::{
     frontend::{
         components::minecraft_launcher::launch_minecraft,
         game_state::GameStatus,
-        instances::main::{INSTANCES, open_instance_folder, use_instance_manager},
+        instances::main::{INSTANCES, InstanceManager, open_instance_folder},
     },
 };
 use dioxus::prelude::*;
@@ -32,8 +32,6 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
     let mut editing_text = props.editing_text;
     let mut is_hiding = use_signal(|| false);
     let mut should_render = use_signal(|| false);
-
-    let instance_manager = use_instance_manager();
 
     // Watch for show changes and handle animation
     use_effect(move || {
@@ -104,7 +102,7 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
         e.stop_propagation();
         if let Some(id) = instance_id() {
             println!("Delete clicked for instance {id}");
-            instance_manager.delete_instance(id);
+            InstanceManager::delete_instance(id);
         }
         show.set(false);
     };
@@ -174,7 +172,7 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
                     }
                 }
 
-                if instance_manager.is_debug_mode() {
+                if InstanceManager::is_debug_mode() {
                     button {
                         class: "context-menu-button",
                         onclick: handle_debug_click,

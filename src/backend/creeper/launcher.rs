@@ -1,8 +1,8 @@
 //! Core Minecraft launcher implementation.
 
-use anyhow::Result;
+use crate::utils::Result;
+use crate::{log_debug, log_error, log_info, log_warn, simple_error};
 use std::{path::PathBuf, process::Stdio, sync::Arc};
-use tracing::{debug, error, info, warn};
 
 use super::{
     downloader::{HttpDownloader, ProgressTracker, models::DownloadTask},
@@ -55,10 +55,10 @@ impl MinecraftLauncher {
 
         // Load cached manifest or fetched a new one
         if let Err(e) = launcher.load_cached_manifest().await {
-            warn!("Failed to load cached manifest: {e}");
+            log_warn!("Failed to load cached manifest: {e}");
             launcher.update_manifest().await?;
         } else if launcher.manifest.is_none() {
-            info!("No cached manifest found, fetching from Mojang...");
+            log_info!("No cached manifest found, fetching from Mojang...");
             launcher.update_manifest().await?;
         }
 
@@ -69,13 +69,13 @@ impl MinecraftLauncher {
         let manifest = self
             .manifest
             .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("Version manifest not loaded"))?;
+            .ok_or_else(|| simple_error!("Version manifest not loaded"))?;
 
         Ok(&manifest.versions)
     }
 
     pub async fn update_manifest(&mut self) -> Result<()> {
-        info!("Fetching version manifest from Mojang...");
+        log_info!("Fetching version manifest from Mojang...");
 
         let manifest: VersionManifest = self
             .downloader
@@ -88,7 +88,7 @@ impl MinecraftLauncher {
         tokio::fs::write(&manifest_path, manifest_json).await?;
 
         self.manifest = Some(Arc::new(manifest));
-        info!("Version manifest updated successfully");
+        log_info!("Version manifest updated successfully");
 
         Ok(())
     }
@@ -100,9 +100,9 @@ impl MinecraftLauncher {
             let manifest_content = tokio::fs::read_to_string(&manifest_path).await?;
             let manifest: VersionManifest = serde_json::from_str(&manifest_content)?;
             self.manifest = Some(Arc::new(manifest));
-            debug!("Loaded cached version manifest");
+            log_debug!("Loaded cached version manifest");
         } else {
-            return Err(anyhow::anyhow!("No cached manifest found"));
+            return Err(simple_error!("No cached manifest found"));
         }
 
         Ok(())
@@ -122,8 +122,8 @@ impl MinecraftLauncher {
             Err(e) => {
                 // For modern versions requiring Java 21+, try x86_64 as a fallback
                 if required_java >= 21 {
-                    warn!("Native Java {required_java} installation failed: {e}");
-                    warn!("Attempting to install x86_64 Java {required_java} as fallback...");
+                    log_warn!("Native Java {required_java} installation failed: {e}");
+                    log_warn!("Attempting to install x86_64 Java {required_java} as fallback...");
 
                     match self
                         .java_manager
@@ -131,14 +131,16 @@ impl MinecraftLauncher {
                         .await
                     {
                         Ok(()) => {
-                            info!("Successfully installed x86_64 Java {required_java} as fallback");
+                            log_info!(
+                                "Successfully installed x86_64 Java {required_java} as fallback"
+                            );
                             Ok(())
                         }
                         Err(x86_err) => {
-                            error!("Both native and x86_64 Java installation failed");
-                            error!("Native error: {e}");
-                            error!("x86_64 error: {x86_err}");
-                            Err(anyhow::anyhow!(
+                            log_error!("Both native and x86_64 Java installation failed");
+                            log_error!("Native error: {e}");
+                            log_error!("x86_64 error: {x86_err}");
+                            Err(simple_error!(
                                 "Failed to install Java {required_java}: native installation failed ({e}), x86_64 fallback also failed ({x86_err})"
                             ))
                         }
@@ -151,11 +153,11 @@ impl MinecraftLauncher {
     }
 
     pub async fn prepare_version(&self, version_id: &str) -> Result<()> {
-        info!("Preparing Minecraft version: {version_id}");
+        log_info!("Preparing Minecraft version: {version_id}");
 
         // Check if a version already exists offline
         if self.is_version_ready_offline(version_id)? {
-            info!("Version {version_id} is already prepared offline");
+            log_info!("Version {version_id} is already prepared offline");
             return Ok(());
         }
 
@@ -163,41 +165,41 @@ impl MinecraftLauncher {
         let version_details = match self.get_version_details(version_info).await {
             Ok(details) => details,
             Err(e) => {
-                warn!("Failed to download version details: {e}. Checking for offline version");
+                log_warn!("Failed to download version details: {e}. Checking for offline version");
                 return self.try_offline_mode(version_id);
             }
         };
 
         // Download client jar
-        info!("Downloading client jar...");
+        log_info!("Downloading client jar...");
         if let Err(e) = self.download_client_jar(&version_details).await {
-            warn!("Failed to download client jar: {e}");
+            log_warn!("Failed to download client jar: {e}");
         }
 
         // Download libraries
-        info!("Downloading libraries...");
+        log_info!("Downloading libraries...");
         if let Err(e) = self.download_libraries(&version_details).await {
-            warn!("Failed to download libraries: {e}");
+            log_warn!("Failed to download libraries: {e}");
         }
 
         // Download and extracting native libraries
-        info!("Downloading and extracting native libraries...");
+        log_info!("Downloading and extracting native libraries...");
         if let Err(e) = self.download_natives(&version_details).await {
-            warn!("Failed to download natives: {e}");
+            log_warn!("Failed to download natives: {e}");
         }
 
         // Download assets
-        info!("Downloading assets...");
+        log_info!("Downloading assets...");
         if let Err(e) = self.download_assets(&version_details).await {
-            warn!("Failed to download assets: {e}");
+            log_warn!("Failed to download assets: {e}");
         }
 
         // Try to verify installation, but don't fail if some files are missing
         match self.verify_installation(&version_details).await {
-            Ok(()) => info!("Version {version_id} prepared successfully"),
+            Ok(()) => log_info!("Version {version_id} prepared successfully"),
             Err(e) => {
-                warn!("Installation verification failed: {e}. Proceeding anyway");
-                info!("Version {version_id} prepared with warnings");
+                log_warn!("Installation verification failed: {e}. Proceeding anyway");
+                log_info!("Version {version_id} prepared with warnings");
             }
         }
 
@@ -205,7 +207,7 @@ impl MinecraftLauncher {
     }
 
     pub async fn launch(&mut self, version_id: &str) -> Result<()> {
-        info!("Launching Minecraft version: {version_id}");
+        log_info!("Launching Minecraft version: {version_id}");
 
         // System diagnostics
         self.log_system_info();
@@ -214,30 +216,28 @@ impl MinecraftLauncher {
         let version_type = version_info.version_type.clone();
         let version_details = self.get_version_details(version_info).await?;
 
-        info!(
+        log_info!(
             "Version details loaded: main_class = {}",
             version_details.main_class
         );
-        info!("Assets index: {}", version_details.assets);
+        log_info!("Assets index: {}", version_details.assets);
 
         // Get Java runtime
         let (java_path, use_rosetta) = self.java_manager.get_java_for_version(version_id).await?;
-        info!("Using Java: {java_path:?} (Rosetta: {use_rosetta})");
+        log_info!("Using Java: {java_path:?} (Rosetta: {use_rosetta})");
 
         // Verify Java executable exists
         if !java_path.exists() {
-            return Err(anyhow::anyhow!(
-                "Java executable not found at: {java_path:?}"
-            ));
+            return Err(simple_error!("Java executable not found at: {java_path:?}"));
         }
 
         // Test the Java version and get a major version
-        self.test_java_version(&java_path)?;
-        let java_major_version = self.get_java_major_version(&java_path)?;
+        Self::test_java_version(&java_path)?;
+        let java_major_version = Self::get_java_major_version(&java_path)?;
 
         // Build library paths
         let libraries = self.get_library_paths(&version_details);
-        info!("Loaded {} libraries", libraries.len());
+        log_info!("Loaded {} libraries", libraries.len());
 
         // Verify critical files exist
         self.verify_game_files(version_id, &libraries)?;
@@ -262,21 +262,21 @@ impl MinecraftLauncher {
         let mut cmd = minecraft_cmd.build()?;
 
         println!("Starting Minecraft...");
-        info!("Full command: {cmd:?}");
+        log_info!("Full command: {cmd:?}");
 
         // Add macOS window debugging
         if cfg!(target_os = "macos") && use_rosetta {
-            info!("System: macOS ARM64 with Rosetta 2");
-            info!("Java path: {java_path:?}");
-            info!("Use Rosetta: {use_rosetta}");
-            info!("Version ID: {version_id}");
+            log_info!("System: macOS ARM64 with Rosetta 2");
+            log_info!("Java path: {java_path:?}");
+            log_info!("Use Rosetta: {use_rosetta}");
+            log_info!("Version ID: {version_id}");
 
             // Check if we can get window manager info
             let _ = std::process::Command::new("defaults")
                 .args(["read", "com.apple.dock", "orientation"])
                 .output()
                 .map(|output| {
-                    info!(
+                    log_info!(
                         "Dock orientation: {:?}",
                         String::from_utf8_lossy(&output.stdout)
                     );
@@ -288,7 +288,7 @@ impl MinecraftLauncher {
                 .output()
                 .map(|output| {
                     if output.status.success() {
-                        info!("Display info available");
+                        log_info!("Display info available");
                     }
                 });
         }
@@ -296,7 +296,7 @@ impl MinecraftLauncher {
         // Launch the game with proper logging
         let mut child = cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
 
-        info!("Minecraft process started with PID: {}", child.id());
+        log_info!("Minecraft process started with PID: {}", child.id());
 
         // Add window debugging for macOS
         if cfg!(target_os = "macos") {
@@ -309,7 +309,7 @@ impl MinecraftLauncher {
                 .args(["-p", &pid.to_string(), "-o", "pid,ppid,state,comm"])
                 .output()
                 .map(|output| {
-                    info!("Process info: {}", String::from_utf8_lossy(&output.stdout));
+                    log_info!("Process info: {}", String::from_utf8_lossy(&output.stdout));
                 });
 
             // Check for Java windows using system tools
@@ -317,7 +317,7 @@ impl MinecraftLauncher {
                 .args(["-e", "tell application \"System Events\" to get name of every process whose name contains \"java\""])
                 .output()
                 .map(|output| {
-                    info!("Java processes: {}", String::from_utf8_lossy(&output.stdout));
+                    log_info!("Java processes: {}", String::from_utf8_lossy(&output.stdout));
                 });
 
             // Try to find the Minecraft window
@@ -327,9 +327,9 @@ impl MinecraftLauncher {
                 .map(|output| {
                     let windows = String::from_utf8_lossy(&output.stdout);
                     if windows.contains("Minecraft") {
-                        info!("Found Minecraft window in system");
+                        log_info!("Found Minecraft window in system");
                     } else {
-                        info!("No Minecraft window found in system windows");
+                        log_info!("No Minecraft window found in system windows");
                     }
                 });
         }
@@ -339,13 +339,13 @@ impl MinecraftLauncher {
             let reader = std::io::BufReader::new(stdout);
             tokio::spawn(async move {
                 use std::io::BufRead;
-                for line in reader.lines().map_while(Result::ok) {
+                for line in reader.lines().map_while(std::result::Result::ok) {
                     if line.contains("ERROR") || line.contains("FATAL") {
-                        error!("MC: {line}");
+                        log_error!("MC: {line}");
                     } else if line.contains("WARN") {
-                        warn!("MC: {line}");
+                        log_warn!("MC: {line}");
                     } else {
-                        debug!("MC: {line}");
+                        log_debug!("MC: {line}");
                     }
                 }
             });
@@ -355,16 +355,16 @@ impl MinecraftLauncher {
             let reader = std::io::BufReader::new(stderr);
             tokio::spawn(async move {
                 use std::io::BufRead;
-                for line in reader.lines().map_while(Result::ok) {
+                for line in reader.lines().map_while(std::result::Result::ok) {
                     // Look for specific macOS / window-related errors
                     if line.contains("NSWindow")
                         || line.contains("display")
                         || line.contains("OpenGL")
                         || line.contains("LWJGL")
                     {
-                        error!("MC Window Error: {line}");
+                        log_error!("MC Window Error: {line}");
                     } else {
-                        error!("MC Error: {line}");
+                        log_error!("MC Error: {line}");
                     }
                 }
             });
@@ -379,9 +379,9 @@ impl MinecraftLauncher {
         .await;
 
         let status = match status {
-            Ok(result) => result.map_err(|e| anyhow::anyhow!("Join error: {e}"))??,
+            Ok(result) => result.map_err(|e| simple_error!("Join error: {}", e))??,
             Err(_) => {
-                info!(
+                log_info!(
                     "Minecraft process still running after 30 seconds, considering it successful"
                 );
 
@@ -395,7 +395,7 @@ impl MinecraftLauncher {
                         ])
                         .output()
                         .map(|output| {
-                            info!(
+                            log_info!(
                                 "Windows of PID {}: {}",
                                 pid,
                                 String::from_utf8_lossy(&output.stdout)
@@ -407,7 +407,7 @@ impl MinecraftLauncher {
                         .args(["-e", "tell application \"System Events\" to set frontmost of first process whose name contains \"java\" to true"])
                         .output()
                         .map(|output| {
-                            info!("Attempted to bring Java to front: {}", String::from_utf8_lossy(&output.stdout));
+                            log_info!("Attempted to bring Java to front: {}", String::from_utf8_lossy(&output.stdout));
                         });
                 }
 
@@ -418,8 +418,8 @@ impl MinecraftLauncher {
         if status.success() {
             println!("Minecraft exited successfully");
         } else {
-            error!("Minecraft exited with code: {:?}", status.code());
-            return Err(anyhow::anyhow!(
+            log_error!("Minecraft exited with code: {:?}", status.code());
+            return Err(simple_error!(
                 "Minecraft process failed with code: {:?}",
                 status.code()
             ));
@@ -432,11 +432,11 @@ impl MinecraftLauncher {
         let manifest = self
             .manifest
             .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("Version manifest not loaded"))?;
+            .ok_or_else(|| simple_error!("Version manifest not loaded"))?;
 
         manifest
             .get_version(version_id)
-            .ok_or_else(|| anyhow::anyhow!("Version {version_id} not found"))
+            .ok_or_else(|| simple_error!("Version {version_id} not found"))
     }
 
     async fn get_version_details(&self, version_info: &VersionInfo) -> Result<VersionDetails> {
@@ -451,7 +451,7 @@ impl MinecraftLauncher {
         }
 
         // Download version details
-        info!("Downloading version details for {}", version_info.id);
+        log_info!("Downloading version details for {}", version_info.id);
         let details: VersionDetails = self.downloader.get_json(&version_info.url).await?;
 
         // Cache the details
@@ -467,7 +467,7 @@ impl MinecraftLauncher {
             let jar_path = get_version_jar_path(&self.game_dir, &version_details.id);
 
             if !verify_file(&jar_path, Some(client.size), Some(&client.sha1)).await? {
-                info!("Downloading client jar for {}", version_details.id);
+                log_info!("Downloading client jar for {}", version_details.id);
                 let mut progress = ProgressTracker::new(format!("{} client", version_details.id));
 
                 self.downloader
@@ -527,27 +527,27 @@ impl MinecraftLauncher {
         let os_features = get_os_features();
         let native_classifiers = get_all_native_classifiers();
 
-        info!(
+        log_info!(
             "Starting native libraries download for version {}",
             version_details.id
         );
-        info!("OS: {os_name}, Arch: {os_arch}, Features: {os_features:?}");
-        info!("Native classifiers for this platform: {native_classifiers:?}");
+        log_info!("OS: {os_name}, Arch: {os_arch}, Features: {os_features:?}");
+        log_info!("Native classifiers for this platform: {native_classifiers:?}");
 
         let natives_dir = get_natives_dir(&self.game_dir, &version_details.id);
         ensure_directory(&natives_dir).await?;
-        info!("Created natives directory: {natives_dir:?}");
+        log_info!("Created natives directory: {natives_dir:?}");
 
         // Check if natives directory already has files
         let existing_files = std::fs::read_dir(&natives_dir)?.count();
-        info!("Existing files in natives directory: {existing_files}");
+        log_info!("Existing files in natives directory: {existing_files}");
 
         let mut download_tasks = Vec::new();
         let mut native_libraries = Vec::new();
 
         for library in &version_details.libraries {
             let should_use = library.should_use(os_name, os_arch, &os_features);
-            debug!(
+            log_debug!(
                 "Library {}: should_use={}, has_rules={}, has_classifiers={}",
                 library.name,
                 should_use,
@@ -558,15 +558,18 @@ impl MinecraftLauncher {
             if let Some(rules) = &library.rules {
                 for rule in rules {
                     let matches = rule.matches(os_name, os_arch, &os_features);
-                    debug!(
+                    log_debug!(
                         "  Rule action={}, matches={}, os={:?}, arch={:?}",
-                        rule.action, matches, rule.os, os_arch
+                        rule.action,
+                        matches,
+                        rule.os,
+                        os_arch
                     );
                 }
             }
 
             if !should_use {
-                debug!("Skipping library {} (not for this platform)", library.name);
+                log_debug!("Skipping library {} (not for this platform)", library.name);
                 continue;
             }
 
@@ -587,16 +590,18 @@ impl MinecraftLauncher {
                         )
                         .await?
                         {
-                            info!(
+                            log_info!(
                                 "Need to download native ({}): {} -> {:?}",
-                                classifier, native_artifact.url, native_path
+                                classifier,
+                                native_artifact.url,
+                                native_path
                             );
                             download_tasks.push(
                                 DownloadTask::new(native_artifact.url.clone(), native_path)
                                     .with_sha1(native_artifact.sha1.clone()),
                             );
                         } else {
-                            info!("Native already exists ({classifier}): {native_path:?}");
+                            log_info!("Native already exists ({classifier}): {native_path:?}");
                         }
                         found_native = true;
                         break; // Use the first matching classifier
@@ -607,21 +612,24 @@ impl MinecraftLauncher {
                     if let Some(classifiers) = &library.downloads.classifiers {
                         let available_classifiers: Vec<String> =
                             classifiers.keys().cloned().collect();
-                        debug!(
+                        log_debug!(
                             "No native artifacts found for library {} with classifiers {:?}. Available classifiers: {:?}",
-                            library.name, native_classifiers, available_classifiers
+                            library.name,
+                            native_classifiers,
+                            available_classifiers
                         );
                     } else {
-                        debug!(
+                        log_debug!(
                             "No native artifacts found for library {} with classifiers {:?}",
-                            library.name, native_classifiers
+                            library.name,
+                            native_classifiers
                         );
                     }
                 }
             }
         }
 
-        info!(
+        log_info!(
             "Found {} native libraries for platform {:?}",
             native_libraries.len(),
             native_classifiers
@@ -634,34 +642,37 @@ impl MinecraftLauncher {
 
         // Always try to extract natives (even if already downloaded)
         println!("Extracting native libraries...");
-        self.extract_natives(version_details)?;
+        self.extract_natives(version_details).await?;
 
         // Verify extraction
         let extracted_count = std::fs::read_dir(&natives_dir)?.count();
-        info!("Extracted {extracted_count} files to natives directory");
+        log_info!("Extracted {extracted_count} files to natives directory");
 
         if extracted_count == 0 {
-            error!("CRITICAL: No files were extracted to natives directory!");
-            error!("This will cause 'no lwjgl in java.library.path' error");
+            log_error!("CRITICAL: No files were extracted to natives directory!");
+            log_error!("This will cause 'no lwjgl in java.library.path' error");
 
-            info!("Available native libraries to extract:");
+            log_info!("Available native libraries to extract:");
             for (native_path, library) in &native_libraries {
-                info!("  - Library: {}", library.name);
-                info!("    Path: {native_path:?}");
-                info!("    Exists: {}", native_path.exists());
+                log_info!("  - Library: {}", library.name);
+                log_info!("    Path: {native_path:?}");
+                log_info!("    Exists: {}", native_path.exists());
                 if native_path.exists() {
                     let size = std::fs::metadata(native_path)?.len();
-                    info!("    Size: {size} bytes");
+                    log_info!("    Size: {size} bytes");
                 }
             }
 
             // Force re-extraction
             for (native_path, library) in &native_libraries {
                 if native_path.exists() {
-                    warn!("Force extracting: {native_path:?}");
-                    match self.extract_native_library(native_path, &natives_dir, &library.extract) {
-                        Ok(()) => info!("Successfully extracted {native_path:?}"),
-                        Err(e) => error!("Failed to extract {native_path:?}: {e}"),
+                    log_warn!("Force extracting: {native_path:?}");
+                    match self
+                        .extract_native_library(native_path, &natives_dir, &library.extract)
+                        .await
+                    {
+                        Ok(()) => log_info!("Successfully extracted {native_path:?}"),
+                        Err(e) => log_error!("Failed to extract {native_path:?}: {e}"),
                     }
                 }
             }
@@ -669,20 +680,20 @@ impl MinecraftLauncher {
             // Re-check after force extraction
             let final_count = std::fs::read_dir(&natives_dir)?.count();
             if final_count == 0 {
-                return Err(anyhow::anyhow!(
+                return Err(simple_error!(
                     "Failed to extract any native libraries to {natives_dir:?}. This will cause LWJGL errors."
                 ));
             }
-            info!("After force extraction: {final_count} files in natives directory");
+            log_info!("After force extraction: {final_count} files in natives directory");
         } else {
             // List extracted files for verification
-            info!("Extracted native files:");
+            log_info!("Extracted native files:");
             for entry in std::fs::read_dir(&natives_dir)?.flatten() {
                 let path = entry.path();
                 if path.is_file() {
                     let name = path.file_name().unwrap_or_default().to_string_lossy();
                     let size = std::fs::metadata(&path)?.len();
-                    info!("  - {name} ({size} bytes)");
+                    log_info!("  - {name} ({size} bytes)");
                 }
             }
         }
@@ -690,11 +701,11 @@ impl MinecraftLauncher {
         Ok(())
     }
 
-    fn create_dylib_symlinks(&self, natives_dir: &PathBuf) -> Result<()> {
+    fn create_dylib_symlinks(natives_dir: &PathBuf) -> Result<()> {
         // On macOS, old LWJGL versions (2.x) use .jnilib extension, but modern Java expects .dylib
         // Create symlinks from .dylib to .jnilib files for compatibility
         if cfg!(target_os = "macos") {
-            info!(
+            log_info!(
                 "Creating .dylib symlinks for .jnilib files in {:?}",
                 natives_dir
             );
@@ -714,7 +725,7 @@ impl MinecraftLauncher {
 
                         // Only create symlink if .dylib doesn't already exist
                         if !dylib_path.exists() {
-                            info!("Creating symlink: {dylib_name} -> {file_name_str}");
+                            log_info!("Creating symlink: {dylib_name} -> {file_name_str}");
 
                             #[cfg(unix)]
                             {
@@ -729,15 +740,15 @@ impl MinecraftLauncher {
         Ok(())
     }
 
-    fn extract_natives(&self, version_details: &VersionDetails) -> Result<()> {
+    async fn extract_natives(&self, version_details: &VersionDetails) -> Result<()> {
         let os_name = get_minecraft_os_name();
         let os_arch = get_minecraft_arch();
         let os_features = get_os_features();
         let natives_dir = get_natives_dir(&self.game_dir, &version_details.id);
         let native_classifiers = get_all_native_classifiers();
 
-        info!("Extracting natives to: {:?}", natives_dir);
-        info!(
+        log_info!("Extracting natives to: {:?}", natives_dir);
+        log_info!(
             "Total libraries to check: {}",
             version_details.libraries.len()
         );
@@ -749,7 +760,7 @@ impl MinecraftLauncher {
             processed_count += 1;
 
             if !library.should_use(os_name, os_arch, &os_features) {
-                debug!("Skipping library {} (not for this platform)", library.name);
+                log_debug!("Skipping library {} (not for this platform)", library.name);
                 continue;
             }
 
@@ -763,176 +774,126 @@ impl MinecraftLauncher {
                         let native_path = get_library_path(&self.game_dir, path);
 
                         if native_path.exists() {
-                            info!(
+                            log_info!(
                                 "Extracting native library ({}) for {}: {:?}",
-                                classifier, library.name, native_path
+                                classifier,
+                                library.name,
+                                native_path
                             );
-                            match self.extract_native_library(
-                                &native_path,
-                                &natives_dir,
-                                &library.extract,
-                            ) {
+                            match self
+                                .extract_native_library(
+                                    &native_path,
+                                    &natives_dir,
+                                    &library.extract,
+                                )
+                                .await
+                            {
                                 Ok(()) => {
                                     extracted_count += 1;
                                     found_and_extracted = true;
-                                    info!(
+                                    log_info!(
                                         "Successfully extracted native library for {}",
                                         library.name
                                     );
                                 }
                                 Err(e) => {
-                                    error!(
+                                    log_error!(
                                         "Failed to extract native library for {}: {}",
-                                        library.name, e
+                                        library.name,
+                                        e
                                     );
                                 }
                             }
                             break; // Only extract the first matching classifier
                         }
-                        debug!(
+                        log_debug!(
                             "Native library not found ({}) for {}: {:?}",
-                            classifier, library.name, native_path
+                            classifier,
+                            library.name,
+                            native_path
                         );
                     }
                 }
 
                 if !found_and_extracted {
-                    debug!("No native library extracted for {}", library.name);
+                    log_debug!("No native library extracted for {}", library.name);
                 }
             } else {
-                debug!("Library {} has no classifiers", library.name);
+                log_debug!("Library {} has no classifiers", library.name);
             }
         }
 
-        info!(
+        log_info!(
             "Native extraction summary: processed {processed_count} libraries, extracted {extracted_count} native libraries"
         );
 
         // Create .dylib symlinks for .jnilib files on macOS
-        self.create_dylib_symlinks(&natives_dir)?;
+        Self::create_dylib_symlinks(&natives_dir)?;
 
         Ok(())
     }
 
-    fn extract_native_library(
+    async fn extract_native_library(
         &self,
         archive_path: &PathBuf,
         extract_dir: &PathBuf,
         extract_rules: &Option<crate::backend::creeper::models::ExtractRules>,
     ) -> Result<()> {
-        use std::io::Read;
-
-        info!(
+        log_info!(
             "Extracting native archive: {:?} to {:?}",
-            archive_path, extract_dir
+            archive_path,
+            extract_dir
         );
 
         if !archive_path.exists() {
-            return Err(anyhow::anyhow!(
-                "Archive does not exist: {:?}",
-                archive_path
-            ));
+            return Err(simple_error!("Archive does not exist: {:?}", archive_path));
         }
 
         let archive_size = std::fs::metadata(archive_path)?.len();
-        info!("Archive size: {archive_size} bytes");
+        log_info!("Archive size: {archive_size} bytes");
 
-        let file = std::fs::File::open(archive_path)
-            .map_err(|e| anyhow::anyhow!("Failed to open archive {archive_path:?}: {e}"))?;
-        let mut archive = zip::ZipArchive::new(file)
-            .map_err(|e| anyhow::anyhow!("Failed to read ZIP archive {archive_path:?}: {e}"))?;
+        // Create extract directory
+        tokio::fs::create_dir_all(extract_dir).await?;
 
-        let mut extracted_files = 0;
-
-        for i in 0..archive.len() {
-            let mut file = archive.by_index(i).map_err(|e| {
-                anyhow::anyhow!("Failed to read entry {i} from {archive_path:?}: {e}")
-            })?;
-            let file_path = file.mangled_name();
-
-            // Skip directories
-            if file.is_dir() {
-                continue;
-            }
-
-            // Check if this file should be excluded
-            let mut should_exclude = false;
-            if let Some(rules) = extract_rules
-                && let Some(exclude) = &rules.exclude
-            {
-                for pattern in exclude {
-                    if file_path.to_string_lossy().contains(pattern.as_str()) {
-                        debug!(
-                            "Excluding file {} due to pattern {}",
-                            file_path.display(),
-                            pattern
-                        );
-                        should_exclude = true;
-                        break;
-                    }
-                }
-            }
-
-            if should_exclude {
-                continue;
-            }
-
-            // Extract file
-            let extract_path = extract_dir.join(&file_path);
-
-            // Create parent directories
-            if let Some(parent) = extract_path.parent() {
-                std::fs::create_dir_all(parent)
-                    .map_err(|e| anyhow::anyhow!("Failed to create directory {parent:?}: {e}"))?;
-            }
-
-            let mut output_file = std::fs::File::create(&extract_path)
-                .map_err(|e| anyhow::anyhow!("Failed to create file {extract_path:?}: {e}"))?;
-
-            let mut buffer = Vec::new();
-            file.read_to_end(&mut buffer).map_err(|e| {
-                anyhow::anyhow!(
-                    "Failed to read file {} from archive: {}",
-                    file_path.display(),
+        // Use our custom archive extraction
+        crate::utils::extract_zip(archive_path, extract_dir)
+            .await
+            .map_err(|e| {
+                simple_error!(
+                    "Failed to extract native library archive {:?}: {}",
+                    archive_path,
                     e
                 )
             })?;
 
-            use std::io::Write;
-            output_file
-                .write_all(&buffer)
-                .map_err(|e| anyhow::anyhow!("Failed to write to file {extract_path:?}: {e}"))?;
+        // If we have exclude rules, we need to clean up excluded files after extraction
+        if let Some(rules) = extract_rules {
+            if let Some(exclude) = &rules.exclude {
+                log_debug!("Processing exclude rules for native library extraction");
 
-            extracted_files += 1;
-            debug!("Extracted: {extract_path:?}");
+                // Walk through extracted files and remove those matching exclude patterns
+                let mut entries = tokio::fs::read_dir(extract_dir).await?;
+                while let Some(entry) = entries.next_entry().await? {
+                    let path = entry.path();
+                    let relative_path = path.strip_prefix(extract_dir).unwrap_or(&path);
+                    let path_str = relative_path.to_string_lossy();
+
+                    for pattern in exclude {
+                        if path_str.contains(pattern.as_str()) {
+                            log_debug!("Removing excluded file: {:?} (pattern: {})", path, pattern);
+                            if path.is_file() {
+                                let _ = tokio::fs::remove_file(&path).await;
+                            } else if path.is_dir() {
+                                let _ = tokio::fs::remove_dir_all(&path).await;
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
         }
 
-        info!("Extraction complete: {extracted_files} files from {archive_path:?}");
-
-        if extracted_files == 0 {
-            error!("CRITICAL: No files were extracted from {archive_path:?}");
-            error!("This archive should contain native libraries (.so, .dylib, .dll files)");
-
-            // List contents of the archive for debugging
-            let file = std::fs::File::open(archive_path)?;
-            let mut archive = zip::ZipArchive::new(file)?;
-            error!("Archive contents:");
-            for i in 0..std::cmp::min(archive.len(), 10) {
-                let file = archive.by_index(i)?;
-                error!(
-                    "  - {} (size: {}, dir: {})",
-                    file.name(),
-                    file.size(),
-                    file.is_dir()
-                );
-            }
-            if archive.len() > 10 {
-                error!("  ... and {} more files", archive.len() - 10);
-            }
-        } else {
-            info!("Successfully extracted {extracted_files} native files");
-        }
-
+        log_info!("Native library extraction completed for {:?}", archive_path);
         Ok(())
     }
 
@@ -991,7 +952,7 @@ impl MinecraftLauncher {
         }
 
         if !download_tasks.is_empty() {
-            info!("Downloading {} assets...", download_tasks.len());
+            log_info!("Downloading {} assets...", download_tasks.len());
 
             // Show progress for assets
             let total_assets = download_tasks.len();
@@ -1005,7 +966,7 @@ impl MinecraftLauncher {
                 completed += chunk.len();
 
                 let progress = (completed as f64 / total_assets as f64 * 100.0).round() as u8;
-                info!("Assets: {progress}% ({completed}/{total_assets})");
+                log_info!("Assets: {progress}% ({completed}/{total_assets})");
             }
         }
 
@@ -1045,13 +1006,14 @@ impl MinecraftLauncher {
         };
 
         if !needs_virtual {
-            info!("Version {} doesn't need virtual assets", version_details.id);
+            log_info!("Version {} doesn't need virtual assets", version_details.id);
             return Ok(());
         }
 
-        info!(
+        log_info!(
             "Version {} needs virtual assets for index '{}'",
-            version_details.id, version_details.assets
+            version_details.id,
+            version_details.assets
         );
 
         let virtual_dir = get_assets_dir()?
@@ -1061,11 +1023,12 @@ impl MinecraftLauncher {
         // Create virtual directory
         ensure_directory(&virtual_dir).await?;
 
-        info!(
+        log_info!(
             "Creating virtual assets for {} at {:?}",
-            version_details.assets, virtual_dir
+            version_details.assets,
+            virtual_dir
         );
-        info!("Processing {} assets", assets.len());
+        log_info!("Processing {} assets", assets.len());
 
         let mut created_count = 0;
         for (name, asset) in assets {
@@ -1094,50 +1057,50 @@ impl MinecraftLauncher {
                     Ok(_) => {
                         created_count += 1;
                         if created_count <= 5 {
-                            debug!("Created virtual asset: {name}");
+                            log_debug!("Created virtual asset: {name}");
                         }
                     }
                     Err(e) => {
-                        warn!("Failed to create virtual asset {name}: {e}");
+                        log_warn!("Failed to create virtual asset {name}: {e}");
                     }
                 }
             } else if !asset_path.exists() {
-                warn!("Source asset file missing for {name}: {asset_path:?}");
+                log_warn!("Source asset file missing for {name}: {asset_path:?}");
             }
         }
 
         if created_count > 0 {
-            info!("Created {created_count} virtual assets");
+            log_info!("Created {created_count} virtual assets");
         }
 
         Ok(())
     }
 
     async fn verify_installation(&self, version_details: &VersionDetails) -> Result<()> {
-        info!("Verifying installation for version {}", version_details.id);
+        log_info!("Verifying installation for version {}", version_details.id);
 
         // Check the main jar
         let main_jar = get_version_jar_path(&self.game_dir, &version_details.id);
         if !main_jar.exists() {
-            warn!("Main jar missing: {main_jar:?}");
-            return Err(anyhow::anyhow!("Main jar missing: {main_jar:?}"));
+            log_warn!("Main jar missing: {main_jar:?}");
+            return Err(simple_error!("Main jar missing: {main_jar:?}"));
         }
 
         // Check natives directory - but allow empty for some versions
         let natives_dir = get_natives_dir(&self.game_dir, &version_details.id);
         if !natives_dir.exists() {
-            warn!("Natives directory missing: {natives_dir:?}");
+            log_warn!("Natives directory missing: {natives_dir:?}");
             // Try to create an empty natives directory
             ensure_directory(&natives_dir).await?;
-            info!("Created empty natives directory");
+            log_info!("Created empty natives directory");
         }
 
         let native_count = std::fs::read_dir(&natives_dir)?.count();
         if native_count == 0 {
-            warn!("Natives directory is empty: {natives_dir:?}");
-            info!("Some versions may work without native libraries");
+            log_warn!("Natives directory is empty: {natives_dir:?}");
+            log_info!("Some versions may work without native libraries");
         } else {
-            info!("Installation verified, {native_count} native files found");
+            log_info!("Installation verified, {native_count} native files found");
         }
 
         Ok(())
@@ -1152,10 +1115,10 @@ impl MinecraftLauncher {
     }
 
     fn try_offline_mode(&self, version_id: &str) -> Result<()> {
-        info!("Attempting to use offline mode for version {version_id}");
+        log_info!("Attempting to use offline mode for version {version_id}");
 
         if self.is_version_ready_offline(version_id)? {
-            info!("Version {version_id} found offline, skipping downloads");
+            log_info!("Version {version_id} found offline, skipping downloads");
             return Ok(());
         }
 
@@ -1167,12 +1130,12 @@ impl MinecraftLauncher {
                     && name != version_id
                     && entry.path().is_dir()
                 {
-                    info!("Found existing version: {name}, you can try launching that instead",);
+                    log_info!("Found existing version: {name}, you can try launching that instead",);
                 }
             }
         }
 
-        Err(anyhow::anyhow!(
+        Err(simple_error!(
             "Version {version_id} not available offline. Available versions in {versions_dir:?}. Try running the official Minecraft launcher first to download the version."
         ))
     }
@@ -1180,13 +1143,13 @@ impl MinecraftLauncher {
     fn log_system_info(&self) {
         use std::process::Command;
 
-        info!("=== System Diagnostics ===");
+        log_info!("=== System Diagnostics ===");
 
         // Memory info
         if let Ok(output) = Command::new("free").arg("-h").output()
             && let Ok(memory_info) = String::from_utf8(output.stdout)
         {
-            info!("Memory info:\n{memory_info}");
+            log_info!("Memory info:\n{memory_info}");
         }
 
         // Java processes
@@ -1198,54 +1161,54 @@ impl MinecraftLauncher {
                 .filter(|line| line.contains("java") || line.contains("minecraft"))
                 .collect();
             if !java_processes.is_empty() {
-                warn!("Existing Java/Minecraft processes found:");
+                log_warn!("Existing Java/Minecraft processes found:");
                 for process in java_processes {
-                    warn!("  {process}");
+                    log_warn!("  {process}");
                 }
             }
         }
 
-        info!("Game directory: {:?}", self.game_dir);
-        info!("Cache directory: {:?}", self.cache_dir);
+        log_info!("Game directory: {:?}", self.game_dir);
+        log_info!("Cache directory: {:?}", self.cache_dir);
     }
 
-    fn test_java_version(&self, java_path: &PathBuf) -> Result<()> {
+    fn test_java_version(java_path: &PathBuf) -> Result<()> {
         use std::process::Command;
 
-        info!("Testing Java installation...");
+        log_info!("Testing Java installation...");
 
         let output = Command::new(java_path)
             .args(["-version"])
             .output()
-            .map_err(|e| anyhow::anyhow!("Failed to run Java: {e}"))?;
+            .map_err(|e| simple_error!("Failed to run Java: {}", e))?;
 
         let version_info = String::from_utf8_lossy(&output.stderr);
-        info!("Java version info: {version_info}");
+        log_info!("Java version info: {version_info}");
 
         // Extract a major version for better compatibility checking
-        let major_version = self.get_java_major_version(java_path).unwrap_or(8);
+        let major_version = Self::get_java_major_version(java_path).unwrap_or(8);
 
         // Provide version-specific guidance
         if major_version >= 24 {
-            warn!(
+            log_warn!(
                 "You're using Java {major_version} which is very new. For optimal compatibility with Minecraft, consider using Java 21"
             );
         } else if major_version >= 22 {
-            info!("Using Java {major_version}");
+            log_info!("Using Java {major_version}");
         } else if major_version == 21 {
-            info!("Using Java 21");
+            log_info!("Using Java 21");
         }
 
         Ok(())
     }
 
-    fn get_java_major_version(&self, java_path: &PathBuf) -> Result<u8> {
+    fn get_java_major_version(java_path: &PathBuf) -> Result<u8> {
         use std::process::Command;
 
         let output = Command::new(java_path)
             .args(["-version"])
             .output()
-            .map_err(|e| anyhow::anyhow!("Failed to run Java: {e}"))?;
+            .map_err(|e| simple_error!("Failed to run Java: {}", e))?;
 
         let version_info = String::from_utf8_lossy(&output.stderr);
 
@@ -1274,20 +1237,20 @@ impl MinecraftLauncher {
                     }
                 }
             }
-            warn!("Could not determine Java major version, defaulting to 8");
+            log_warn!("Could not determine Java major version, defaulting to 8");
             Ok(8)
         }
     }
 
     fn verify_game_files(&self, version_id: &str, libraries: &[PathBuf]) -> Result<()> {
-        info!("Verifying game files...");
+        log_info!("Verifying game files...");
 
         // Check main .jar
         let main_jar = get_version_jar_path(&self.game_dir, version_id);
         if !main_jar.exists() {
-            return Err(anyhow::anyhow!("Main jar not found: {main_jar:?}"));
+            return Err(simple_error!("Main jar not found: {main_jar:?}"));
         }
-        info!("Main jar exists: {main_jar:?}");
+        log_info!("Main jar exists: {main_jar:?}");
 
         // Check libraries
         let mut missing_libs = Vec::new();
@@ -1298,31 +1261,28 @@ impl MinecraftLauncher {
         }
 
         if !missing_libs.is_empty() {
-            warn!("Missing {} libraries:", missing_libs.len());
+            log_warn!("Missing {} libraries:", missing_libs.len());
             for lib in &missing_libs {
-                warn!("  Missing: {lib:?}");
+                log_warn!("  Missing: {lib:?}");
             }
-            return Err(anyhow::anyhow!("Missing required libraries"));
+            return Err(simple_error!("Missing required libraries"));
         }
 
-        info!("All {} libraries verified", libraries.len());
+        log_info!("All {} libraries verified", libraries.len());
 
         // Check natives directory
         let natives_dir = get_natives_dir(&self.game_dir, version_id);
         if !natives_dir.exists() {
-            warn!("Natives directory doesn't exist: {natives_dir:?}");
+            log_warn!("Natives directory doesn't exist: {natives_dir:?}");
         } else {
             let natives_count = std::fs::read_dir(&natives_dir)?.count();
-            info!("Natives directory contains {natives_count} files");
+            log_info!("Natives directory contains {natives_count} files");
         }
 
         Ok(())
     }
 
-    fn get_library_paths(
-        &self,
-        version_details: &VersionDetails,
-    ) -> std::vec::Vec<std::path::PathBuf> {
+    fn get_library_paths(&self, version_details: &VersionDetails) -> Vec<PathBuf> {
         let os_name = get_minecraft_os_name();
         let os_arch = get_minecraft_arch();
         let os_features = get_os_features();

@@ -152,12 +152,20 @@ fn main() {
 
     #[cfg(target_os = "windows")]
     {
+        #[path = "utils/winres.rs"]
+        mod winres;
+
+        println!("cargo:warning=Using custom winres implementation for Windows resources");
         let mut res = winres::WindowsResource::new();
         res.set_icon("assets/images/other/icon.ico");
         res.set("ProductName", "Dream Launcher");
         res.set("FileDescription", "A powerful Minecraft launcher");
         res.set("CompanyName", "Frogdream Studios");
         res.set("ProductVersion", env!("CARGO_PKG_VERSION"));
-        let _ = res.compile();
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        println!("cargo:warning=Skipping Windows resources on non-Windows platform");
     }
 }

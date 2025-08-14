@@ -10,7 +10,7 @@ use crate::frontend::{
         standalone_logo::StandaloneLogo,
     },
     game_state::{GameStatus, use_game_state},
-    instances::main::use_instance_manager,
+    instances::main::InstanceManager,
 };
 use dioxus::prelude::{Key, *};
 use dioxus_router::{components::Outlet, use_route};
@@ -29,8 +29,10 @@ pub fn Layout() -> Element {
     let mut context_menu_y = use_signal(|| 0.0);
     let mut context_menu_instance_id = use_signal(|| None::<u32>);
 
-    // Instance manager
-    let instance_manager = use_instance_manager();
+    // Initialize instance manager
+    use_effect(move || {
+        InstanceManager::initialize();
+    });
 
     // Game state
     let game_status = use_game_state();
@@ -91,7 +93,7 @@ pub fn Layout() -> Element {
             onkeydown: move |e| {
                 if e.key() == Key::F12 {
                     e.prevent_default();
-                    instance_manager.toggle_debug_mode();
+                    InstanceManager::toggle_debug_mode();
                 }
             },
 
@@ -158,7 +160,7 @@ pub fn Layout() -> Element {
                             class: "instances-container",
 
                             // Render existing instances
-                            for (_index, instance) in instance_manager.get_instances_sorted().iter().enumerate() {
+                            for (_index, instance) in InstanceManager::get_instances_sorted().iter().enumerate() {
                                 div {
                                     key: "{instance.id}",
                                     class: {
@@ -225,7 +227,7 @@ pub fn Layout() -> Element {
                                                 move |e| {
                                                     match e.key() {
                                                         Key::Enter => {
-                                                            instance_manager.rename_instance(instance_id, &editing_text());
+                                                            InstanceManager::rename_instance(instance_id, &editing_text());
                                                             editing_instance_id.set(None);
                                                             editing_text.set(String::new());
                                                         },
@@ -241,7 +243,7 @@ pub fn Layout() -> Element {
                                                 let instance_id = instance.id;
                                                 move |_| {
                                                     if !editing_text().is_empty() {
-                                                        instance_manager.rename_instance(instance_id, &editing_text());
+                                                        InstanceManager::rename_instance(instance_id, &editing_text());
                                                     }
                                                     editing_instance_id.set(None);
                                                     editing_text.set(String::new());
@@ -277,11 +279,11 @@ pub fn Layout() -> Element {
                             }
 
                             // Add a new instance card (+ button)
-                            if instance_manager.can_create_instance() {
+                            if InstanceManager::can_create_instance() {
                                 div {
                                     class: "instance-card instance-card-add",
                                     onclick: move |_| {
-                                        instance_manager.create_instance();
+                                        InstanceManager::create_instance();
                                     },
 
                                     div {

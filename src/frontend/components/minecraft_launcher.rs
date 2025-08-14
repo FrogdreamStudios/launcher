@@ -1,6 +1,6 @@
 use crate::{backend::creeper::launcher::MinecraftLauncher, frontend::game_state::GameStatus};
+use crate::{log_error, log_info, log_warn, simple_error};
 use dioxus::prelude::*;
-use tracing::{error, info, warn};
 
 /// Launch Minecraft
 pub fn launch_minecraft(game_status: Signal<GameStatus>, version: &str, instance_id: u32) {
@@ -8,7 +8,7 @@ pub fn launch_minecraft(game_status: Signal<GameStatus>, version: &str, instance
     let mut game_status_signal = game_status;
 
     spawn(async move {
-        info!("Starting Minecraft launch for version: {version_owned}");
+        log_info!("Starting Minecraft launch for version: {version_owned}");
 
         // Set launching state
         game_status_signal.set(GameStatus::Launching);
@@ -21,17 +21,17 @@ pub fn launch_minecraft(game_status: Signal<GameStatus>, version: &str, instance
                 let rt = tokio::runtime::Builder::new_current_thread()
                     .enable_all()
                     .build()
-                    .map_err(|e| anyhow::anyhow!("Failed to create runtime: {e}"))?;
+                    .map_err(|e| simple_error!("Failed to create runtime: {}", e))?;
 
                 rt.block_on(async {
                     let mut launcher = MinecraftLauncher::new(None, Some(instance_id))
                         .await
                         .map_err(|e| {
-                            error!("Failed to create launcher: {e}");
+                            log_error!("Failed to create launcher: {e}");
                             e
                         })?;
 
-                    info!("Launcher created successfully");
+                    log_info!("Launcher created successfully");
 
                     // Check if version exists locally
                     let game_dir = launcher.get_game_dir();
@@ -42,14 +42,16 @@ pub fn launch_minecraft(game_status: Signal<GameStatus>, version: &str, instance
                     let version_exists = jar_file.exists() && json_file.exists();
 
                     if !version_exists {
-                        info!(
+                        log_info!(
                             "Version {version_owned} not found locally, attempting to install..."
                         );
 
                         // Update manifest first
                         match launcher.update_manifest().await {
-                            Ok(_) => info!("Manifest updated successfully"),
-                            Err(e) => warn!("Failed to update manifest: {e}, continuing anyway..."),
+                            Ok(_) => log_info!("Manifest updated successfully"),
+                            Err(e) => {
+                                log_warn!("Failed to update manifest: {e}, continuing anyway...")
+                            }
                         }
 
                         // Install/prepare the version
@@ -57,28 +59,28 @@ pub fn launch_minecraft(game_status: Signal<GameStatus>, version: &str, instance
                             .prepare_version(&version_owned)
                             .await
                             .map_err(|e| {
-                                error!("Failed to install version {version_owned}: {e}");
+                                log_error!("Failed to install version {version_owned}: {e}");
                                 e
                             })?;
 
-                        info!("Version {version_owned} installed successfully");
+                        log_info!("Version {version_owned} installed successfully");
                     }
 
                     // Check Java availability
                     let java_available = launcher.is_java_available(&version_owned);
 
                     if !java_available {
-                        info!("Java not available for version {version_owned}, installing...");
+                        log_info!("Java not available for version {version_owned}, installing...");
 
                         launcher.install_java(&version_owned).await.map_err(|e| {
-                            error!("Failed to install Java for version {version_owned}: {e}");
+                            log_error!("Failed to install Java for version {version_owned}: {e}");
                             e
                         })?;
 
-                        info!("Java installed successfully for version {version_owned}");
+                        log_info!("Java installed successfully for version {version_owned}");
                     }
 
-                    Ok::<(), anyhow::Error>(())
+                    Ok::<(), crate::utils::Error>(())
                 })
             }
         })
@@ -87,11 +89,11 @@ pub fn launch_minecraft(game_status: Signal<GameStatus>, version: &str, instance
         // Handle the result of preparation
         match launch_result {
             Ok(Ok(())) => {
-                info!("Minecraft preparation completed successfully");
+                log_info!("Minecraft preparation completed successfully");
 
                 // Set running state
                 game_status_signal.set(GameStatus::Running);
-                info!("Starting Minecraft {version_owned}...");
+                log_info!("Starting Minecraft {version_owned}...");
 
                 // Launch Minecraft in another spawn_blocking
                 let launch_result = tokio::task::spawn_blocking({
@@ -100,7 +102,7 @@ pub fn launch_minecraft(game_status: Signal<GameStatus>, version: &str, instance
                         let rt = tokio::runtime::Builder::new_current_thread()
                             .enable_all()
                             .build()
-                            .map_err(|e| anyhow::anyhow!("Failed to create runtime: {e}"))?;
+                            .map_err(|e| simple_error!("Failed to create runtime: {}", e))?;
 
                         rt.block_on(async {
                             let mut launcher =
@@ -113,26 +115,26 @@ pub fn launch_minecraft(game_status: Signal<GameStatus>, version: &str, instance
 
                 match launch_result {
                     Ok(Ok(_)) => {
-                        info!("Minecraft {version_owned} launched and exited successfully");
+                        log_info!("Minecraft {version_owned} launched and exited successfully");
                     }
                     Ok(Err(e)) => {
-                        error!("Failed to launch Minecraft {version_owned}: {e}");
+                        log_error!("Failed to launch Minecraft {version_owned}: {e}");
                     }
                     Err(e) => {
-                        error!("Minecraft launch task failed: {e}");
+                        log_error!("Minecraft launch task failed: {e}");
                     }
                 }
             }
             Ok(Err(e)) => {
-                error!("Minecraft preparation failed: {e}");
+                log_error!("Minecraft preparation failed: {e}");
             }
             Err(e) => {
-                error!("Minecraft preparation task failed: {e}");
+                log_error!("Minecraft preparation task failed: {e}");
             }
         }
 
         // Set back to idle state
         game_status_signal.set(GameStatus::Idle);
-        info!("Minecraft launch completed");
+        log_info!("Minecraft launch completed");
     });
 }

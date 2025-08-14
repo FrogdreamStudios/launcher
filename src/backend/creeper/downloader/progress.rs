@@ -1,5 +1,6 @@
 //! Progress tracking utilities for downloads.
 
+use crate::log_info;
 use std::{
     sync::{
         Arc,
@@ -7,7 +8,6 @@ use std::{
     },
     time::{Duration, Instant},
 };
-use tracing::info;
 
 /// Tracks download progress and display updates.
 pub struct ProgressTracker {
@@ -69,7 +69,7 @@ impl ProgressTracker {
         let total = self.total.load(Ordering::Relaxed);
 
         if total == 0 {
-            info!("{}: {} bytes", self.name, Self::format_bytes(current));
+            log_info!("{}: {} bytes", self.name, Self::format_bytes(current));
         } else {
             #[allow(
                 clippy::cast_possible_truncation,
@@ -77,7 +77,7 @@ impl ProgressTracker {
                 clippy::cast_precision_loss
             )]
             let percentage = ((current as f64 / total as f64) * 100.0).round() as u8;
-            info!(
+            log_info!(
                 "{}: {}% ({}/{})",
                 self.name,
                 percentage,
@@ -92,7 +92,7 @@ impl ProgressTracker {
         let current = self.current.load(Ordering::Relaxed);
         let elapsed = self.start_time.elapsed();
 
-        info!(
+        log_info!(
             "{}: Complete - {} in {:.1}s",
             self.name,
             Self::format_bytes(current),
