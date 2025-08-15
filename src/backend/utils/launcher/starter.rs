@@ -5,10 +5,11 @@
 //! configurations (such as Rosetta support on macOS), and compatibility settings for different
 //! Minecraft versions.
 
-use crate::simple_error;
 use crate::utils::Result;
+use crate::{log_error, log_info, log_warn, simple_error};
 use std::{path::PathBuf, process::Command};
 
+use crate::backend::launcher::launcher::MinecraftLauncher;
 use crate::backend::launcher::models::{ArgumentValue, ArgumentValueInner, VersionDetails};
 
 use crate::backend::utils::launcher::paths::{get_classpath_separator, get_natives_dir};
@@ -617,4 +618,65 @@ impl Default for CommandBuilder {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Launch Minecraft with the specified version and instance
+pub async fn launch_minecraft(version: String, instance_id: u32) -> Result<()> {
+    log_info!("Starting Minecraft launch for version: {version}");
+
+    let mut launcher = MinecraftLauncher::new(None, Some(instance_id)).await?;
+    log_info!("Launcher created successfully");
+
+    // Check if a version exists locally
+    let game_dir = launcher.get_game_dir();
+    let version_dir = game_dir.join("versions").join(&version);
+    let jar_file = version_dir.join(format!("{version}.jar"));
+    let json_file = version_dir.join(format!("{version}.json"));
+
+    let version_exists = jar_file.exists() && json_file.exists();
+
+    if !version_exists {
+        log_info!("Version {version} not found locally, attempting to install...");
+
+        // Update manifest first
+        match launcher.update_manifest().await {
+            Ok(_) => log_info!("Manifest updated successfully"),
+            Err(e) => {
+                log_warn!("Failed to update manifest: {e}, continuing anyway...")
+            }
+        }
+
+        // Install/prepare the version
+        launcher.prepare_version(&version).await.map_err(|e| {
+            log_error!("Failed to install version {version}: {e}");
+            e
+        })?;
+
+        log_info!("Version {version} installed successfully");
+    }
+
+    // Check Java availability
+    let java_available = launcher.is_java_available(&version);
+
+    if !java_available {
+        log_info!("Java not available for version {version}, installing...");
+
+        launcher.install_java(&version).await.map_err(|e| {
+            log_error!("Failed to install Java for version {version}: {e}");
+            e
+        })?;
+
+        log_info!("Java installed successfully for version {version}");
+    }
+
+    log_info!("Starting Minecraft {version}...");
+
+    // Launch Minecraft
+    launcher.launch(&version).await.map_err(|e| {
+        log_error!("Failed to launch Minecraft {version}: {e}");
+        e
+    })?;
+
+    log_info!("Minecraft {version} launched successfully");
+    Ok(())
 }

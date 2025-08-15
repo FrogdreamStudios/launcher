@@ -151,8 +151,8 @@ fn main() {
 
     #[cfg(target_os = "windows")]
     {
-        #[path = "utils/winres.rs"]
-        mod winres;
+        #[path = "utils/winres/main.rs"]
+        mod main;
 
         println!("cargo:warning=Using custom winres implementation for Windows resources");
         let mut res = winres::WindowsResource::new();

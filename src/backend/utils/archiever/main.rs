@@ -6,7 +6,7 @@
 use std::path::Path;
 
 use crate::utils::Result;
-use crate::{log_debug, log_info, simple_error};
+use crate::{log_info, simple_error};
 use tokio::fs as async_fs;
 
 use crate::backend::utils::system::files::ensure_directory;
@@ -26,8 +26,6 @@ pub async fn extract_archive<P: AsRef<Path>>(archive_path: P, extract_path: P) -
         .file_name()
         .and_then(|s| s.to_str())
         .unwrap_or("");
-
-    log_info!("Extracting archive: {filename}");
 
     // Check for compound extensions first, then single extensions
     if filename.ends_with(".tar.gz") || filename.ends_with(".tgz") {
@@ -90,28 +88,12 @@ pub async fn extract_archive_by_content<P: AsRef<Path>>(
     // Check magic numbers (file signatures)
     if header[0] == 0x50 && header[1] == 0x4B && header[2] == 0x03 && header[3] == 0x04 {
         // ZIP file magic number: PK...
-        log_debug!("Detected ZIP format");
         extract_zip(archive_path, extract_path).await?;
     } else if header[0] == 0x1F && header[1] == 0x8B {
         // GZIP magic number (probably tar.gz)
-        log_debug!("Detected GZIP format");
         extract_tar_gz(archive_path, extract_path).await?;
     } else {
-        // Unknown format or corrupted file
-        log_debug!(
-            "Unknown format. Header: {:02X} {:02X} {:02X} {:02X}",
-            header[0],
-            header[1],
-            header[2],
-            header[3]
-        );
-        return Err(simple_error!(
-            "Unrecognized archive format. Header: {:02X} {:02X} {:02X} {:02X}",
-            header[0],
-            header[1],
-            header[2],
-            header[3]
-        ));
+        return Err(simple_error!("Unrecognized archive format"));
     }
 
     Ok(())
