@@ -16,41 +16,41 @@ jobs:
       matrix:
         os: [ubuntu-24.04, macos-14, windows-2025]
     steps:
-      - uses: actions/checkout@v4
-      - if: matrix.os == 'ubuntu-24.04'
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deps (Windows)
+        if: matrix.os == 'windows-2025'
+        run: choco install upx
+
+      - name: Deps (Linux)
+        if: matrix.os == 'ubuntu-24.04'
         uses: awalsh128/cache-apt-pkgs-action@v1
         with:
           packages: libgtk-3-dev libglib2.0-dev libsoup-3.0-dev libssl-dev libjavascriptcoregtk-4.1-dev libwebkit2gtk-4.1-dev libxdo-dev pkg-config build-essential curl xdotool upx-ucl
           version: 1
-      - if: matrix.os == 'macos-14'
+
+      - name: Deps (macOS)
+        if: matrix.os == 'macos-14'
         run: brew install create-dmg upx
-      - if: matrix.os == 'windows-2025'
-        run: choco install upx
-      - uses: actions/cache@v4
+
+      - name: Cache
+        uses: actions/cache@v4
         with:
           path: |
             ~/.rustup
             ~/.cargo/bin
-          key: ${{ runner.os }}-rustup-${{ hashFiles('rust-toolchain.toml') }}
-          restore-keys: ${{ runner.os }}-rustup-
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-registry-
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-git-
-      - uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}-desktop
-          restore-keys: ${{ runner.os }}-target-
-      - run: rustup show
-      - run: cargo build --release --locked --features "desktop"
-      - shell: bash
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-allcache-${{ hashFiles('rust-toolchain.toml') }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-allcache-
+
+      - name: Build
+        run: cargo build --release --locked --features "desktop"
+
+      - name: Compress
+        shell: bash
         run: |
           if [[ "${{ runner.os }}" == "Windows" ]]; then
             upx --best --lzma target/release/DreamLauncher.exe
@@ -60,12 +60,14 @@ jobs:
             chmod +x scripts/compress-macos.sh
             ./scripts/compress-macos.sh target/release/DreamLauncher
           fi
-      - shell: bash
+
+      - name: Package
+        shell: bash
         run: |
           mkdir -p dist
           if [[ "${{ runner.os }}" == "Windows" ]]; then
             cp target/release/DreamLauncher.exe dist/
-            powershell -Command "Compress-Archive -Path dist/DreamLauncher.exe -DestinationPath DreamLauncher-windows.zip"
+            powershell -Command "Compress-Archive -Path dist/DreamLauncher.exe -DestinationPath DreamLauncher-Windows.zip"
           elif [[ "${{ runner.os }}" == "macOS" ]]; then
             chmod +x scripts/create_app_bundle.sh
             ./scripts/create_app_bundle.sh
@@ -77,7 +79,9 @@ jobs:
             cp target/release/DreamLauncher dist/
             zip -j DreamLauncher-linux.zip dist/DreamLauncher
           fi
-      - uses: actions/upload-artifact@v4
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
         with:
           name: DreamLauncher-${{ runner.os }}
           path: |
