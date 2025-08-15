@@ -1,128 +1,202 @@
 //! Asset and CSS loading/caching utilities.
 
-use std::{collections::HashMap, sync::OnceLock};
+use base64::Engine as _;
+use base64::engine::general_purpose;
+use std::{collections::HashMap, fs, sync::OnceLock};
 
-static ASSET_CACHE: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+static ASSET_CACHE: OnceLock<HashMap<&'static str, String>> = OnceLock::new();
 static CSS_CACHE: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
-
-macro_rules! asset_entry {
-    ($name:literal, $path:literal) => {
-        (
-            $name,
-            concat!(
-                "data:image/png;base64,",
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/assets/images/",
-                    $path,
-                    ".png.base64"
-                ))
-            ),
-        )
-    };
-}
-
-macro_rules! css_entry {
-    ($name:literal, $path:literal) => {
-        (
-            $name,
-            include_str!(concat!(
-                env!("CARGO_MANIFEST_DIR"),
-                "/assets/styles/",
-                $path
-            )),
-        )
-    };
-}
 
 pub struct ResourceLoader;
 
 impl ResourceLoader {
-    fn get_all_assets() -> HashMap<&'static str, &'static str> {
-        [
-            asset_entry!("logo", "other/logo"),
-            asset_entry!("home", "buttons/home"),
-            asset_entry!("packs", "buttons/packs"),
-            asset_entry!("settings", "buttons/settings"),
-            asset_entry!("cloud", "buttons/cloud"),
-            asset_entry!("plus", "buttons/plus"),
-            asset_entry!("microsoft", "other/microsoft"),
-            asset_entry!("play", "buttons/play"),
-            asset_entry!("additional", "buttons/additional"),
-            asset_entry!("change", "buttons/change"),
-            asset_entry!("delete", "buttons/delete"),
-            asset_entry!("folder", "buttons/folder"),
-            asset_entry!("debug", "buttons/debug"),
-            asset_entry!("add", "buttons/add"),
-        ]
-        .into_iter()
-        .collect()
+    fn get_asset_path(name: &str) -> Option<&'static str> {
+        match name {
+            "logo" => Some("assets/images/other/logo.png"),
+            "home" => Some("assets/images/buttons/home.png"),
+            "packs" => Some("assets/images/buttons/packs.png"),
+            "settings" => Some("assets/images/buttons/settings.png"),
+            "cloud" => Some("assets/images/buttons/cloud.png"),
+            "plus" => Some("assets/images/buttons/plus.png"),
+            "microsoft" => Some("assets/images/other/microsoft.png"),
+            "play" => Some("assets/images/buttons/play.png"),
+            "additional" => Some("assets/images/buttons/additional.png"),
+            "change" => Some("assets/images/buttons/change.png"),
+            "delete" => Some("assets/images/buttons/delete.png"),
+            "folder" => Some("assets/images/buttons/folder.png"),
+            "debug" => Some("assets/images/buttons/debug.png"),
+            "add" => Some("assets/images/buttons/add.png"),
+            _ => None,
+        }
     }
 
-    pub fn get_asset(name: &str) -> &'static str {
+    fn get_all_assets() -> HashMap<&'static str, String> {
+        let mut map = HashMap::new();
+        for &name in &[
+            "logo",
+            "home",
+            "packs",
+            "settings",
+            "cloud",
+            "plus",
+            "microsoft",
+            "play",
+            "additional",
+            "change",
+            "delete",
+            "folder",
+            "debug",
+            "add",
+        ] {
+            map.insert(name, Self::load_asset(name));
+        }
+        map
+    }
+
+    fn load_asset(name: &str) -> String {
+        if let Some(path) = Self::get_asset_path(name) {
+            match fs::read(path) {
+                Ok(bytes) => format!(
+                    "data:image/png;base64,{}",
+                    general_purpose::STANDARD.encode(bytes)
+                ),
+                Err(_) => "data:image/png;base64,".to_string(),
+            }
+        } else {
+            "data:image/png;base64,".to_string()
+        }
+    }
+
+    pub fn get_asset(name: &str) -> String {
         ASSET_CACHE
             .get_or_init(Self::get_all_assets)
             .get(name)
-            .copied()
-            .unwrap_or("data:image/png;base64,")
+            .cloned()
+            .unwrap_or_else(|| "data:image/png;base64,".to_string())
     }
 
-    pub fn get_logo() -> &'static str {
+    pub fn get_logo() -> String {
         Self::get_asset("logo")
     }
-    pub fn get_home() -> &'static str {
+    pub fn get_home() -> String {
         Self::get_asset("home")
     }
-    pub fn get_packs() -> &'static str {
+    pub fn get_packs() -> String {
         Self::get_asset("packs")
     }
-    pub fn get_settings() -> &'static str {
+    pub fn get_settings() -> String {
         Self::get_asset("settings")
     }
-    pub fn get_cloud() -> &'static str {
+    pub fn get_cloud() -> String {
         Self::get_asset("cloud")
     }
-    pub fn get_plus() -> &'static str {
+    pub fn get_plus() -> String {
         Self::get_asset("plus")
     }
-    pub fn get_microsoft() -> &'static str {
+    pub fn get_microsoft() -> String {
         Self::get_asset("microsoft")
     }
-    pub fn get_play() -> &'static str {
+    pub fn get_play() -> String {
         Self::get_asset("play")
     }
-    pub fn get_additional() -> &'static str {
+    pub fn get_additional() -> String {
         Self::get_asset("additional")
     }
-    pub fn get_change() -> &'static str {
+    pub fn get_change() -> String {
         Self::get_asset("change")
     }
-    pub fn get_delete() -> &'static str {
+    pub fn get_delete() -> String {
         Self::get_asset("delete")
     }
-    pub fn get_folder() -> &'static str {
+    pub fn get_folder() -> String {
         Self::get_asset("folder")
     }
-    pub fn get_debug() -> &'static str {
+    pub fn get_debug() -> String {
         Self::get_asset("debug")
     }
-    pub fn get_add() -> &'static str {
+    pub fn get_add() -> String {
         Self::get_asset("add")
     }
 
     fn get_all_styles() -> HashMap<&'static str, &'static str> {
         [
-            css_entry!("base", "base.css"),
-            css_entry!("animations", "animations.css"),
-            css_entry!("auth", "auth.css"),
-            css_entry!("tailwind", "output.css"),
-            css_entry!("logo", "components/logo.css"),
-            css_entry!("navigation", "components/navigation.css"),
-            css_entry!("chat", "components/chat.css"),
-            css_entry!("home", "components/home.css"),
-            css_entry!("news", "components/news.css"),
-            css_entry!("context_menu", "components/context_menu.css"),
-            css_entry!("debug", "components/debug.css"),
+            (
+                "base",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/base.css"
+                )),
+            ),
+            (
+                "animations",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/animations.css"
+                )),
+            ),
+            (
+                "auth",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/auth.css"
+                )),
+            ),
+            (
+                "tailwind",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/output.css"
+                )),
+            ),
+            (
+                "logo",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/components/logo.css"
+                )),
+            ),
+            (
+                "navigation",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/components/navigation.css"
+                )),
+            ),
+            (
+                "chat",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/components/chat.css"
+                )),
+            ),
+            (
+                "home",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/components/home.css"
+                )),
+            ),
+            (
+                "news",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/components/news.css"
+                )),
+            ),
+            (
+                "context_menu",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/components/context_menu.css"
+                )),
+            ),
+            (
+                "debug",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/assets/styles/components/debug.css"
+                )),
+            ),
         ]
         .into_iter()
         .collect()

@@ -26,6 +26,7 @@ tokio = { version = "1.47.1", features = [
 ], default-features = false }
 native-tls = "0.2.14"
 tokio-native-tls = "0.3.1"
+base64 = "0.22.1"
 
 [features]
 default = ["desktop"]
