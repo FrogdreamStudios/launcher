@@ -1,8 +1,8 @@
-use crate::{backend::utils::launcher::starter, frontend::game_state::GameStatus};
+use crate::{backend::utils::launcher::starter, frontend::states::GameStatus};
 use crate::{log_error, log_info};
 use dioxus::prelude::*;
 
-/// Launch Minecraft
+/// Launch Minecraft.
 pub fn launch_minecraft(game_status: Signal<GameStatus>, version: &str, instance_id: u32) {
     let version_owned = version.to_string();
     let mut game_status_signal = game_status;

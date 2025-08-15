@@ -1,9 +1,9 @@
 use crate::{
     backend::utils::css::main::ResourceLoader,
     frontend::{
-        components::minecraft_launcher::launch_minecraft,
-        game_state::GameStatus,
-        instances::main::{INSTANCES, InstanceManager, open_instance_folder},
+        components::launcher::minecraft_launcher::launch_minecraft,
+        states::GameStatus,
+        services::instances::main::{INSTANCES, InstanceManager, open_instance_folder},
     },
 };
 use dioxus::prelude::*;

@@ -1,5 +1,6 @@
-pub mod chats;
+//! Frontend module for the `DreamLauncher` application.
+
 pub mod components;
-pub mod game_state;
-pub mod instances;
-pub mod ui;
+pub mod states;
+pub mod pages;
+pub mod services;

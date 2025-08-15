@@ -73,12 +73,12 @@ fn parse_markdown() -> Vec<NewsItem> {
         let frontmatter = sections[i].trim();
         let content_md = sections[i + 1].trim();
 
-        // Extract date from frontmatter
+        // Extract date from the frontmatter
         let date = frontmatter
             .lines()
             .find(|line| line.trim().starts_with("date:"))
             .map(|line| {
-                // Remove "date:" prefix and trim whitespace
+                // Remove the "date:" prefix and trim whitespace
                 let date_part = line.trim().strip_prefix("date:").unwrap_or("").trim();
                 // Remove quotes if present
                 if date_part.starts_with('"') && date_part.ends_with('"') {
@@ -89,7 +89,7 @@ fn parse_markdown() -> Vec<NewsItem> {
             })
             .unwrap_or_else(|| "Unknown date".to_string());
 
-        // Convert markdown to HTML using simple parser
+        // Convert Markdown to HTML using a simple parser
         let html_content = markdown_to_html(content_md);
 
         if !html_content.is_empty() {
@@ -99,7 +99,7 @@ fn parse_markdown() -> Vec<NewsItem> {
             });
         }
 
-        i += 2; // Skip to next frontmatter section
+        i += 2; // Skip to the next frontmatter section
     }
 
     news_items

@@ -1,8 +1,8 @@
 //! Application routing system.
 
-use crate::frontend::chats::main::Chat;
-use crate::frontend::ui::auth::main::Auth;
-use crate::frontend::ui::launcher::main::Main;
+use crate::frontend::pages::main::main::Main;
+use crate::frontend::pages::auth::Auth;
+use crate::frontend::services::chats::main::Chat;
 
 use dioxus::prelude::*;
 use dioxus_router::Routable;

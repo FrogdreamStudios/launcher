@@ -1,5 +1,5 @@
 use crate::backend::utils::css::main::ResourceLoader;
-use crate::frontend::{components::auth_layout::AuthLayout, ui::auth::auth_context::AuthState};
+use crate::frontend::{components::layout::AuthLayout, pages::auth::AuthState};
 use dioxus::{events::KeyboardEvent, prelude::*};
 use dioxus_router::use_navigator;
 use std::time::Duration;

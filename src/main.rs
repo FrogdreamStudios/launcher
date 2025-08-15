@@ -15,7 +15,7 @@ static RUNTIME: OnceLock<Runtime> = OnceLock::new();
 
 fn main() {
     // Logging
-    crate::utils::logging::init_from_env();
+    utils::logging::init_from_env();
 
     // Set icon on macOS
     #[cfg(target_os = "macos")]
@@ -66,6 +66,6 @@ fn set_macos_icon() {
 #[component]
 fn AppRoot() -> Element {
     let is_authenticated = use_signal(|| false);
-    provide_context(frontend::ui::auth::auth_context::AuthState { is_authenticated });
+    provide_context(frontend::pages::auth::AuthState { is_authenticated });
     rsx! { Router::<Route> {} }
 }

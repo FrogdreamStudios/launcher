@@ -1,17 +1,14 @@
 use crate::backend::utils::app::main::Route;
 use crate::backend::utils::css::main::ResourceLoader;
+use crate::frontend::components::launcher::debug_window::use_version_selection;
 use crate::frontend::{
     components::{
-        chat_sidebar::ChatSidebar,
-        context_menu::ContextMenu,
-        debug_window::{DebugWindow, use_version_selection},
-        minecraft_launcher::launch_minecraft,
-        navigation::Navigation,
-        news::News,
-        standalone_logo::StandaloneLogo,
+        common::{News, StandaloneLogo},
+        launcher::{ContextMenu, DebugWindow, launch_minecraft},
+        layout::{ChatSidebar, Navigation},
     },
-    game_state::{GameStatus, use_game_state},
-    instances::main::InstanceManager,
+    states::{GameStatus, use_game_state},
+    services::instances::main::InstanceManager,
 };
 use dioxus::prelude::{Key, *};
 use dioxus_router::{components::Outlet, use_route};

@@ -1,6 +1,3 @@
-// Temporarily commented out imports for hiding chat functionality
-// use crate::backend::utils::route::Route;
-// use crate::frontend::chats::manager::provide_chat_manager;
 use dioxus::prelude::*;
 // use dioxus_router::{navigator, use_route};
 
@@ -20,7 +17,7 @@ pub fn ChatSidebar(animations_played: bool) -> Element {
 
     rsx! {
         aside { class: if !animations_played { "chat-sidebar chat-animate" } else { "chat-sidebar" },
-            // User profile - keep this visible
+            // User profile, keep this visible
             div {
                 class: "chat-item",
                 onclick: move |_| {
@@ -43,7 +40,7 @@ pub fn ChatSidebar(animations_played: bool) -> Element {
                 "There are no chats."
             }
 
-            /* Original chat functionality - temporarily commented out
+            /* Original chat functionality, temporarily commented out
             if active_tab == "Chat" {
                 // Back button when in chat
                 div {
