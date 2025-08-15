@@ -74,7 +74,6 @@ fn build_with_npx_fallback() {
 }
 
 fn main() {
-    println!("cargo:rerun-if-changed=assets/images/other/icon.png");
     println!("cargo:rerun-if-changed=assets/icons/app_icon.icns");
 
     println!("cargo:rerun-if-changed=assets/styles/main.css");
