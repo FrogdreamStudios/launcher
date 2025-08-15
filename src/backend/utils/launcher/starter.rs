@@ -128,10 +128,11 @@ impl MinecraftCommand {
         cmd.arg(&self.version_details.main_class);
 
         if self.version_details.main_class == "net.minecraft.launchwrapper.Launch"
-            && self.is_version_at_least("1.3") {
-                cmd.arg("--tweakClass");
-                cmd.arg("net.minecraft.client.tweaker.LegacyTweaker");
-            }
+            && self.is_version_at_least("1.3")
+        {
+            cmd.arg("--tweakClass");
+            cmd.arg("net.minecraft.client.tweaker.LegacyTweaker");
+        }
 
         self.add_game_arguments(&mut cmd)?;
 

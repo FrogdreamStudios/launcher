@@ -63,9 +63,7 @@ impl JavaManager {
             if exe_path.exists() {
                 return Ok((exe_path, needs_x86_64));
             }
-            log_info!(
-                "Installed Java runtime not found at {exe_path:?}, removing from cache"
-            );
+            log_info!("Installed Java runtime not found at {exe_path:?}, removing from cache");
             let major_version = runtime.major_version;
             if needs_x86_64 {
                 self.x86_64_runtimes.remove(&major_version);
@@ -77,28 +75,38 @@ impl JavaManager {
         // Check system Java (skip for x86_64 requirement as system Java might be ARM64)
         if !needs_x86_64
             && let Ok(Some(mut system_java)) = JavaRuntime::detect_system_java()
-                && system_java.is_compatible_with_minecraft(required_java) {
-                    log_info!("Using system Java {} runtime", system_java.major_version);
-                    if system_java.path.as_os_str().is_empty() {
-                        system_java.path = crate::utils::which("java").unwrap_or_else(|_| "java".into());
-                    }
-                    return Ok((system_java.get_executable_path(), false));
-                }
+            && system_java.is_compatible_with_minecraft(required_java)
+        {
+            log_info!("Using system Java {} runtime", system_java.major_version);
+            if system_java.path.as_os_str().is_empty() {
+                system_java.path = crate::utils::which("java").unwrap_or_else(|_| "java".into());
+            }
+            return Ok((system_java.get_executable_path(), false));
+        }
 
         // Java installation
-        let arch = if needs_x86_64 { "x64" } else { AzulPackage::get_arch_name() };
+        let arch = if needs_x86_64 {
+            "x64"
+        } else {
+            AzulPackage::get_arch_name()
+        };
         match self.install_java(required_java, arch).await {
             Ok(runtime) => Ok((runtime.get_executable_path(), needs_x86_64)),
             Err(e) => {
                 log_warn!("Failed to install Java {required_java} ({arch}): {e}");
                 // Fallback to system Java
                 if let Ok(Some(mut system_java)) = JavaRuntime::detect_system_java()
-                    && system_java.is_compatible_with_minecraft(required_java) {
-                        log_info!("Using system Java {} as fallback", system_java.major_version);
-                        if system_java.path.as_os_str().is_empty() {
-                            system_java.path = crate::utils::which("java").unwrap_or_else(|_| "java".into());
-                        }
-                        return Ok((system_java.get_executable_path(), false));
+                    && system_java.is_compatible_with_minecraft(required_java)
+                {
+                    log_info!(
+                        "Using system Java {} as fallback",
+                        system_java.major_version
+                    );
+                    if system_java.path.as_os_str().is_empty() {
+                        system_java.path =
+                            crate::utils::which("java").unwrap_or_else(|_| "java".into());
+                    }
+                    return Ok((system_java.get_executable_path(), false));
                 }
                 Err(simple_error!(
                     "Failed to install Java {required_java} ({arch}) and no compatible system Java found"
@@ -129,13 +137,19 @@ impl JavaManager {
 
         let file_extension = if package.download_url.ends_with(".zip") {
             "zip"
-        } else if package.download_url.ends_with(".tar.gz") || package.download_url.ends_with(".tgz") {
+        } else if package.download_url.ends_with(".tar.gz")
+            || package.download_url.ends_with(".tgz")
+        {
             "tar.gz"
-        } else if cfg!(windows) { "zip" } else { "tar.gz" };
+        } else if cfg!(windows) {
+            "zip"
+        } else {
+            "tar.gz"
+        };
 
-        let download_path = self
-            .java_dir
-            .join(format!("java-{java_version}-{arch}-download.{file_extension}"));
+        let download_path = self.java_dir.join(format!(
+            "java-{java_version}-{arch}-download.{file_extension}"
+        ));
         let extract_path = self.java_dir.join(format!("java-{java_version}-{arch}"));
 
         // Downloading
@@ -165,19 +179,22 @@ impl JavaManager {
 
         // Unpacking
         log_info!("Extracting Java {java_version} runtime...");
-        extract_archive(&download_path, &extract_path).await.map_err(|e| {
-            let _ = remove_file_if_exists(&download_path);
-            let _ = remove_dir_if_exists(&extract_path);
-            log_error!("Failed to extract Java {java_version}: {e}");
-            e
-        })?;
+        extract_archive(&download_path, &extract_path)
+            .await
+            .map_err(|e| {
+                let _ = remove_file_if_exists(&download_path);
+                let _ = remove_dir_if_exists(&extract_path);
+                log_error!("Failed to extract Java {java_version}: {e}");
+                e
+            })?;
 
         remove_file_if_exists(&download_path).await?;
 
         // Find Java
         let java_executable = Self::find_java_executable(&extract_path)?;
-        let runtime = JavaRuntime::from_path(&java_executable)?
-            .ok_or_else(|| simple_error!("Failed to detect installed Java {java_version} runtime"))?;
+        let runtime = JavaRuntime::from_path(&java_executable)?.ok_or_else(|| {
+            simple_error!("Failed to detect installed Java {java_version} runtime")
+        })?;
 
         if arch == "x64" {
             self.x86_64_runtimes.insert(java_version, runtime);
@@ -220,12 +237,16 @@ impl JavaManager {
         let version_lower = version.to_lowercase();
         if version_lower.contains('w')
             && version_lower.len() >= 5
-            && version_lower.get(0..2).and_then(|s| s.parse::<u32>().ok()).is_some_and(|year| year >= 21)
+            && version_lower
+                .get(0..2)
+                .and_then(|s| s.parse::<u32>().ok())
+                .is_some_and(|year| year >= 21)
         {
             return true;
         }
         if (version_lower.contains("-pre") || version_lower.contains("-rc"))
-            && Self::parse_minecraft_version(version_lower.split('-').next().unwrap_or(version)).is_ok_and(|parsed| parsed >= (1, 19, 0))
+            && Self::parse_minecraft_version(version_lower.split('-').next().unwrap_or(version))
+                .is_ok_and(|parsed| parsed >= (1, 19, 0))
         {
             return true;
         }
@@ -259,11 +280,21 @@ impl JavaManager {
         while let Some(entry) = entries.next_entry().await? {
             let path = entry.path();
             if path.is_dir()
-                && path.file_name().and_then(|name| name.to_str()).is_some_and(|name| name.starts_with("java-"))
-                && Self::find_java_executable(&path).and_then(|exe| JavaRuntime::from_path(&exe)).ok().flatten().is_some()
+                && path
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .is_some_and(|name| name.starts_with("java-"))
+                && Self::find_java_executable(&path)
+                    .and_then(|exe| JavaRuntime::from_path(&exe))
+                    .ok()
+                    .flatten()
+                    .is_some()
             {
                 let runtime = JavaRuntime::from_path(&Self::find_java_executable(&path)?)?.unwrap();
-                let is_x86_64 = path.file_name().and_then(|name| name.to_str()).is_some_and(|name| name.contains("-x64"));
+                let is_x86_64 = path
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .is_some_and(|name| name.contains("-x64"));
                 let major_version = runtime.major_version;
                 log_debug!(
                     "Found installed {} Java {} runtime at {:?}",
@@ -293,13 +324,33 @@ impl JavaManager {
     fn create_fallback_manifest() -> AzulJavaManifest {
         fn make_package(java_version: u8, os: &str, arch: &str, size: u64) -> AzulPackage {
             let id = format!("zulu{java_version}-{os}-{arch}");
-            let name = format!("Zulu {java_version} {} {}", os.to_ascii_uppercase(), arch.to_ascii_uppercase());
+            let name = format!(
+                "Zulu {java_version} {} {}",
+                os.to_ascii_uppercase(),
+                arch.to_ascii_uppercase()
+            );
             let base_url = "https://cdn.azul.com/zulu/bin";
             let file = match (os, arch) {
-                ("windows", "x64") => format!("zulu{java_version}.{}-ca-jdk{java_version}.0.{}-win_x64.zip", get_build(java_version), get_patch(java_version)),
-                ("macos", "x64") => format!("zulu{java_version}.{}-ca-jdk{java_version}.0.{}-macosx_x64.tar.gz", get_build(java_version), get_patch(java_version)),
-                ("macos", "arm64") => format!("zulu{java_version}.{}-ca-jdk{java_version}.0.{}-macosx_aarch64.tar.gz", get_build(java_version), get_patch(java_version)),
-                ("linux", "x64") => format!("zulu{java_version}.{}-ca-jdk{java_version}.0.{}-linux_x64.tar.gz", get_build(java_version), get_patch(java_version)),
+                ("windows", "x64") => format!(
+                    "zulu{java_version}.{}-ca-jdk{java_version}.0.{}-win_x64.zip",
+                    get_build(java_version),
+                    get_patch(java_version)
+                ),
+                ("macos", "x64") => format!(
+                    "zulu{java_version}.{}-ca-jdk{java_version}.0.{}-macosx_x64.tar.gz",
+                    get_build(java_version),
+                    get_patch(java_version)
+                ),
+                ("macos", "arm64") => format!(
+                    "zulu{java_version}.{}-ca-jdk{java_version}.0.{}-macosx_aarch64.tar.gz",
+                    get_build(java_version),
+                    get_patch(java_version)
+                ),
+                ("linux", "x64") => format!(
+                    "zulu{java_version}.{}-ca-jdk{java_version}.0.{}-linux_x64.tar.gz",
+                    get_build(java_version),
+                    get_patch(java_version)
+                ),
                 _ => unreachable!(),
             };
             AzulPackage {
@@ -337,7 +388,12 @@ impl JavaManager {
                 21 => 200_000_000,
                 _ => 0,
             };
-            for &(os, arch) in &[("windows", "x64"), ("macos", "x64"), ("macos", "arm64"), ("linux", "x64")] {
+            for &(os, arch) in &[
+                ("windows", "x64"),
+                ("macos", "x64"),
+                ("macos", "arm64"),
+                ("linux", "x64"),
+            ] {
                 if java_version == 8 && arch == "arm64" {
                     continue;
                 }
@@ -351,7 +407,11 @@ impl JavaManager {
         let executable_name = if cfg!(windows) { "java.exe" } else { "java" };
         let possible_paths = [
             java_dir.join("bin").join(executable_name),
-            java_dir.join("Contents").join("Home").join("bin").join(executable_name),
+            java_dir
+                .join("Contents")
+                .join("Home")
+                .join("bin")
+                .join(executable_name),
         ];
         for path in &possible_paths {
             if path.exists() {
@@ -367,12 +427,14 @@ impl JavaManager {
         {
             let entry = entry?;
             let path = entry.path();
-            if path.is_file() && path.file_name().and_then(|n| n.to_str()) == Some(executable_name) {
+            if path.is_file() && path.file_name().and_then(|n| n.to_str()) == Some(executable_name)
+            {
                 return Ok(path);
             } else if path.is_dir()
-                && let Ok(result) = Self::find_java_recursive(&path, executable_name) {
-                    return Ok(result);
-                }
+                && let Ok(result) = Self::find_java_recursive(&path, executable_name)
+            {
+                return Ok(result);
+            }
         }
         Err(simple_error!(
             "Java executable not found in {}",
@@ -395,8 +457,10 @@ impl JavaManager {
         } else {
             self.get_compatible_runtime(required_java).is_some()
                 || JavaRuntime::detect_system_java()
-                .map(|opt| opt.is_some_and(|sys| sys.is_compatible_with_minecraft(required_java)))
-                .unwrap_or(false)
+                    .map(|opt| {
+                        opt.is_some_and(|sys| sys.is_compatible_with_minecraft(required_java))
+                    })
+                    .unwrap_or(false)
         }
     }
 }

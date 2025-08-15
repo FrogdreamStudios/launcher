@@ -6,8 +6,8 @@ use super::{
 };
 use crate::utils::Result;
 use crate::{log_info, simple_error};
-use std::{path::PathBuf, sync::Arc};
 use std::path::Path;
+use std::{path::PathBuf, sync::Arc};
 
 /// Version manager for handling Minecraft version operations.
 pub struct VersionManager {

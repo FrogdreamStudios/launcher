@@ -1,6 +1,6 @@
 //! Asset and CSS loading/caching utilities.
 
-use base64::{engine::general_purpose, Engine as _};
+use base64::{Engine as _, engine::general_purpose};
 use std::{collections::HashMap, fs, sync::OnceLock};
 
 static ASSET_CACHE: OnceLock<HashMap<&'static str, String>> = OnceLock::new();
@@ -27,22 +27,30 @@ pub struct ResourceLoader;
 
 impl ResourceLoader {
     fn get_all_assets() -> HashMap<&'static str, String> {
-        ASSETS.iter().map(|&(n, p)| {
-            let data = fs::read(p).map_or("".into(), |b| general_purpose::STANDARD.encode(b));
-            (n, format!("data:image/png;base64,{data}"))
-        }).collect()
+        ASSETS
+            .iter()
+            .map(|&(n, p)| {
+                let data = fs::read(p).map_or("".into(), |b| general_purpose::STANDARD.encode(b));
+                (n, format!("data:image/png;base64,{data}"))
+            })
+            .collect()
     }
 
     pub fn get_asset(name: &str) -> String {
-        ASSET_CACHE.get_or_init(Self::get_all_assets)
-            .get(name).cloned().unwrap_or_else(|| "data:image/png;base64,".into())
+        ASSET_CACHE
+            .get_or_init(Self::get_all_assets)
+            .get(name)
+            .cloned()
+            .unwrap_or_else(|| "data:image/png;base64,".into())
     }
 
     fn get_all_styles() -> HashMap<&'static str, &'static str> {
         let mut m = HashMap::new();
-        macro_rules! style { ($n:expr, $p:expr) => {
-            m.insert($n, include_str!(concat!(env!("CARGO_MANIFEST_DIR"), $p)));
-        }}
+        macro_rules! style {
+            ($n:expr, $p:expr) => {
+                m.insert($n, include_str!(concat!(env!("CARGO_MANIFEST_DIR"), $p)));
+            };
+        }
         style!("base", "/assets/styles/base.css");
         style!("animations", "/assets/styles/animations.css");
         style!("auth", "/assets/styles/auth.css");
@@ -58,18 +66,34 @@ impl ResourceLoader {
     }
 
     pub fn get_css(name: &str) -> &'static str {
-        CSS_CACHE.get_or_init(Self::get_all_styles)
-            .get(name).copied().unwrap_or("")
+        CSS_CACHE
+            .get_or_init(Self::get_all_styles)
+            .get(name)
+            .copied()
+            .unwrap_or("")
     }
 
     pub fn combine_css(styles: &[&str]) -> String {
-        styles.iter().map(|&n| Self::get_css(n)).filter(|s| !s.is_empty()).collect::<Vec<_>>().join("\n")
+        styles
+            .iter()
+            .map(|&n| Self::get_css(n))
+            .filter(|s| !s.is_empty())
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 
     pub fn get_combined_main_css() -> String {
         Self::combine_css(&[
-            "base", "animations", "logo", "navigation", "chat", "home",
-            "news", "context_menu", "debug", "tailwind"
+            "base",
+            "animations",
+            "logo",
+            "navigation",
+            "chat",
+            "home",
+            "news",
+            "context_menu",
+            "debug",
+            "tailwind",
         ])
     }
 }

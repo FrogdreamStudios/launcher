@@ -498,9 +498,9 @@ impl MinecraftLauncher {
                         if native_path.exists()
                             && let Err(e) =
                                 crate::utils::extract_zip(&native_path, &natives_dir).await
-                            {
-                                log_warn!("Failed to extract {}: {}", native_path.display(), e);
-                            }
+                        {
+                            log_warn!("Failed to extract {}: {}", native_path.display(), e);
+                        }
                         break;
                     }
                 }
@@ -603,15 +603,17 @@ impl MinecraftLauncher {
         for line in version_info.lines() {
             if line.contains("version")
                 && let Some(start) = line.find('"')
-                    && let Some(end) = line[start + 1..].find('"') {
-                        let version_str = &line[start + 1..start + 1 + end];
-                        let parts: Vec<&str> = version_str.split('.').collect();
-                        if let Some(first_part) = parts.first()
-                            && let Ok(major) = first_part.parse::<u8>() {
-                                return Ok(major);
-                            }
-                        }
-                    }
+                && let Some(end) = line[start + 1..].find('"')
+            {
+                let version_str = &line[start + 1..start + 1 + end];
+                let parts: Vec<&str> = version_str.split('.').collect();
+                if let Some(first_part) = parts.first()
+                    && let Ok(major) = first_part.parse::<u8>()
+                {
+                    return Ok(major);
+                }
+            }
+        }
 
         Ok(8) // Default fallback
     }
