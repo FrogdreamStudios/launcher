@@ -162,37 +162,3 @@
     text-align: center;
     color: #888;
 }
-
-/* Instance card debug elements (now handled by instances system)
-.instance-version-indicator {
-    position: absolute;
-    bottom: 8px;
-    left: 8px;
-    background: rgba(0, 120, 212, 0.9);
-    color: #ffffff;
-    padding: 4px 8px;
-    border-radius: 2px;
-    font-weight: 500;
-    font-family: 'Gilroy', sans-serif;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.instance-debug-button {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    background: rgba(220, 53, 69, 0.9);
-    color: #ffffff;
-    padding: 4px 8px;
-    border-radius: 2px;
-    font-weight: 600;
-    cursor: pointer;
-    z-index: 10;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    transition: all 0.2s ease;
-}
-
-.instance-debug-button:hover {
-    background: rgba(220, 53, 69, 1);
-}
-*/

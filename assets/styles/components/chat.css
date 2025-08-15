@@ -1,36 +1,57 @@
 /* Chat Sidebar */
+:root {
+    --sidebar-width: 228px;
+    --sidebar-padding: 0 0 16px 32px;
+    --sidebar-gap: 12px;
+    --sidebar-max-height: calc(100vh - 80px);
+    --item-width: 192px;
+    --item-height: 65px;
+    --item-radius: 8px;
+    --item-bg: #141414;
+    --item-hover-brightness: 1.15;
+    --avatar-size: 33px;
+    --avatar-radius: 6px;
+    --divider-bg: #242424;
+    --divider-radius: 360px;
+    --divider-height: 2px;
+    --icon-bg: #2a2a2a;
+    --icon-size: 33px;
+    --badge-bg: #ff4444;
+    --badge-size: 20px;
+    --status-border: 2px solid #141414;
+    --status-size: 12px;
+    --font-bold: "Gilroy-Bold", Helvetica, Arial, sans-serif;
+    --font-medium: "Gilroy-Medium", Helvetica, Arial, sans-serif;
+    --font-color: #fff;
+    --font-secondary: #6f6f6f;
+}
+
 .chat-sidebar {
-    width: 228px;
-    padding: 0 0 16px 32px;
+    width: var(--sidebar-width);
+    padding: var(--sidebar-padding);
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--sidebar-gap);
     flex-shrink: 0;
     overflow-y: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
-    max-height: calc(100vh - 80px);
+    max-height: var(--sidebar-max-height);
     opacity: 1;
     transform: translateX(0);
 }
-.chat-sidebar::-webkit-scrollbar {
-    display: none;
-}
+.chat-sidebar::-webkit-scrollbar { display: none; }
 .chat-sidebar.chat-animate {
     opacity: 0;
     transform: translateX(-250px);
-    animation: chat-sidebar-slide-in 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94)
-        0.12s forwards;
+    animation: chat-sidebar-slide-in 0.25s cubic-bezier(.25,.46,.45,.94) .12s forwards;
 }
-
 @keyframes chat-sidebar-slide-in {
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
+    to { opacity: 1; transform: translateX(0); }
 }
+.chat-sidebar > * { margin: 0; }
 
-/* Chat sidebar animation delays */
+/* Chat item animation */
 .chat-sidebar .chat-item,
 .chat-sidebar .chat-divider {
     opacity: 1;
@@ -39,59 +60,24 @@
 .chat-sidebar.chat-animate .chat-item {
     opacity: 0;
     transform: translateX(-100px);
-    animation: chat-item-slide-in 0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94)
-        forwards;
+    animation: chat-item-slide-in 0.18s cubic-bezier(.25,.46,.45,.94) forwards;
 }
 @keyframes chat-item-slide-in {
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
+    to { opacity: 1; transform: translateX(0); }
 }
-.chat-sidebar.chat-animate .chat-item:nth-child(1) {
-    animation-delay: 0.18s;
+.chat-sidebar.chat-animate .chat-item:nth-child(n) {
+    animation-delay: calc(0.18s + 0.03s * (var() - 1));
 }
-.chat-sidebar.chat-animate .chat-item:nth-child(2) {
-    animation-delay: 0.21s;
-}
-.chat-sidebar.chat-animate .chat-item:nth-child(3) {
-    animation-delay: 0.24s;
-}
-.chat-sidebar.chat-animate .chat-item:nth-child(4) {
-    animation-delay: 0.27s;
-}
-.chat-sidebar.chat-animate .chat-item:nth-child(5) {
-    animation-delay: 0.3s;
-}
-.chat-sidebar.chat-animate .chat-item:nth-child(6) {
-    animation-delay: 0.33s;
-}
-.chat-sidebar.chat-animate .chat-item:nth-child(7) {
-    animation-delay: 0.36s;
-}
-
 .chat-sidebar.chat-animate .chat-divider {
     opacity: 0;
     transform: translateX(-80px);
-    animation: chat-divider-slide-in 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94)
-        forwards;
+    animation: chat-divider-slide-in 0.15s cubic-bezier(.25,.46,.45,.94) forwards;
 }
 @keyframes chat-divider-slide-in {
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
+    to { opacity: 1; transform: translateX(0); }
 }
-.chat-sidebar.chat-animate .chat-divider:first-of-type {
-    animation-delay: 0.22s;
-}
-.chat-sidebar.chat-animate .chat-divider:last-child {
-    animation-delay: 0.38s;
-}
-
-.chat-sidebar > * {
-    margin: 0;
-}
+.chat-sidebar.chat-animate .chat-divider:first-of-type { animation-delay: 0.22s; }
+.chat-sidebar.chat-animate .chat-divider:last-child { animation-delay: 0.38s; }
 
 /* Chat item */
 .chat-item {
@@ -99,86 +85,65 @@
     align-items: center;
     gap: 8px;
     padding: 16px 12px;
-    background: #141414;
-    border-radius: 8px;
+    background: var(--item-bg);
+    border-radius: var(--item-radius);
     cursor: pointer;
-    transition:
-        background-color 0.2s ease-out,
-        transform 0.2s ease-out,
-        filter 0.25s ease-out;
-    width: 192px;
-    height: 65px;
+    transition: background-color .2s, transform .2s, filter .25s;
+    width: var(--item-width);
+    height: var(--item-height);
     box-sizing: border-box;
     position: relative;
-    margin: 0;
-    --hover-progress: 0;
     filter: brightness(1);
 }
-.chat-item:hover {
-    filter: brightness(1.15);
-}
+.chat-item:hover { filter: brightness(var(--item-hover-brightness)); }
 
 /* Chat avatar */
 .chat-avatar {
     position: relative;
-    width: 35px;
-    height: 35px;
+    width: calc(var(--avatar-size) + 2px);
+    height: calc(var(--avatar-size) + 2px);
     flex-shrink: 0;
 }
 .avatar-img {
-    width: 33px;
-    height: 33px;
-    border-radius: 6px;
+    width: var(--avatar-size);
+    height: var(--avatar-size);
+    border-radius: var(--avatar-radius);
     object-fit: cover;
 }
 
 /* Status indicator */
 .status-indicator {
     position: absolute;
-    width: 12px;
-    height: 12px;
+    width: var(--status-size);
+    height: var(--status-size);
     border-radius: 50%;
-    border: 2px solid #141414;
+    border: var(--status-border);
     bottom: -2px;
     right: -2px;
 }
-.status-indicator.online {
-    background: #1ffe27;
-}
-.status-indicator.away {
-    background: #ffcc00;
-}
-.status-indicator.busy {
-    background: #ff4444;
-}
-.status-indicator.offline {
-    background: #666;
-}
+.status-indicator.online { background: #1ffe27; }
+.status-indicator.away { background: #ffcc00; }
+.status-indicator.busy { background: #ff4444; }
+.status-indicator.offline { background: #666; }
 
 /* Chat info */
-.chat-info {
-    flex: 1;
-    min-width: 0;
-}
+.chat-info { flex: 1; min-width: 0; }
 .username {
-    font-family: "Gilroy-Bold", Helvetica, Arial, sans-serif;
+    font-family: var(--font-bold), serif;
     font-weight: 700;
-    color: #fff;
+    color: var(--font-color);
     font-size: 16px;
     line-height: 1.2;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     user-select: none;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
 }
 .account-type,
 .status-message {
-    font-family: "Gilroy-Medium", Helvetica, Arial, sans-serif;
+    font-family: var(--font-medium), serif;
     font-weight: 400;
-    color: #6f6f6f;
+    color: var(--font-secondary);
     font-size: 14px;
     line-height: 1.2;
     white-space: nowrap;
@@ -186,31 +151,28 @@
     text-overflow: ellipsis;
     margin-top: 2px;
     user-select: none;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
 }
 
 /* Chat divider */
 .chat-divider {
-    width: 192px;
-    height: 2px;
-    background: #242424;
-    border-radius: 360px;
+    width: var(--item-width);
+    height: var(--divider-height);
+    background: var(--divider-bg);
+    border-radius: var(--divider-radius);
     margin: 0;
 }
 
 /* Chat icon */
 .chat-icon {
-    width: 33px;
-    height: 33px;
-    border-radius: 6px;
-    background: #2a2a2a;
+    width: var(--icon-size);
+    height: var(--icon-size);
+    border-radius: var(--avatar-radius);
+    background: var(--icon-bg);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 18px;
-    color: #fff;
+    color: var(--font-color);
 }
 
 /* Unread badge */
@@ -218,15 +180,15 @@
     position: absolute;
     top: 8px;
     right: 8px;
-    background: #ff4444;
-    color: #fff;
+    background: var(--badge-bg);
+    color: var(--font-color);
     border-radius: 50%;
-    width: 20px;
-    height: 20px;
+    width: var(--badge-size);
+    height: var(--badge-size);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: "Gilroy-Bold", Helvetica, Arial, sans-serif;
+    font-family: var(--font-bold), serif;
     font-weight: 700;
     font-size: 12px;
     line-height: 1;
@@ -238,11 +200,8 @@
     align-items: center;
     justify-content: center;
     height: 100%;
-    font-family: "Gilroy-Medium", Helvetica, Arial, sans-serif;
+    font-family: var(--font-medium), serif;
     font-size: 14px;
-    color: #6f6f6f;
+    color: var(--font-secondary);
     user-select: none;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
 }
