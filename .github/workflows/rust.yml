@@ -52,15 +52,31 @@ jobs:
       - run: cargo build --release --locked --features "desktop"
       - shell: bash
         run: |
-          if [[ "${{ runner.os }}" == "Windows" ]]; then upx --best --lzma target/release/DreamLauncher.exe
-          elif [[ "${{ runner.os }}" == "Linux" ]]; then upx --best --lzma target/release/DreamLauncher
-          elif [[ "${{ runner.os }}" == "macOS" ]]; then chmod +x scripts/compress-macos.sh; ./scripts/compress-macos.sh compress target/release/DreamLauncher; fi
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            upx --best --lzma target/release/DreamLauncher.exe
+          elif [[ "${{ runner.os }}" == "Linux" ]]; then
+            upx --best --lzma target/release/DreamLauncher
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            chmod +x scripts/compress-macos.sh
+            ./scripts/compress-macos.sh target/release/DreamLauncher
+          fi
       - shell: bash
         run: |
           mkdir -p dist
-          if [[ "${{ runner.os }}" == "Windows" ]]; then cp target/release/DreamLauncher.exe dist/; powershell -Command "Compress-Archive -Path dist/DreamLauncher.exe -DestinationPath DreamLauncher-windows.zip"
-          elif [[ "${{ runner.os }}" == "macOS" ]]; then chmod +x scripts/create_app_bundle.sh; ./scripts/create_app_bundle.sh; find "target/release/Dream Launcher.app" -exec xattr -d com.apple.quarantine {} \; 2>/dev/null || true; codesign --force --deep --sign - "target/release/Dream Launcher.app"; create-dmg --volname "Dream Launcher" --window-pos 200 120 --window-size 800 400 --icon-size 100 --icon "Dream Launcher.app" 200 190 --hide-extension "Dream Launcher.app" --app-drop-link 600 185 "DreamLauncher-macOS.dmg" "target/release/Dream Launcher.app" 2>/dev/null || hdiutil create -volname "Dream Launcher" -srcfolder "target/release/Dream Launcher.app" -ov -format UDZO "DreamLauncher-macOS.dmg"; codesign --force --sign - "DreamLauncher-macOS.dmg"
-          else cp target/release/DreamLauncher dist/; zip -j DreamLauncher-linux.zip dist/DreamLauncher; fi
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            cp target/release/DreamLauncher.exe dist/
+            powershell -Command "Compress-Archive -Path dist/DreamLauncher.exe -DestinationPath DreamLauncher-windows.zip"
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            chmod +x scripts/create_app_bundle.sh
+            ./scripts/create_app_bundle.sh
+            find "target/release/Dream Launcher.app" -exec xattr -d com.apple.quarantine {} \; 2>/dev/null || true
+            codesign --force --deep --sign - "target/release/Dream Launcher.app"
+            create-dmg --volname "Dream Launcher" --window-pos 200 120 --window-size 800 400 --icon-size 100 --icon "Dream Launcher.app" 200 190 --hide-extension "Dream Launcher.app" --app-drop-link 600 185 "DreamLauncher-macOS.dmg" "target/release/Dream Launcher.app" 2>/dev/null || hdiutil create -volname "Dream Launcher" -srcfolder "target/release/Dream Launcher.app" -ov -format UDZO "DreamLauncher-macOS.dmg"
+            codesign --force --sign - "DreamLauncher-macOS.dmg"
+          else
+            cp target/release/DreamLauncher dist/
+            zip -j DreamLauncher-linux.zip dist/DreamLauncher
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: DreamLauncher-${{ runner.os }}
