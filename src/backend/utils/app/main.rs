@@ -1,7 +1,7 @@
 //! Application routing system.
 
-use crate::frontend::pages::main::main::Main;
 use crate::frontend::pages::auth::Auth;
+use crate::frontend::pages::main::main::Main;
 use crate::frontend::services::chats::main::Chat;
 
 use dioxus::prelude::*;

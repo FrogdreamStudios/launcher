@@ -2,8 +2,8 @@ use crate::backend::utils::launcher::paths::get_launcher_dir;
 use crate::{
     backend::launcher::{launcher::MinecraftLauncher, models::VersionInfo},
     frontend::{
-        components::launcher::minecraft_launcher::launch_minecraft, states::GameStatus,
-        services::instances::main::INSTANCES,
+        components::launcher::minecraft_launcher::launch_minecraft,
+        services::instances::main::INSTANCES, states::GameStatus,
     },
 };
 use crate::{log_error, log_info, simple_error};

@@ -7,8 +7,8 @@ use crate::frontend::{
         launcher::{ContextMenu, DebugWindow, launch_minecraft},
         layout::{ChatSidebar, Navigation},
     },
-    states::{GameStatus, use_game_state},
     services::instances::main::InstanceManager,
+    states::{GameStatus, use_game_state},
 };
 use dioxus::prelude::{Key, *};
 use dioxus_router::{components::Outlet, use_route};
