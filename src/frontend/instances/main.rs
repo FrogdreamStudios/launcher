@@ -1,4 +1,4 @@
-use crate::backend::utils::paths::get_launcher_dir;
+use crate::backend::utils::launcher::paths::get_launcher_dir;
 use crate::simple_error;
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};

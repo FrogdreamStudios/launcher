@@ -1,5 +1,5 @@
-use crate::backend::utils::assets::AssetLoader;
-use crate::backend::utils::route::Route;
+use crate::backend::utils::app::main::Route;
+use crate::backend::utils::css::main::ResourceLoader;
 use dioxus::prelude::*;
 use dioxus_router::{navigator, use_route};
 
@@ -27,11 +27,11 @@ pub fn Navigation(animations_played: bool) -> Element {
 
     let active_tab = current_tab;
 
-    let home = AssetLoader::get_home();
-    let packs = AssetLoader::get_packs();
-    let settings = AssetLoader::get_settings();
-    let cloud = AssetLoader::get_cloud();
-    let add = AssetLoader::get_add();
+    let home = ResourceLoader::get_home();
+    let packs = ResourceLoader::get_packs();
+    let settings = ResourceLoader::get_settings();
+    let cloud = ResourceLoader::get_cloud();
+    let add = ResourceLoader::get_add();
 
     rsx! {
         nav { class: if !animations_played { "navigation nav-animate" } else { "navigation" },

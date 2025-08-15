@@ -3,10 +3,7 @@
 //! Data structures are used to represent
 //! download tasks with URLs, destinations, and verification hashes.
 
-/// Represents a single file download task.
-///
-/// Contains all information needed to download a file, including
-/// the source URL, destination path, and optional SHA1 hash for verification.
+/// Download task model for HTTP downloading.
 #[derive(Debug, Clone)]
 pub struct DownloadTask {
     pub url: String,

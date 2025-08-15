@@ -1,20 +1,24 @@
 //! Core Minecraft launcher implementation.
 
-use crate::utils::Result;
-use crate::{log_debug, log_error, log_info, log_warn, simple_error};
-use std::{path::PathBuf, process::Stdio, sync::Arc};
-
 use super::{
-    downloader::{HttpDownloader, ProgressTracker, models::DownloadTask},
+    downloader::{HttpDownloader, models::DownloadTask},
     java::JavaManager,
     models::{AssetManifest, AssetObject, VersionDetails, VersionInfo, VersionManifest},
 };
-use crate::backend::utils::{
-    command::CommandBuilder,
-    file_utils::{ensure_directory, ensure_parent_directory, verify_file},
-    os::{get_all_native_classifiers, get_minecraft_arch, get_minecraft_os_name, get_os_features},
-    paths::*,
+use crate::backend::utils::launcher::paths::{
+    ensure_directories, get_asset_indexes_dir, get_asset_path, get_assets_dir, get_cache_dir,
+    get_game_dir, get_library_path, get_natives_dir, get_version_jar_path, get_version_json_path,
 };
+use crate::backend::utils::launcher::starter::CommandBuilder;
+use crate::backend::utils::system::files::{
+    ensure_directory, ensure_parent_directory, verify_file,
+};
+use crate::backend::utils::system::os::{
+    get_all_native_classifiers, get_minecraft_arch, get_minecraft_os_name, get_os_features,
+};
+use crate::utils::Result;
+use crate::{log_debug, log_error, log_info, log_warn, simple_error};
+use std::{path::PathBuf, process::Stdio, sync::Arc};
 
 /// Main Minecraft launcher that handles downloading and launching game instances.
 pub struct MinecraftLauncher {
@@ -114,7 +118,9 @@ impl MinecraftLauncher {
 
     pub async fn install_java(&mut self, version: &str) -> Result<()> {
         let required_java =
-            crate::backend::creeper::java::runtime::JavaRuntime::get_required_java_version(version);
+            crate::backend::launcher::java::runtime::JavaRuntime::get_required_java_version(
+                version,
+            );
 
         // Try to install native Java first
         match self.java_manager.install_java_runtime(required_java).await {
@@ -468,15 +474,9 @@ impl MinecraftLauncher {
 
             if !verify_file(&jar_path, Some(client.size), Some(&client.sha1)).await? {
                 log_info!("Downloading client jar for {}", version_details.id);
-                let mut progress = ProgressTracker::new(format!("{} client", version_details.id));
 
                 self.downloader
-                    .download_file(
-                        &client.url,
-                        &jar_path,
-                        Some(&client.sha1),
-                        Some(&mut progress),
-                    )
+                    .download_file(&client.url, &jar_path, Some(&client.sha1))
                     .await?;
             }
         }
@@ -837,7 +837,7 @@ impl MinecraftLauncher {
         &self,
         archive_path: &PathBuf,
         extract_dir: &PathBuf,
-        extract_rules: &Option<crate::backend::creeper::models::ExtractRules>,
+        extract_rules: &Option<crate::backend::launcher::models::ExtractRules>,
     ) -> Result<()> {
         log_info!(
             "Extracting native archive: {:?} to {:?}",
@@ -852,7 +852,7 @@ impl MinecraftLauncher {
         let archive_size = std::fs::metadata(archive_path)?.len();
         log_info!("Archive size: {archive_size} bytes");
 
-        // Create extract directory
+        // Create an extract directory
         tokio::fs::create_dir_all(extract_dir).await?;
 
         // Use our custom archive extraction
@@ -866,7 +866,7 @@ impl MinecraftLauncher {
                 )
             })?;
 
-        // If we have exclude rules, we need to clean up excluded files after extraction
+        // If we have excluded rules, we need to clean up excluded files after extraction
         if let Some(rules) = extract_rules {
             if let Some(exclude) = &rules.exclude {
                 log_debug!("Processing exclude rules for native library extraction");
@@ -913,14 +913,12 @@ impl MinecraftLauncher {
                 "Downloading asset index: {}",
                 version_details.asset_index.id
             );
-            let mut progress = ProgressTracker::new("Asset index".to_string());
 
             self.downloader
                 .download_file(
                     &version_details.asset_index.url,
                     &asset_index_path,
                     Some(&version_details.asset_index.sha1),
-                    Some(&mut progress),
                 )
                 .await?;
         }

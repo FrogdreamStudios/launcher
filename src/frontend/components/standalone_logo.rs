@@ -1,9 +1,9 @@
-use crate::backend::utils::assets::AssetLoader;
+use crate::backend::utils::css::main::ResourceLoader;
 use dioxus::prelude::*;
 
 #[component]
 pub fn StandaloneLogo(animations_played: bool) -> Element {
-    let logo = AssetLoader::get_logo();
+    let logo = ResourceLoader::get_logo();
 
     rsx! {
         div { class: if !animations_played { "standalone-logo-wrapper logo-animate" } else { "standalone-logo-wrapper" },

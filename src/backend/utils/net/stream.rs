@@ -1,6 +1,6 @@
 //! Lightweight stream utilities.
 
-use crate::backend::utils::http::Response;
+use crate::backend::utils::net::http::Response;
 
 /// Stream implementation.
 pub struct ChunkStream {
@@ -23,7 +23,7 @@ impl ChunkStream {
             return None;
         }
 
-        match self.response.chunk().await {
+        match self.response.chunk() {
             Ok(Some(chunk)) => Some(Ok(chunk)),
             Ok(None) => {
                 self.finished = true;

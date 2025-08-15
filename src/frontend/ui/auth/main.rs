@@ -1,7 +1,5 @@
-use crate::{
-    backend::utils::assets::AssetLoader,
-    frontend::{components::auth_layout::AuthLayout, ui::auth::auth_context::AuthState},
-};
+use crate::backend::utils::css::main::ResourceLoader;
+use crate::frontend::{components::auth_layout::AuthLayout, ui::auth::auth_context::AuthState};
 use dioxus::{events::KeyboardEvent, prelude::*};
 use dioxus_router::use_navigator;
 use std::time::Duration;
@@ -22,8 +20,8 @@ pub fn Auth() -> Element {
             && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
     };
 
-    let logo = AssetLoader::get_logo();
-    let microsoft = AssetLoader::get_microsoft();
+    let logo = ResourceLoader::get_logo();
+    let microsoft = ResourceLoader::get_microsoft();
 
     // Function to handle keypress events
     let on_keypress = move |e: KeyboardEvent| {

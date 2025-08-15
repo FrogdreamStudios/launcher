@@ -10,15 +10,11 @@ use std::{
 use tokio::fs as async_fs;
 
 use super::runtime::{AzulJavaManifest, AzulPackage, JavaRuntime};
-use crate::backend::{
-    creeper::downloader::{HttpDownloader, ProgressTracker},
-    utils::{
-        archive_utils::extract_archive,
-        file_utils::{
-            ensure_directory, get_file_size, remove_dir_if_exists, remove_file_if_exists,
-        },
-        paths::get_java_dir,
-    },
+use crate::backend::launcher::downloader::HttpDownloader;
+use crate::backend::utils::archiever::main::extract_archive;
+use crate::backend::utils::launcher::paths::get_java_dir;
+use crate::backend::utils::system::files::{
+    ensure_directory, get_file_size, remove_dir_if_exists, remove_file_if_exists,
 };
 
 pub struct JavaManager {
@@ -365,14 +361,12 @@ impl JavaManager {
             package.download_url
         );
 
-        let mut progress = ProgressTracker::new(format!("Java {java_version}"));
         if let Err(e) = self
             .downloader
             .download_file(
                 &package.download_url,
                 &download_path,
                 None, // Disable hash verification for now
-                Some(&mut progress),
             )
             .await
         {
@@ -468,17 +462,10 @@ impl JavaManager {
             java_version,
             package.download_url
         );
-        let mut progress = ProgressTracker::new(format!("x86_64 Java {java_version}"));
 
         if let Err(e) = self
             .downloader
-            .download_file(
-                &package.download_url,
-                &download_path,
-                None, // Disable hash verification for now
-                // TODO: add hash verification
-                Some(&mut progress),
-            )
+            .download_file(&package.download_url, &download_path, None)
             .await
         {
             log_error!("Failed to download x86_64 Java {java_version}: {e}");

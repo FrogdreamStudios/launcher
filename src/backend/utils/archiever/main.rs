@@ -9,7 +9,7 @@ use crate::utils::Result;
 use crate::{log_debug, log_info, simple_error};
 use tokio::fs as async_fs;
 
-use crate::backend::utils::file_utils::ensure_directory;
+use crate::backend::utils::system::files::ensure_directory;
 
 /// Extracts an archive based on its file extension.
 ///

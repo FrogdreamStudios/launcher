@@ -1,10 +1,8 @@
+# Basic workflow for building Dream Launcher on Windows, Linux and macOS.
+
 name: Rust CI
 
-on:
-  push:
-    branches: ["**"]
-  pull_request:
-    branches: ["**"]
+on: [push, pull_request]
 
 env:
   CARGO_TERM_COLOR: always
@@ -17,117 +15,53 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-24.04, macos-14, windows-2025]
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Linux dependencies
-        if: matrix.os == 'ubuntu-24.04'
+      - uses: actions/checkout@v4
+      - if: matrix.os == 'ubuntu-24.04'
         uses: awalsh128/cache-apt-pkgs-action@v1
         with:
-          packages: >
-            libgtk-3-dev
-            libglib2.0-dev
-            libsoup-3.0-dev
-            libssl-dev
-            libjavascriptcoregtk-4.1-dev
-            libwebkit2gtk-4.1-dev
-            libxdo-dev
-            pkg-config
-            build-essential
-            curl
-            xdotool
-            upx-ucl
+          packages: libgtk-3-dev libglib2.0-dev libsoup-3.0-dev libssl-dev libjavascriptcoregtk-4.1-dev libwebkit2gtk-4.1-dev libxdo-dev pkg-config build-essential curl xdotool upx-ucl
           version: 1
-
-      - name: Install macOS dependencies
-        if: matrix.os == 'macos-14'
+      - if: matrix.os == 'macos-14'
         run: brew install create-dmg upx
-
-      - name: Install Windows dependencies
-        if: matrix.os == 'windows-2025'
+      - if: matrix.os == 'windows-2025'
         run: choco install upx
-
-      - name: Cache Rust
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.rustup
             ~/.cargo/bin
           key: ${{ runner.os }}-rustup-${{ hashFiles('rust-toolchain.toml') }}
           restore-keys: ${{ runner.os }}-rustup-
-
-      - name: Cache Cargo Registry
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-registry-
-
-      - name: Cache Cargo Git
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-git-
-
-      - name: Cache Target Dir
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: target
           key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}-desktop
           restore-keys: ${{ runner.os }}-target-
-
-      - name: Setup Rust
-        run: rustup show
-
-      - name: Build
-        run: cargo build --release --locked --features "desktop"
-
-      - name: Compress binary
-        shell: bash
+      - run: rustup show
+      - run: cargo build --release --locked --features "desktop"
+      - shell: bash
         run: |
-          if [[ "${{ runner.os }}" == "Windows" ]]; then
-            upx --best --lzma target/release/DreamLauncher.exe
-          elif [[ "${{ runner.os }}" == "Linux" ]]; then
-            upx --best --lzma target/release/DreamLauncher
-          elif [[ "${{ runner.os }}" == "macOS" ]]; then
-            chmod +x scripts/compress-macos.sh
-            ./scripts/compress-macos.sh compress target/release/DreamLauncher
-          fi
-
-      - name: Package
-        shell: bash
+          if [[ "${{ runner.os }}" == "Windows" ]]; then upx --best --lzma target/release/DreamLauncher.exe
+          elif [[ "${{ runner.os }}" == "Linux" ]]; then upx --best --lzma target/release/DreamLauncher
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then chmod +x scripts/compress-macos.sh; ./scripts/compress-macos.sh compress target/release/DreamLauncher; fi
+      - shell: bash
         run: |
           mkdir -p dist
-          if [[ "${{ runner.os }}" == "Windows" ]]; then
-            cp target/release/DreamLauncher.exe dist/
-            powershell -Command "Compress-Archive -Path dist/DreamLauncher.exe -DestinationPath DreamLauncher-windows.zip"
-          elif [[ "${{ runner.os }}" == "macOS" ]]; then
-            chmod +x scripts/create_app_bundle.sh
-            ./scripts/create_app_bundle.sh
-            find "target/release/Dream Launcher.app" -exec xattr -d com.apple.quarantine {} \; 2>/dev/null || true
-            codesign --force --deep --sign - "target/release/Dream Launcher.app"
-            create-dmg \
-              --volname "Dream Launcher" \
-              --window-pos 200 120 \
-              --window-size 800 400 \
-              --icon-size 100 \
-              --icon "Dream Launcher.app" 200 190 \
-              --hide-extension "Dream Launcher.app" \
-              --app-drop-link 600 185 \
-              "DreamLauncher-macOS.dmg" \
-              "target/release/Dream Launcher.app" 2>/dev/null || \
-              hdiutil create -volname "Dream Launcher" -srcfolder "target/release/Dream Launcher.app" -ov -format UDZO "DreamLauncher-macOS.dmg"
-            codesign --force --sign - "DreamLauncher-macOS.dmg"
-          else
-            cp target/release/DreamLauncher dist/
-            zip -j DreamLauncher-linux.zip dist/DreamLauncher
-          fi
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+          if [[ "${{ runner.os }}" == "Windows" ]]; then cp target/release/DreamLauncher.exe dist/; powershell -Command "Compress-Archive -Path dist/DreamLauncher.exe -DestinationPath DreamLauncher-windows.zip"
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then chmod +x scripts/create_app_bundle.sh; ./scripts/create_app_bundle.sh; find "target/release/Dream Launcher.app" -exec xattr -d com.apple.quarantine {} \; 2>/dev/null || true; codesign --force --deep --sign - "target/release/Dream Launcher.app"; create-dmg --volname "Dream Launcher" --window-pos 200 120 --window-size 800 400 --icon-size 100 --icon "Dream Launcher.app" 200 190 --hide-extension "Dream Launcher.app" --app-drop-link 600 185 "DreamLauncher-macOS.dmg" "target/release/Dream Launcher.app" 2>/dev/null || hdiutil create -volname "Dream Launcher" -srcfolder "target/release/Dream Launcher.app" -ov -format UDZO "DreamLauncher-macOS.dmg"; codesign --force --sign - "DreamLauncher-macOS.dmg"
+          else cp target/release/DreamLauncher dist/; zip -j DreamLauncher-linux.zip dist/DreamLauncher; fi
+      - uses: actions/upload-artifact@v4
         with:
           name: DreamLauncher-${{ runner.os }}
           path: |

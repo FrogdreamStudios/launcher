@@ -1,4 +1,4 @@
-use crate::backend::utils::css_loader::CssLoader;
+use crate::backend::utils::css::main::ResourceLoader;
 use dioxus::prelude::*;
 
 #[derive(Clone, PartialEq)]
@@ -27,7 +27,7 @@ pub fn Chat(username: String) -> Element {
 
     rsx! {
         style {
-            dangerous_inner_html: CssLoader::get_chat()
+            dangerous_inner_html: "{ResourceLoader::get_chat_css()}"
         }
 
         div { class: "chat-container",

@@ -1,5 +1,6 @@
+use crate::backend::utils::launcher::paths::get_launcher_dir;
 use crate::{
-    backend::creeper::{launcher::MinecraftLauncher, models::VersionInfo},
+    backend::launcher::{launcher::MinecraftLauncher, models::VersionInfo},
     frontend::{
         components::minecraft_launcher::launch_minecraft, game_state::GameStatus,
         instances::main::INSTANCES,
@@ -349,7 +350,6 @@ async fn get_system_info() -> crate::utils::Result<String> {
 }
 
 fn get_instance_info(instance_id: u32) -> String {
-    use crate::backend::utils::paths::get_launcher_dir;
     use crate::frontend::instances::main::get_instance_directory;
 
     let mut info = String::new();

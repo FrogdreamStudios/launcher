@@ -1,5 +1,5 @@
 use crate::{
-    backend::utils::assets::AssetLoader,
+    backend::utils::css::main::ResourceLoader,
     frontend::{
         components::minecraft_launcher::launch_minecraft,
         game_state::GameStatus,
@@ -138,7 +138,7 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
                     class: "context-menu-button",
                     onclick: handle_run_click,
                     div { class: "context-menu-icon",
-                        img { src: AssetLoader::get_play() }
+                        img { src: ResourceLoader::get_play() }
                     }
                     div { class: "context-menu-text", "Run" }
                 }
@@ -147,7 +147,7 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
                     class: "context-menu-button",
                     onclick: handle_folder_click,
                     div { class: "context-menu-icon",
-                        img { src: AssetLoader::get_folder() }
+                        img { src: ResourceLoader::get_folder() }
                     }
                     div { class: "context-menu-text", "Folder" }
                 }
@@ -157,7 +157,7 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
                         class: "context-menu-button",
                         onclick: handle_change_click,
                         div { class: "context-menu-icon",
-                            img { src: AssetLoader::get_change() }
+                            img { src: ResourceLoader::get_change() }
                         }
                         div { class: "context-menu-text", "Change" }
                     }
@@ -166,7 +166,7 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
                         class: "context-menu-button",
                         onclick: handle_delete_click,
                         div { class: "context-menu-icon",
-                            img { src: AssetLoader::get_delete() }
+                            img { src: ResourceLoader::get_delete() }
                         }
                         div { class: "context-menu-text", "Delete" }
                     }
@@ -177,7 +177,7 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
                         class: "context-menu-button",
                         onclick: handle_debug_click,
                         div { class: "context-menu-icon",
-                            img { src: AssetLoader::get_debug() }
+                            img { src: ResourceLoader::get_debug() }
                         }
                         div { class: "context-menu-text", "Debug" }
                     }

@@ -1,4 +1,4 @@
-use crate::backend::utils::css_loader::CssLoader;
+use crate::backend::utils::css::main::ResourceLoader;
 use dioxus::prelude::*;
 
 #[component]
@@ -14,7 +14,7 @@ pub fn AuthLayout(children: Element) -> Element {
 
     rsx! {
         style {
-            dangerous_inner_html: CssLoader::get_combined_auth()
+            dangerous_inner_html: "{ResourceLoader::get_auth_css()}"
         }
 
         div {

@@ -1,4 +1,5 @@
-use crate::backend::utils::{assets::AssetLoader, css_loader::CssLoader, route::Route};
+use crate::backend::utils::app::main::Route;
+use crate::backend::utils::css::main::ResourceLoader;
 use crate::frontend::{
     components::{
         chat_sidebar::ChatSidebar,
@@ -84,7 +85,7 @@ pub fn Layout() -> Element {
 
     rsx! {
         style {
-            dangerous_inner_html: CssLoader::get_combined_main()
+            dangerous_inner_html: ResourceLoader::get_combined_main_css()
         }
 
         div {
@@ -135,22 +136,22 @@ pub fn Layout() -> Element {
 
                         // Last connection play buttons
                         div { class: "last-connection-play last-connection-play-1",
-                            img { src: AssetLoader::get_play(), class: "play-icon" }
+                            img { src: ResourceLoader::get_play(), class: "play-icon" }
                             div { class: "play-text", "Play" }
                         }
                         div { class: "last-connection-play last-connection-play-2",
-                            img { src: AssetLoader::get_play(), class: "play-icon" }
+                            img { src: ResourceLoader::get_play(), class: "play-icon" }
                             div { class: "play-text", "Play" }
                         }
                         div { class: "last-connection-play last-connection-play-3",
-                            img { src: AssetLoader::get_play(), class: "play-icon" }
+                            img { src: ResourceLoader::get_play(), class: "play-icon" }
                             div { class: "play-text", "Play" }
                         }
 
                         // Additional buttons
-                        img { src: AssetLoader::get_additional(), class: "additional-button additional-button-1" }
-                        img { src: AssetLoader::get_additional(), class: "additional-button additional-button-2" }
-                        img { src: AssetLoader::get_additional(), class: "additional-button additional-button-3" }
+                        img { src: ResourceLoader::get_additional(), class: "additional-button additional-button-1" }
+                        img { src: ResourceLoader::get_additional(), class: "additional-button additional-button-2" }
+                        img { src: ResourceLoader::get_additional(), class: "additional-button additional-button-3" }
 
                         div { class: "instances-title", "Instances" }
                         div { class: "instances-divider" }
@@ -288,7 +289,7 @@ pub fn Layout() -> Element {
 
                                     div {
                                         class: "instance-add-icon",
-                                        img { src: AssetLoader::get_plus() }
+                                        img { src: ResourceLoader::get_plus() }
                                     }
                                 }
                             }

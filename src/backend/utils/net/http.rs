@@ -20,7 +20,6 @@ pub struct Client {
 /// HTTP response.
 pub struct Response {
     status: u16,
-    headers: HashMap<String, String>,
     body: Vec<u8>,
 }
 
@@ -67,27 +66,19 @@ impl Response {
         StatusCode::from_u16(self.status)
     }
 
-    /// Get the content length from headers.
-    pub fn content_length(&self) -> Option<u64> {
-        self.headers
-            .get("content-length")
-            .or_else(|| self.headers.get("Content-Length"))
-            .and_then(|s| s.parse().ok())
-    }
-
     /// Deserialize the response body as JSON.
-    pub async fn json<T>(&self) -> Result<T>
+    pub fn json<T>(&self) -> Result<T>
     where
         T: serde::de::DeserializeOwned,
     {
         let text = String::from_utf8(self.body.clone())
-            .map_err(|e| simple_error!("Invalid UTF-8 in response: {}", e))?;
+            .map_err(|_e| simple_error!("Invalid UTF-8 in response: {e}"))?;
 
-        serde_json::from_str(&text).map_err(|e| simple_error!("JSON parse error: {}", e))
+        serde_json::from_str(&text).map_err(|_e| simple_error!("JSON parse error: {e}"))
     }
 
     /// Get the next chunk of data (for streaming).
-    pub async fn chunk(&mut self) -> Result<Option<Vec<u8>>> {
+    pub fn chunk(&mut self) -> Result<Option<Vec<u8>>> {
         // Return all remaining data as one chunk for simplicity
         // In a real streaming implementation, this would read chunks from the network
         if self.body.is_empty() {
@@ -421,11 +412,7 @@ fn parse_response(data: Vec<u8>) -> Result<Response> {
         }
     }
 
-    Ok(Response {
-        status,
-        headers,
-        body,
-    })
+    Ok(Response { status, body })
 }
 
 /// Find the end of HTTP headers in the response data.

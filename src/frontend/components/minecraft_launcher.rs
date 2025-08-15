@@ -1,4 +1,4 @@
-use crate::{backend::creeper::launcher::MinecraftLauncher, frontend::game_state::GameStatus};
+use crate::{backend::launcher::launcher::MinecraftLauncher, frontend::game_state::GameStatus};
 use crate::{log_error, log_info, log_warn, simple_error};
 use dioxus::prelude::*;
 
