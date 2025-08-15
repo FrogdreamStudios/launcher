@@ -22,7 +22,7 @@ impl LogLevel {
         }
     }
 
-    fn as_str(self) -> &'static str {
+    const fn as_str(self) -> &'static str {
         match self {
             Self::Error => "ERROR",
             Self::Warn => "WARN",
@@ -42,11 +42,7 @@ pub fn init_from_env() {
     let level = std::env::var("RUST_LOG")
         .ok()
         .and_then(|s| LogLevel::from_str(&s))
-        .unwrap_or(if cfg!(debug_assertions) {
-            LogLevel::Debug
-        } else {
-            LogLevel::Info
-        });
+        .unwrap_or(LogLevel::Warn);
     init(level);
 }
 
@@ -84,6 +80,8 @@ macro_rules! log_info {
 #[macro_export]
 macro_rules! log_debug {
     ($($arg:tt)*) => {
-        $crate::utils::logging::log($crate::utils::logging::LogLevel::Debug, &format!($($arg)*))
+        if cfg!(debug_assertions) {
+            $crate::utils::logging::log($crate::utils::logging::LogLevel::Debug, &format!($($arg)*))
+        }
     };
 }

@@ -32,7 +32,7 @@ pub trait Digest {
 }
 
 impl Sha1 {
-    fn left_rotate(x: u32, n: u32) -> u32 {
+    const fn left_rotate(x: u32, n: u32) -> u32 {
         x.rotate_left(n)
     }
 

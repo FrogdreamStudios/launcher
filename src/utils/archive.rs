@@ -4,7 +4,7 @@ use crate::utils::{Error, Result};
 use std::path::Path;
 use tokio::process::Command;
 
-/// Extract a ZIP archive using system unzip command.
+/// Extract a ZIP archive using the system unzip command.
 pub async fn extract_zip<P: AsRef<Path>>(archive_path: P, extract_path: P) -> Result<()> {
     let archive_path = archive_path.as_ref();
     let extract_path = extract_path.as_ref();
@@ -63,7 +63,7 @@ pub async fn extract_zip<P: AsRef<Path>>(archive_path: P, extract_path: P) -> Re
     }
 }
 
-/// Extract a TAR.GZ archive using system tar command.
+/// Extract a TAR.GZ archive using the system tar command.
 pub async fn extract_tar_gz<P: AsRef<Path>>(archive_path: P, extract_path: P) -> Result<()> {
     let archive_path = archive_path.as_ref();
     let extract_path = extract_path.as_ref();
@@ -109,6 +109,6 @@ async fn run_command(cmd: &str, args: &[&str]) -> Result<()> {
     if output.status.success() {
         Ok(())
     } else {
-        Err(Error::new(format!("Command {} failed", cmd)))
+        Err(Error::new(format!("Command {cmd} failed")))
     }
 }

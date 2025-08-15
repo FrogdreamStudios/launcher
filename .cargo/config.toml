@@ -1,3 +1,7 @@
+# This is a Cargo configuration file that sets up various aliases and configurations
+# for building, testing, and linting.
+
+# Aliases for common commands.
 [alias]
 dev = "run"
 check-all = "clippy --all-targets --all-features -- -D warnings"
@@ -6,22 +10,21 @@ lint-fix = "clippy --all-targets --all-features --fix"
 fmt-check = "fmt --all -- --check"
 test-all = "test --all-features"
 
-# Build aliases
+# Build aliases.
 build-release = "build --release"
 build-dev = "build"
-build-static = "build --release"
-build-ultra = "build --profile ultra"
 
-# Clean aliases
+# Clean aliases.
 clean-all = "clean"
 clean-target = ["clean", "--target-dir", "target"]
 
-# Clippy with different levels
+# Clippy with different levels.
+# Please run strict checks before submitting any code to the repository.
 clippy-strict = "clippy --all-targets --all-features -- -D warnings -D clippy::all"
 clippy-pedantic = "clippy --all-targets --all-features -- -W clippy::pedantic"
 clippy-nursery = "clippy --all-targets --all-features -- -W clippy::nursery"
 
-# Combined commands
+# Combined commands.
 check-format = ["fmt", "--all", "--", "--check"]
 pre-commit = [
     "fmt",
@@ -34,20 +37,15 @@ pre-commit = [
     "-D",
     "warnings",
 ]
-# macOS compression alias
-# cargo macos-compress - run: ./scripts/compress-macos.sh build
 
-# Cross-platform builds
-build-linux = "build --release --target x86_64-unknown-linux-gnu"
-build-windows = "build --release --target x86_64-pc-windows-gnu"
-build-macos = "build --release --target x86_64-apple-darwin"
-
+# Configuration for the build process.
 [build]
 rustflags = ["-C", "target-cpu=native"]
 
+# Target-specific configurations.
 [target.'cfg(target_os = "macos")']
 rustflags = ["-C", "link-arg=-Wl,-rpath,@loader_path"]
 
-
+# Environment variables for the build process.
 [env]
 RUST_LOG = "info"

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Create a macOS app bundle for the Dream Launcher application.
+
 set -e
 
 APP_NAME="Dream Launcher"
@@ -7,7 +9,7 @@ BUNDLE_ID="com.frogdream.dreamlauncher"
 EXECUTABLE_NAME="DreamLauncher"
 BUILD_TYPE="release"
 
-# Check if custom binary path is provided
+# Check if custom binary path is provided.
 if [[ -n "$1" && "$1" != "--debug" && "$1" != "-d" ]]; then
     EXECUTABLE_PATH="$1"
     # Extract build type from path for app bundle location
@@ -26,7 +28,8 @@ else
     [[ "$1" == "--debug" || "$1" == "-d" ]] && BUILD_TYPE="debug"
     EXECUTABLE_PATH="target/$BUILD_TYPE/$EXECUTABLE_NAME"
 fi
-# Set app bundle path based on executable path
+
+# Set app bundle path based on executable path.
 if [[ "$EXECUTABLE_PATH" == target/*/release/* || "$EXECUTABLE_PATH" == target/*/debug/* ]]; then
     # Cross-compilation target
     TARGET_DIR=$(dirname "$EXECUTABLE_PATH")
@@ -73,6 +76,7 @@ cat > "$APP_PATH/Contents/Info.plist" << EOF
 </plist>
 EOF
 
+# Copy app icon if it exists.
 if [[ -f "assets/icons/app_icon.icns" ]]; then
     cp "assets/icons/app_icon.icns" "$APP_PATH/Contents/Resources/"
     plutil -insert CFBundleIconFile -string "app_icon.icns" "$APP_PATH/Contents/Info.plist"

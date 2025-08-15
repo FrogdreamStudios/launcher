@@ -1,9 +1,5 @@
-pub mod auth_layout;
-pub mod chat_sidebar;
-pub mod context_menu;
-pub mod debug_window;
+//! Frontend UI components organized by functionality.
+
+pub mod common;
+pub mod launcher;
 pub mod layout;
-pub mod minecraft_launcher;
-pub mod navigation;
-pub mod news;
-pub mod standalone_logo;

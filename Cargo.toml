@@ -26,6 +26,7 @@ tokio = { version = "1.47.1", features = [
 ], default-features = false }
 native-tls = "0.2.14"
 tokio-native-tls = "0.3.1"
+base64 = "0.22.1"
 
 [features]
 default = ["desktop"]
@@ -35,8 +36,6 @@ minimal = []
 
 [profile.dev]
 incremental = true
-debug = 1
-opt-level = 1
 
 [profile.release]
 opt-level = "z"
@@ -53,31 +52,3 @@ split-debuginfo = "off"
 
 [profile.release.package."*"]
 opt-level = "z"
-
-[lints.clippy]
-correctness = { level = "deny", priority = -1 }
-suspicious = { level = "deny", priority = -1 }
-perf = { level = "deny", priority = -1 }
-complexity = { level = "deny", priority = -1 }
-style = { level = "warn", priority = -1 }
-pedantic = { level = "warn", priority = -1 }
-nursery = { level = "warn", priority = -1 }
-
-unwrap_used = "deny"
-expect_used = "deny"
-panic = "deny"
-todo = "deny"
-large_stack_arrays = "deny"
-large_types_passed_by_value = "deny"
-box_collection = "deny"
-vec_box = "deny"
-rc_buffer = "deny"
-rc_mutex = "deny"
-redundant_clone = "deny"
-unnecessary_to_owned = "deny"
-unnecessary_box_returns = "deny"
-needless_collect = "deny"
-needless_borrow = "deny"
-needless_pass_by_value = "deny"
-implicit_clone = "deny"
-clone_on_copy = "deny"
