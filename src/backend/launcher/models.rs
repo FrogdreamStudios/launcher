@@ -177,11 +177,6 @@ impl VersionManifest {
     /// URL to download the official version manifest.
     pub const MANIFEST_URL: &'static str =
         "https://launchermeta.mojang.com/mc/game/version_manifest.json";
-
-    /// Finds a version by its ID.
-    pub fn get_version(&self, version_id: &str) -> Option<&VersionInfo> {
-        self.versions.iter().find(|v| v.id == version_id)
-    }
 }
 
 impl Rule {

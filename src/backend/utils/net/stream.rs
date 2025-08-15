@@ -18,7 +18,7 @@ impl ChunkStream {
     }
 
     /// Get the next chunk asynchronously.
-    pub async fn next(&mut self) -> Option<Result<Vec<u8>, String>> {
+    pub fn next(&mut self) -> Option<Result<Vec<u8>, String>> {
         if self.finished {
             return None;
         }

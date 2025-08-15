@@ -495,13 +495,12 @@ impl MinecraftLauncher {
                         && let Some(path) = &native_artifact.path
                     {
                         let native_path = get_library_path(&self.game_dir, path);
-                        if native_path.exists() {
-                            if let Err(e) =
+                        if native_path.exists()
+                            && let Err(e) =
                                 crate::utils::extract_zip(&native_path, &natives_dir).await
                             {
                                 log_warn!("Failed to extract {}: {}", native_path.display(), e);
                             }
-                        }
                         break;
                     }
                 }
@@ -602,20 +601,17 @@ impl MinecraftLauncher {
         let version_info = String::from_utf8_lossy(&output.stderr);
 
         for line in version_info.lines() {
-            if line.contains("version") {
-                if let Some(start) = line.find('"') {
-                    if let Some(end) = line[start + 1..].find('"') {
+            if line.contains("version")
+                && let Some(start) = line.find('"')
+                    && let Some(end) = line[start + 1..].find('"') {
                         let version_str = &line[start + 1..start + 1 + end];
                         let parts: Vec<&str> = version_str.split('.').collect();
-                        if let Some(first_part) = parts.first() {
-                            if let Ok(major) = first_part.parse::<u8>() {
+                        if let Some(first_part) = parts.first()
+                            && let Ok(major) = first_part.parse::<u8>() {
                                 return Ok(major);
                             }
                         }
                     }
-                }
-            }
-        }
 
         Ok(8) // Default fallback
     }

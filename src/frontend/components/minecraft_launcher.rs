@@ -21,7 +21,7 @@ pub fn launch_minecraft(game_status: Signal<GameStatus>, version: &str, instance
                 let rt = tokio::runtime::Builder::new_current_thread()
                     .enable_all()
                     .build()
-                    .map_err(|e| format!("Failed to create runtime: {}", e))?;
+                    .map_err(|e| format!("Failed to create runtime: {e}"))?;
 
                 rt.block_on(async { starter::launch_minecraft(version_owned, instance_id).await })
             }

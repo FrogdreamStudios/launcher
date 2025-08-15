@@ -20,8 +20,8 @@ pub fn Auth() -> Element {
             && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
     };
 
-    let logo = ResourceLoader::get_logo();
-    let microsoft = ResourceLoader::get_microsoft();
+    let logo = ResourceLoader::get_asset("logo");
+    let microsoft = ResourceLoader::get_asset("microsoft");
 
     // Function to handle keypress events
     let on_keypress = move |e: KeyboardEvent| {

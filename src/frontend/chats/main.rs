@@ -27,7 +27,7 @@ pub fn Chat(username: String) -> Element {
 
     rsx! {
         style {
-            dangerous_inner_html: "{ResourceLoader::get_chat_css()}"
+            dangerous_inner_html: ResourceLoader::get_css("chat")
         }
 
         div { class: "chat-container",

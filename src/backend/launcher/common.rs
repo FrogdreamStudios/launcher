@@ -7,6 +7,7 @@ use crate::backend::utils::system::os::{
 use crate::log_info;
 use crate::utils::Result;
 use std::{collections::HashMap, path::PathBuf};
+use std::path::Path;
 
 /// Platform information cached for downloads.
 #[derive(Debug, Clone)]
@@ -78,19 +79,14 @@ impl SystemInfo {
 
         // Log memory information if available
         #[cfg(target_os = "macos")]
-        {
             if let Ok(output) = std::process::Command::new("sysctl")
                 .args(["-n", "hw.memsize"])
                 .output()
-            {
-                if let Ok(mem_str) = String::from_utf8(output.stdout) {
-                    if let Ok(mem_bytes) = mem_str.trim().parse::<u64>() {
+                && let Ok(mem_str) = String::from_utf8(output.stdout)
+                    && let Ok(mem_bytes) = mem_str.trim().parse::<u64>() {
                         let mem_gb = mem_bytes / 1024 / 1024 / 1024;
-                        log_info!("Total Memory: {} GB", mem_gb);
+                        log_info!("Total Memory: {mem_gb} GB");
                     }
-                }
-            }
-        }
 
         #[cfg(target_os = "linux")]
         {
@@ -109,8 +105,8 @@ impl SystemInfo {
     pub fn check_existing_processes() {
         #[cfg(not(target_os = "windows"))]
         {
-            if let Ok(output) = std::process::Command::new("ps").args(["aux"]).output() {
-                if let Ok(ps_output) = String::from_utf8(output.stdout) {
+            if let Ok(output) = std::process::Command::new("ps").args(["aux"]).output()
+                && let Ok(ps_output) = String::from_utf8(output.stdout) {
                     let java_processes: Vec<&str> = ps_output
                         .lines()
                         .filter(|line| line.contains("java") || line.contains("minecraft"))
@@ -126,7 +122,6 @@ impl SystemInfo {
             }
         }
     }
-}
 
 /// File validation utilities.
 pub struct FileValidator;
@@ -134,7 +129,7 @@ pub struct FileValidator;
 impl FileValidator {
     /// Verify that critical game files exist.
     pub fn verify_critical_files(
-        game_dir: &PathBuf,
+        game_dir: &Path,
         version_id: &str,
         library_paths: &[PathBuf],
     ) -> Result<()> {

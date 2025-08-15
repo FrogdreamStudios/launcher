@@ -4,7 +4,6 @@ use dioxus::prelude::*;
 pub enum GameStatus {
     Idle,
     Launching,
-    Running,
 }
 
 impl Default for GameStatus {
@@ -15,7 +14,7 @@ impl Default for GameStatus {
 
 impl GameStatus {
     pub const fn is_active(&self) -> bool {
-        matches!(self, GameStatus::Launching | GameStatus::Running)
+        matches!(self, GameStatus::Launching)
     }
 }
 

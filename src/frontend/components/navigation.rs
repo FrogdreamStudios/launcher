@@ -27,11 +27,11 @@ pub fn Navigation(animations_played: bool) -> Element {
 
     let active_tab = current_tab;
 
-    let home = ResourceLoader::get_home();
-    let packs = ResourceLoader::get_packs();
-    let settings = ResourceLoader::get_settings();
-    let cloud = ResourceLoader::get_cloud();
-    let add = ResourceLoader::get_add();
+    let home = ResourceLoader::get_asset("home");
+    let packs = ResourceLoader::get_asset("packs");
+    let settings = ResourceLoader::get_asset("settings");
+    let cloud = ResourceLoader::get_asset("cloud");
+    let add = ResourceLoader::get_asset("add");
 
     rsx! {
         nav { class: if !animations_played { "navigation nav-animate" } else { "navigation" },

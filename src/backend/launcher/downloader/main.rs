@@ -60,7 +60,7 @@ impl HttpDownloader {
         let mut stream = response.chunk_stream();
         let mut hasher = expected_sha1.map(|_| Sha1::new());
 
-        while let Some(chunk_result) = stream.next().await {
+        while let Some(chunk_result) = stream.next() {
             let chunk = chunk_result?;
             file.write_all(&chunk).await?;
             if let Some(ref mut h) = hasher {

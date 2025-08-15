@@ -136,22 +136,22 @@ pub fn Layout() -> Element {
 
                         // Last connection play buttons
                         div { class: "last-connection-play last-connection-play-1",
-                            img { src: ResourceLoader::get_play(), class: "play-icon" }
+                            img { src: ResourceLoader::get_asset("play"), class: "play-icon" }
                             div { class: "play-text", "Play" }
                         }
                         div { class: "last-connection-play last-connection-play-2",
-                            img { src: ResourceLoader::get_play(), class: "play-icon" }
+                            img { src: ResourceLoader::get_asset("play"), class: "play-icon" }
                             div { class: "play-text", "Play" }
                         }
                         div { class: "last-connection-play last-connection-play-3",
-                            img { src: ResourceLoader::get_play(), class: "play-icon" }
+                            img { src: ResourceLoader::get_asset("play"), class: "play-icon" }
                             div { class: "play-text", "Play" }
                         }
 
                         // Additional buttons
-                        img { src: ResourceLoader::get_additional(), class: "additional-button additional-button-1" }
-                        img { src: ResourceLoader::get_additional(), class: "additional-button additional-button-2" }
-                        img { src: ResourceLoader::get_additional(), class: "additional-button additional-button-3" }
+                        img { src: ResourceLoader::get_asset("additional"), class: "additional-button additional-button-1" }
+                        img { src: ResourceLoader::get_asset("additional"), class: "additional-button additional-button-2" }
+                        img { src: ResourceLoader::get_asset("additional"), class: "additional-button additional-button-3" }
 
                         div { class: "instances-title", "Instances" }
                         div { class: "instances-divider" }
@@ -289,7 +289,7 @@ pub fn Layout() -> Element {
 
                                     div {
                                         class: "instance-add-icon",
-                                        img { src: ResourceLoader::get_plus() }
+                                        img { src: ResourceLoader::get_asset("plus") }
                                     }
                                 }
                             }

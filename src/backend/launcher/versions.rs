@@ -7,6 +7,7 @@ use super::{
 use crate::utils::Result;
 use crate::{log_info, simple_error};
 use std::{path::PathBuf, sync::Arc};
+use std::path::Path;
 
 /// Version manager for handling Minecraft version operations.
 pub struct VersionManager {
@@ -90,7 +91,7 @@ impl VersionManager {
     }
 
     /// Checks if a version is ready for offline use.
-    pub fn is_version_ready_offline(&self, game_dir: &PathBuf, version_id: &str) -> Result<bool> {
+    pub fn is_version_ready_offline(&self, game_dir: &Path, version_id: &str) -> Result<bool> {
         let version_dir = game_dir.join("versions").join(version_id);
         let jar_file = version_dir.join(format!("{version_id}.jar"));
         let json_file = version_dir.join(format!("{version_id}.json"));

@@ -75,17 +75,15 @@ impl JavaManager {
         }
 
         // Check system Java (skip for x86_64 requirement as system Java might be ARM64)
-        if !needs_x86_64 {
-            if let Ok(Some(mut system_java)) = JavaRuntime::detect_system_java() {
-                if system_java.is_compatible_with_minecraft(required_java) {
+        if !needs_x86_64
+            && let Ok(Some(mut system_java)) = JavaRuntime::detect_system_java()
+                && system_java.is_compatible_with_minecraft(required_java) {
                     log_info!("Using system Java {} runtime", system_java.major_version);
                     if system_java.path.as_os_str().is_empty() {
                         system_java.path = crate::utils::which("java").unwrap_or_else(|_| "java".into());
                     }
                     return Ok((system_java.get_executable_path(), false));
                 }
-            }
-        }
 
         // Java installation
         let arch = if needs_x86_64 { "x64" } else { AzulPackage::get_arch_name() };
@@ -94,14 +92,13 @@ impl JavaManager {
             Err(e) => {
                 log_warn!("Failed to install Java {required_java} ({arch}): {e}");
                 // Fallback to system Java
-                if let Ok(Some(mut system_java)) = JavaRuntime::detect_system_java() {
-                    if system_java.is_compatible_with_minecraft(required_java) {
+                if let Ok(Some(mut system_java)) = JavaRuntime::detect_system_java()
+                    && system_java.is_compatible_with_minecraft(required_java) {
                         log_info!("Using system Java {} as fallback", system_java.major_version);
                         if system_java.path.as_os_str().is_empty() {
                             system_java.path = crate::utils::which("java").unwrap_or_else(|_| "java".into());
                         }
                         return Ok((system_java.get_executable_path(), false));
-                    }
                 }
                 Err(simple_error!(
                     "Failed to install Java {required_java} ({arch}) and no compatible system Java found"
@@ -223,12 +220,12 @@ impl JavaManager {
         let version_lower = version.to_lowercase();
         if version_lower.contains('w')
             && version_lower.len() >= 5
-            && version_lower.get(0..2).and_then(|s| s.parse::<u32>().ok()).map_or(false, |year| year >= 21)
+            && version_lower.get(0..2).and_then(|s| s.parse::<u32>().ok()).is_some_and(|year| year >= 21)
         {
             return true;
         }
         if (version_lower.contains("-pre") || version_lower.contains("-rc"))
-            && Self::parse_minecraft_version(version_lower.split('-').next().unwrap_or(version)).map_or(false, |parsed| parsed >= (1, 19, 0))
+            && Self::parse_minecraft_version(version_lower.split('-').next().unwrap_or(version)).is_ok_and(|parsed| parsed >= (1, 19, 0))
         {
             return true;
         }
@@ -262,11 +259,11 @@ impl JavaManager {
         while let Some(entry) = entries.next_entry().await? {
             let path = entry.path();
             if path.is_dir()
-                && path.file_name().and_then(|name| name.to_str()).map_or(false, |name| name.starts_with("java-"))
+                && path.file_name().and_then(|name| name.to_str()).is_some_and(|name| name.starts_with("java-"))
                 && Self::find_java_executable(&path).and_then(|exe| JavaRuntime::from_path(&exe)).ok().flatten().is_some()
             {
                 let runtime = JavaRuntime::from_path(&Self::find_java_executable(&path)?)?.unwrap();
-                let is_x86_64 = path.file_name().and_then(|name| name.to_str()).map_or(false, |name| name.contains("-x64"));
+                let is_x86_64 = path.file_name().and_then(|name| name.to_str()).is_some_and(|name| name.contains("-x64"));
                 let major_version = runtime.major_version;
                 log_debug!(
                     "Found installed {} Java {} runtime at {:?}",
@@ -311,7 +308,7 @@ impl JavaManager {
                 java_version: vec![java_version],
                 os: os.to_string(),
                 arch: arch.to_string(),
-                download_url: format!("{}/{}", base_url, file),
+                download_url: format!("{base_url}/{file}"),
                 sha256_hash: String::new(),
                 size,
             }
@@ -372,11 +369,10 @@ impl JavaManager {
             let path = entry.path();
             if path.is_file() && path.file_name().and_then(|n| n.to_str()) == Some(executable_name) {
                 return Ok(path);
-            } else if path.is_dir() {
-                if let Ok(result) = Self::find_java_recursive(&path, executable_name) {
+            } else if path.is_dir()
+                && let Ok(result) = Self::find_java_recursive(&path, executable_name) {
                     return Ok(result);
                 }
-            }
         }
         Err(simple_error!(
             "Java executable not found in {}",
@@ -399,7 +395,7 @@ impl JavaManager {
         } else {
             self.get_compatible_runtime(required_java).is_some()
                 || JavaRuntime::detect_system_java()
-                .map(|opt| opt.map_or(false, |sys| sys.is_compatible_with_minecraft(required_java)))
+                .map(|opt| opt.is_some_and(|sys| sys.is_compatible_with_minecraft(required_java)))
                 .unwrap_or(false)
         }
     }

@@ -109,6 +109,6 @@ async fn run_command(cmd: &str, args: &[&str]) -> Result<()> {
     if output.status.success() {
         Ok(())
     } else {
-        Err(Error::new(format!("Command {} failed", cmd)))
+        Err(Error::new(format!("Command {cmd} failed")))
     }
 }

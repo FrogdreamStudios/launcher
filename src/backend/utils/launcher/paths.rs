@@ -112,14 +112,6 @@ pub fn get_version_jar_path(game_dir: &Path, version: &str) -> PathBuf {
         .join(format!("{version}.jar"))
 }
 
-/// Gets the JSON file path for a specific Minecraft version.
-#[inline]
-pub fn get_version_json_path(game_dir: &Path, version: &str) -> PathBuf {
-    get_versions_dir(game_dir)
-        .join(version)
-        .join(format!("{version}.json"))
-}
-
 /// Gets the asset objects directory within the shared assets' directory.
 #[inline]
 pub fn get_asset_objects_dir() -> Result<PathBuf> {

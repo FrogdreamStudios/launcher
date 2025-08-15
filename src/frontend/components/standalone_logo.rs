@@ -3,7 +3,7 @@ use dioxus::prelude::*;
 
 #[component]
 pub fn StandaloneLogo(animations_played: bool) -> Element {
-    let logo = ResourceLoader::get_logo();
+    let logo = ResourceLoader::get_asset("logo");
 
     rsx! {
         div { class: if !animations_played { "standalone-logo-wrapper logo-animate" } else { "standalone-logo-wrapper" },
