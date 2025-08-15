@@ -1,4 +1,4 @@
-mod interractions;
+pub mod interractions;
 pub mod main;
 pub mod manager;
 mod messages;

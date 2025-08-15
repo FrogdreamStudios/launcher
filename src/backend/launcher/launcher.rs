@@ -132,43 +132,14 @@ impl MinecraftLauncher {
 
     /// Installs Java for a specific version.
     pub async fn install_java(&mut self, version: &str) -> Result<()> {
-        let required_java =
-            crate::backend::launcher::java::runtime::JavaRuntime::get_required_java_version(
-                version,
-            );
-
-        // Try to install native Java first
-        match self.java_manager.install_java_runtime(required_java).await {
-            Ok(()) => Ok(()),
+        match self.java_manager.get_java_for_version(version).await {
+            Ok(_) => {
+                log_info!("Java installed successfully for Minecraft version {version}");
+                Ok(())
+            }
             Err(e) => {
-                // For modern versions requiring Java 21+, try x86_64 as a fallback
-                if required_java >= 21 {
-                    log_warn!("Native Java {required_java} installation failed: {e}");
-                    log_warn!("Attempting to install x86_64 Java {required_java} as fallback...");
-
-                    match self
-                        .java_manager
-                        .install_x86_64_java_runtime(required_java)
-                        .await
-                    {
-                        Ok(()) => {
-                            log_info!(
-                                "Successfully installed x86_64 Java {required_java} as fallback"
-                            );
-                            Ok(())
-                        }
-                        Err(x86_err) => {
-                            log_error!("Both native and x86_64 Java installation failed");
-                            log_error!("Native error: {e}");
-                            log_error!("x86_64 error: {x86_err}");
-                            Err(simple_error!(
-                                "Failed to install Java {required_java}: native installation failed ({e}), x86_64 fallback also failed ({x86_err})"
-                            ))
-                        }
-                    }
-                } else {
-                    Err(e)
-                }
+                log_error!("Failed to install Java for version {version}: {e}");
+                Err(e)
             }
         }
     }
@@ -255,9 +226,7 @@ impl MinecraftLauncher {
 
         // Verify Java executable exists
         if !java_path.exists() {
-            return Err(simple_error!(
-                "Java executable not found at: {java_path:?}"
-            ));
+            return Err(simple_error!("Java executable not found at: {java_path:?}"));
         }
 
         // Test Java version
@@ -332,7 +301,7 @@ impl MinecraftLauncher {
 
         match status {
             Ok(result) => {
-                let status = result.map_err(|e| simple_error!("Join error: {e}"))??;
+                let status = result.map_err(|_e| simple_error!("Join error"))??;
                 if status.success() {
                     println!("Minecraft exited successfully");
                 } else {
@@ -628,7 +597,7 @@ impl MinecraftLauncher {
         let output = std::process::Command::new(java_path)
             .args(["-version"])
             .output()
-            .map_err(|e| simple_error!("Failed to run Java: {e}"))?;
+            .map_err(|_e| simple_error!("Failed to run Java"))?;
 
         let version_info = String::from_utf8_lossy(&output.stderr);
 
