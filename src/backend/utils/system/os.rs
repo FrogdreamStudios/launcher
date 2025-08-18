@@ -22,15 +22,14 @@ pub fn get_minecraft_arch() -> &'static str {
 
 /// Get OS-specific features for rule evaluation.
 pub fn get_os_features() -> HashMap<String, bool> {
-    let mut features = HashMap::from([
+    HashMap::from([
         ("is_demo_user".to_string(), false),
         ("has_custom_resolution".to_string(), false),
         (
             "has_quickplay_support".to_string(),
             matches!(std::env::consts::OS, "windows" | "macos"),
         ),
-    ]);
-    features
+    ])
 }
 
 /// Get all possible native classifiers for the current platform.
