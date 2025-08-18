@@ -5,7 +5,7 @@ use crate::frontend::{
     components::{
         common::{News, StandaloneLogo},
         launcher::{ContextMenu, DebugWindow, launch_minecraft},
-        layout::{ChatSidebar, Navigation},
+        layout::Navigation,
     },
     services::instances::main::InstanceManager,
     states::{GameStatus, use_game_state},
@@ -100,7 +100,9 @@ pub fn Layout() -> Element {
             Navigation { animations_played: animations_played() }
 
             div { class: if show_ui() && !animations_played() { "main-layout main-layout-animate" } else { "main-layout" },
-                ChatSidebar { animations_played: animations_played() }
+
+                // Temporarily hidden
+                // ChatSidebar { animations_played: animations_played() }
 
                 main { class: "content",
                     Outlet::<Route> {}
@@ -294,14 +296,15 @@ pub fn Layout() -> Element {
                     }
                 }
 
-                // Temporary
+                // Temporarily hidden
                 /*
                 div {
                     class: if !animations_played() { "play-together play-animate" } else { "play-together" }
                 }
                 */
 
-                // Temporary
+                // Temporarily hidden
+                /*
                 div {
                     style: "
                         position: absolute;
@@ -319,6 +322,7 @@ pub fn Layout() -> Element {
                     ",
                     "No shared connections."
                 }
+                */
 
                 News { animations_played: animations_played() }
             }

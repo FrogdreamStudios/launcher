@@ -28,9 +28,9 @@ pub fn Navigation(animations_played: bool) -> Element {
     let active_tab = current_tab;
 
     let home = ResourceLoader::get_asset("home");
-    let packs = ResourceLoader::get_asset("packs");
+    // let packs = ResourceLoader::get_asset("packs");
     let settings = ResourceLoader::get_asset("settings");
-    let cloud = ResourceLoader::get_asset("cloud");
+    // let cloud = ResourceLoader::get_asset("cloud");
     let add = ResourceLoader::get_asset("add");
 
     rsx! {
@@ -42,26 +42,32 @@ pub fn Navigation(animations_played: bool) -> Element {
                     img { class: "nav-icon", src: "{home}", alt: "Home" }
                     span { class: "nav-text", "Home" }
                 }
+                // Temporarily hidden
+                /*
                 li {
                     class: if active_tab == "Packs" { "nav-item active nav-item-2" } else { "nav-item nav-item-2" },
                     onclick: move |_| { nav.push("/packs"); },
                     img { class: "nav-icon", src: "{packs}", alt: "Mods & Packs" }
                     span { class: "nav-text", "Mods & Packs" }
                 }
+                */
                 li {
-                    class: if active_tab == "Settings" { "nav-item active nav-item-3" } else { "nav-item nav-item-3" },
+                    class: if active_tab == "Settings" { "nav-item active nav-item-2" } else { "nav-item nav-item-2" },
                     onclick: move |_| { nav.push("/settings"); },
                     img { class: "nav-icon", src: "{settings}", alt: "Settings" }
                     span { class: "nav-text", "Settings" }
                 }
+                // Temporarily hidden
+                /*
                 li {
                     class: if active_tab == "Cloud" { "nav-item active nav-item-4" } else { "nav-item nav-item-4" },
                     onclick: move |_| { nav.push("/cloud"); },
                     img { class: "nav-icon", src: "{cloud}", alt: "Cloud" }
                     span { class: "nav-text", "Cloud" }
                 }
+                */
                 li {
-                    class: if active_tab == "New" { "nav-item active nav-item-5" } else { "nav-item nav-item-5" },
+                    class: if active_tab == "New" { "nav-item active nav-item-3" } else { "nav-item nav-item-3" },
                     onclick: move |_| { nav.push("/new"); },
                     img { class: "nav-icon", src: "{add}", alt: "New tab" }
                 }

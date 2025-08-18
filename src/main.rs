@@ -1,3 +1,5 @@
+//! Entry point of the application.
+
 mod backend;
 mod frontend;
 mod utils;
@@ -13,6 +15,7 @@ use tokio::runtime::Runtime;
 
 static RUNTIME: OnceLock<Runtime> = OnceLock::new();
 
+/// Main function for starting the application.
 fn main() {
     // Logging
     utils::logging::init_from_env();
@@ -33,7 +36,9 @@ fn main() {
     });
 
     // Dioxus
-    let size = LogicalSize::new(1280.0, 832.0);
+    // Original size of the application is 1280x832, but we will change it in the future
+    // to 1280x832
+    let size = LogicalSize::new(1056.0, 685.0);
 
     let config = Config::default()
         .with_window(
@@ -48,6 +53,7 @@ fn main() {
     LaunchBuilder::new().with_cfg(config).launch(AppRoot);
 }
 
+/// Set icon on macOS.
 #[cfg(target_os = "macos")]
 fn set_macos_icon() {
     if let Ok(exe_path) = std::env::current_exe() {
@@ -63,6 +69,9 @@ fn set_macos_icon() {
     }
 }
 
+/// Root component of the application.
+/// This component initializes the application state and provides context for authentication.
+/// If a user is authenticated, go to the main page.
 #[component]
 fn AppRoot() -> Element {
     let is_authenticated = use_signal(|| false);
