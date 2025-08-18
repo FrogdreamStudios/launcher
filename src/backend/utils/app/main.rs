@@ -2,6 +2,7 @@
 
 use crate::frontend::pages::auth::Auth;
 use crate::frontend::pages::main::main::Main;
+use crate::frontend::pages::settings::Settings as SettingsPage;
 use crate::frontend::services::chats::main::Chat;
 
 use dioxus::prelude::*;
@@ -19,7 +20,7 @@ pub fn Packs() -> Element {
 
 #[component]
 pub fn Settings() -> Element {
-    rsx! { div {} }
+    rsx! { SettingsPage {} }
 }
 
 #[component]

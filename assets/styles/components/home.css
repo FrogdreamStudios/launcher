@@ -61,10 +61,10 @@
     font-family: var(--font-bold);
 }
 .last-connections-title {
-    top: 32px;
+    top: 26px;
 }
 .instances-title {
-    top: 344px;
+    top: 338px;
 }
 
 .last-connections-divider,
@@ -75,12 +75,12 @@
     border-radius: var(--divider-radius);
 }
 .last-connections-divider {
-    top: 45px;
+    top: 42px;
     left: 252px;
     width: 452px;
 }
 .instances-divider {
-    top: 359px;
+    top: 353px;
     left: 170px;
     width: 534px;
 }
@@ -96,13 +96,13 @@
     transition: filter 0.25s;
 }
 .connection-card-1 {
-    top: 85px;
+    top: 79px;
 }
 .connection-card-2 {
-    top: 166px;
+    top: 160px;
 }
 .connection-card-3 {
-    top: 247px;
+    top: 241px;
 }
 
 .instance-card,
@@ -150,7 +150,7 @@
 
 .instances-container {
     position: absolute;
-    top: 397px;
+    top: 391px;
     left: 48px;
     display: grid;
     grid-template-columns: repeat(7, var(--instance-size));
@@ -302,13 +302,13 @@
     z-index: 999;
 }
 .server-icon-1 {
-    top: 93px;
+    top: 87px;
 }
 .server-icon-2 {
-    top: 174px;
+    top: 168px;
 }
 .server-icon-3 {
-    top: 255px;
+    top: 249px;
 }
 
 .server-name,
@@ -329,22 +329,22 @@
     font-family: var(--font-medium);
 }
 .server-name-1 {
-    top: 97px;
+    top: 91px;
 }
 .server-name-2 {
-    top: 178px;
+    top: 172px;
 }
 .server-name-3 {
-    top: 259px;
+    top: 253px;
 }
 .server-last-played-1 {
-    top: 116px;
+    top: 110px;
 }
 .server-last-played-2 {
-    top: 197px;
+    top: 191px;
 }
 .server-last-played-3 {
-    top: 278px;
+    top: 272px;
 }
 
 .last-connection-play,
@@ -361,13 +361,13 @@
     background: var(--icon-bg);
 }
 .last-connection-play-1 {
-    top: 101px;
+    top: 95px;
 }
 .last-connection-play-2 {
-    top: 182px;
+    top: 176px;
 }
 .last-connection-play-3 {
-    top: 263px;
+    top: 257px;
 }
 .last-connection-play:hover {
     filter: brightness(1.15);
@@ -402,13 +402,13 @@
     z-index: 1000;
 }
 .additional-button-1 {
-    top: 101px;
+    top: 95px;
 }
 .additional-button-2 {
-    top: 182px;
+    top: 176px;
 }
 .additional-button-3 {
-    top: 263px;
+    top: 257px;
 }
 .additional-button:hover {
     filter: brightness(1.15) !important;

@@ -30,7 +30,8 @@ impl ResourceLoader {
         ASSETS
             .iter()
             .map(|&(n, p)| {
-                let data = fs::read(p).map_or(String::new(), |b| general_purpose::STANDARD.encode(b));
+                let data =
+                    fs::read(p).map_or(String::new(), |b| general_purpose::STANDARD.encode(b));
                 (n, format!("data:image/png;base64,{data}"))
             })
             .collect()
@@ -62,6 +63,7 @@ impl ResourceLoader {
         style!("news", "/assets/styles/components/news.css");
         style!("context_menu", "/assets/styles/components/context_menu.css");
         style!("debug", "/assets/styles/components/debug.css");
+        style!("settings", "/assets/styles/components/settings.css");
         m
     }
 
@@ -93,6 +95,7 @@ impl ResourceLoader {
             "news",
             "context_menu",
             "debug",
+            "settings",
             "tailwind",
         ])
     }

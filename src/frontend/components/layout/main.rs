@@ -1,6 +1,7 @@
 use crate::backend::utils::app::main::Route;
 use crate::backend::utils::css::main::ResourceLoader;
 use crate::frontend::components::launcher::debug_window::use_version_selection;
+use crate::frontend::pages::auth::AuthState;
 use crate::frontend::{
     components::{
         common::{News, StandaloneLogo},
@@ -11,7 +12,7 @@ use crate::frontend::{
     states::{GameStatus, use_game_state},
 };
 use dioxus::prelude::{Key, *};
-use dioxus_router::{components::Outlet, use_route};
+use dioxus_router::{components::Outlet, navigator, use_route};
 
 #[component]
 pub fn Layout() -> Element {
@@ -20,6 +21,8 @@ pub fn Layout() -> Element {
     let mut animations_played = use_signal(|| false);
     let route = use_route::<Route>();
     let mut last_active_page = use_signal(|| "Home");
+    let nav = navigator();
+    let mut auth = use_context::<AuthState>();
 
     // Context menu state
     let mut show_context_menu = use_signal(|| false);
@@ -60,6 +63,7 @@ pub fn Layout() -> Element {
     }
 
     let is_home = current_page == "Home";
+    let is_settings = current_page == "Settings";
 
     use_effect(move || {
         if initial_load() {
@@ -325,6 +329,45 @@ pub fn Layout() -> Element {
                 */
 
                 News { animations_played: animations_played() }
+            }
+
+            if is_settings {
+                div {
+                    class: "settings-title",
+                    "Settings"
+                }
+
+                div {
+                    class: "settings-divider",
+                }
+
+                div {
+                    class: "settings-panel",
+                }
+
+                div {
+                    class: "settings-server-icon",
+                }
+
+                div {
+                    class: "settings-server-name",
+                    "Account"
+                }
+
+                div {
+                    class: "settings-server-last-played",
+                    "Change your account"
+                }
+
+                div {
+                    class: "settings-change-button",
+                    onclick: move |_| {
+                        auth.is_authenticated.set(false);
+                        nav.push("/auth");
+                    },
+                    img { src: ResourceLoader::get_asset("change"), class: "change-icon" }
+                    div { class: "change-text", "Change" }
+                }
             }
 
             // Context menu

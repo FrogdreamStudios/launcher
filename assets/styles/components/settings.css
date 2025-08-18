@@ -1,0 +1,106 @@
+/* Settings page styles */
+.settings-page {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    color: white;
+}
+
+.settings-title {
+    position: absolute;
+    left: 80px;
+    top: 90px;
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--font-color);
+    font-family: var(--font-bold);
+}
+
+.settings-divider {
+    position: absolute;
+    left: 188px;
+    top: 106px;
+    width: 548px;
+    height: var(--divider-height);
+    background-color: var(--divider-bg);
+}
+
+.settings-panel {
+    position: absolute;
+    left: 80px;
+    top: 143px;
+    width: var(--card-width);
+    height: var(--card-height);
+    background-color: var(--card-bg);
+    border-radius: var(--card-radius);
+}
+
+.settings-server-icon {
+    position: absolute;
+    left: 96px;
+    top: 151px;
+    width: var(--icon-size);
+    height: var(--icon-size);
+    background: var(--icon-bg);
+    border-radius: var(--icon-radius);
+    z-index: 999;
+}
+
+.settings-server-name {
+    position: absolute;
+    left: 160px;
+    top: 155px;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--font-color);
+    font-family: var(--font-bold);
+    z-index: 999;
+}
+
+.settings-server-last-played {
+    position: absolute;
+    left: 160px;
+    top: 174px;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--font-secondary);
+    font-family: var(--font-medium);
+    z-index: 999;
+}
+
+.settings-change-button {
+    position: absolute;
+    left: 594px;
+    top: 159px;
+    width: 120px;
+    height: 33px;
+    background: #252525;
+    border-radius: var(--block-radius);
+    cursor: pointer;
+    transition: filter 0.25s;
+    z-index: 999;
+}
+
+.settings-change-button:hover {
+    filter: brightness(1.15);
+}
+
+.change-icon {
+    position: absolute;
+    left: 12px;
+    top: 4.5px;
+    width: 24px;
+    height: 24px;
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+.change-text {
+    position: absolute;
+    left: 48px;
+    top: 7px;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--font-secondary);
+    font-family: var(--font-bold);
+}

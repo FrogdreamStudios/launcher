@@ -9,7 +9,7 @@ use tokio::time::sleep;
 pub fn Auth() -> Element {
     let nav = use_navigator();
     let mut auth = use_context::<AuthState>();
-    let mut input_visible = use_signal(|| false);
+    let mut input_visible = use_signal(|| true);
     let mut username = use_signal(String::new);
     let mut hide_ui = use_signal(|| false);
 
