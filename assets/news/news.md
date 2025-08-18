@@ -1,24 +1,25 @@
 ---
-date: "August 4, 2025"
+date: "August 20, 2025"
 ---
-# Dream Launcher test
+# The first beta
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation.
+We're excited to announce the release of Dream Launcher 1.0.0-beta.1 – the very first public beta of our new launcher!
+
+This is just the beginning. The beta is still in its early stages
+
+We'll work tirelessly to improve stability, add features, and make Dream Launcher the best possible experience for everyone.
+
+Your feedback is incredibly valuable to us, so don't hesitate to share your thoughts and suggestions in Discord.
+
+Stay tuned!
 
 ---
-date: "December 12, 2024"
+date: "August 10, 2025"
 ---
-# Dream Launcher test
+# Dream Launcher is coming!
 
-Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit.
+Soon we will release the public beta of our launcher – Dream Launcher.
 
-Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+At first, it will be basic, with only the general features just to run Minecraft.
 
----
-date: "July 23, 2024"
----
-# Dream Launcher test
-
-Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis.
-
-Et harum quidem rerum facilis est et expedita distinctio. Nam libero tempore, cum soluta nobis est eligendi optio cumque nihil impedit quo minus.
+Later, we will add many more cool things.
