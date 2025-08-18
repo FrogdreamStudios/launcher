@@ -8,7 +8,7 @@ use crate::{
 };
 use dioxus::prelude::*;
 
-#[derive(Props, Clone, PartialEq)]
+#[derive(Props, Clone, PartialEq, Eq)]
 pub struct ContextMenuProps {
     pub show: Signal<bool>,
     pub x: Signal<f64>,

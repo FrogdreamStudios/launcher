@@ -1,7 +1,7 @@
 use crate::backend::utils::css::main::ResourceLoader;
 use dioxus::prelude::*;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Message {
     pub id: u32,
     pub sender: String,

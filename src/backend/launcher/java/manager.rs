@@ -364,7 +364,7 @@ impl JavaManager {
                 size,
             }
         }
-        fn get_build(java_version: u8) -> &'static str {
+        const fn get_build(java_version: u8) -> &'static str {
             match java_version {
                 8 => "62.0.19",
                 17 => "34.19",
@@ -372,7 +372,7 @@ impl JavaManager {
                 _ => "",
             }
         }
-        fn get_patch(java_version: u8) -> &'static str {
+        const fn get_patch(java_version: u8) -> &'static str {
             match java_version {
                 8 => "332",
                 17 => "3",

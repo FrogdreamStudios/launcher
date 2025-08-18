@@ -24,7 +24,7 @@ pub struct Response {
 }
 
 /// HTTP status codes we care about.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u16)]
 pub enum StatusCode {
     Ok = 200,
@@ -33,7 +33,7 @@ pub enum StatusCode {
 }
 
 impl StatusCode {
-    pub fn from_u16(code: u16) -> Self {
+    pub const fn from_u16(code: u16) -> Self {
         match code {
             200 => Self::Ok,
             429 => Self::TooManyRequests,
@@ -45,7 +45,7 @@ impl StatusCode {
         matches!(self, Self::Ok) || matches!(self, Self::Other(code) if (200..300).contains(code))
     }
 
-    pub fn as_u16(&self) -> u16 {
+    pub const fn as_u16(&self) -> u16 {
         match self {
             Self::Ok => 200,
             Self::TooManyRequests => 429,
@@ -232,12 +232,12 @@ impl ClientBuilder {
         }
     }
 
-    pub fn timeout(mut self, timeout: Duration) -> Self {
+    pub const fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self
     }
 
-    pub fn connect_timeout(mut self, timeout: Duration) -> Self {
+    pub const fn connect_timeout(mut self, timeout: Duration) -> Self {
         self.connect_timeout = timeout;
         self
     }
@@ -275,8 +275,8 @@ impl tokio::io::AsyncRead for StreamWrapper {
         buf: &mut tokio::io::ReadBuf<'_>,
     ) -> std::task::Poll<std::io::Result<()>> {
         match &mut *self {
-            StreamWrapper::Plain(stream) => std::pin::Pin::new(stream).poll_read(cx, buf),
-            StreamWrapper::Tls(stream) => std::pin::Pin::new(stream).poll_read(cx, buf),
+            Self::Plain(stream) => std::pin::Pin::new(stream).poll_read(cx, buf),
+            Self::Tls(stream) => std::pin::Pin::new(stream).poll_read(cx, buf),
         }
     }
 }
@@ -288,8 +288,8 @@ impl tokio::io::AsyncWrite for StreamWrapper {
         buf: &[u8],
     ) -> std::task::Poll<std::result::Result<usize, std::io::Error>> {
         match &mut *self {
-            StreamWrapper::Plain(stream) => std::pin::Pin::new(stream).poll_write(cx, buf),
-            StreamWrapper::Tls(stream) => std::pin::Pin::new(stream).poll_write(cx, buf),
+            Self::Plain(stream) => std::pin::Pin::new(stream).poll_write(cx, buf),
+            Self::Tls(stream) => std::pin::Pin::new(stream).poll_write(cx, buf),
         }
     }
 
@@ -298,8 +298,8 @@ impl tokio::io::AsyncWrite for StreamWrapper {
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<std::result::Result<(), std::io::Error>> {
         match &mut *self {
-            StreamWrapper::Plain(stream) => std::pin::Pin::new(stream).poll_flush(cx),
-            StreamWrapper::Tls(stream) => std::pin::Pin::new(stream).poll_flush(cx),
+            Self::Plain(stream) => std::pin::Pin::new(stream).poll_flush(cx),
+            Self::Tls(stream) => std::pin::Pin::new(stream).poll_flush(cx),
         }
     }
 
@@ -308,8 +308,8 @@ impl tokio::io::AsyncWrite for StreamWrapper {
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<std::result::Result<(), std::io::Error>> {
         match &mut *self {
-            StreamWrapper::Plain(stream) => std::pin::Pin::new(stream).poll_shutdown(cx),
-            StreamWrapper::Tls(stream) => std::pin::Pin::new(stream).poll_shutdown(cx),
+            Self::Plain(stream) => std::pin::Pin::new(stream).poll_shutdown(cx),
+            Self::Tls(stream) => std::pin::Pin::new(stream).poll_shutdown(cx),
         }
     }
 }
@@ -442,7 +442,7 @@ pub struct Error {
 }
 
 impl Error {
-    pub fn new(message: String) -> Self {
+    pub const fn new(message: String) -> Self {
         Self { message }
     }
 }
@@ -457,12 +457,12 @@ impl std::error::Error for Error {}
 
 impl From<std::io::Error> for Error {
     fn from(err: std::io::Error) -> Self {
-        Error::new(format!("IO error: {err}"))
+        Self::new(format!("IO error: {err}"))
     }
 }
 
 impl From<serde_json::Error> for Error {
     fn from(err: serde_json::Error) -> Self {
-        Error::new(format!("JSON error: {err}"))
+        Self::new(format!("JSON error: {err}"))
     }
 }

@@ -21,7 +21,7 @@ impl std::error::Error for WhichError {}
 
 impl From<std::io::Error> for WhichError {
     fn from(error: std::io::Error) -> Self {
-        WhichError::IoError(error)
+        Self::IoError(error)
     }
 }
 

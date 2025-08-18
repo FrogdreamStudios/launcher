@@ -18,7 +18,7 @@ pub struct VersionManager {
 
 impl VersionManager {
     /// Creates a new version manager.
-    pub fn new(downloader: Arc<HttpDownloader>, cache_dir: PathBuf) -> Self {
+    pub const fn new(downloader: Arc<HttpDownloader>, cache_dir: PathBuf) -> Self {
         Self {
             downloader,
             cache_dir,
@@ -100,7 +100,7 @@ impl VersionManager {
     }
 
     /// Gets the loaded manifest.
-    pub fn get_manifest(&self) -> Option<&Arc<VersionManifest>> {
+    pub const fn get_manifest(&self) -> Option<&Arc<VersionManifest>> {
         self.manifest.as_ref()
     }
 }

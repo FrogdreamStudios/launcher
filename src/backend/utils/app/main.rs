@@ -33,7 +33,7 @@ pub fn New() -> Element {
 }
 
 /// Main routing enum for the application.
-#[derive(Clone, Routable, Debug, PartialEq)]
+#[derive(Clone, Routable, Debug, PartialEq, Eq)]
 pub enum Route {
     /// Authentication page route.
     #[route("/auth")]

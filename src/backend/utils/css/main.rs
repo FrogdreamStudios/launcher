@@ -30,7 +30,7 @@ impl ResourceLoader {
         ASSETS
             .iter()
             .map(|&(n, p)| {
-                let data = fs::read(p).map_or("".into(), |b| general_purpose::STANDARD.encode(b));
+                let data = fs::read(p).map_or(String::new(), |b| general_purpose::STANDARD.encode(b));
                 (n, format!("data:image/png;base64,{data}"))
             })
             .collect()

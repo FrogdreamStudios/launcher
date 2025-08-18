@@ -202,7 +202,7 @@ pub fn DebugWindow(
                                     is_deleting.set(true);
                                     spawn(async move {
                                         match delete_launcher_files().await {
-                                            Ok(_) => log_info!("Launcher files deleted"),
+                                            Ok(()) => log_info!("Launcher files deleted"),
                                             Err(e) => log_error!("Failed to delete files: {e}"),
                                         }
                                         is_deleting.set(false);
@@ -304,7 +304,7 @@ async fn delete_launcher_files() -> crate::utils::Result<()> {
             );
 
             match fs::remove_dir_all(path) {
-                Ok(_) => {
+                Ok(()) => {
                     deleted_count += 1;
                     log_info!("✓ Successfully deleted {name} directory");
                 }
@@ -406,7 +406,7 @@ fn format_date(date_str: &str) -> String {
     date_str
         .split('T')
         .next()
-        .map_or_else(|| date_str.to_string(), |date_part| date_part.to_string())
+        .map_or_else(|| date_str.to_string(), std::string::ToString::to_string)
 }
 
 pub fn use_version_selection() -> Signal<VersionSelection> {

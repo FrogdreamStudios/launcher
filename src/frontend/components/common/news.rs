@@ -43,11 +43,11 @@ fn markdown_to_html(markdown: &str) -> String {
             html.push_str(&format!("<h3>{stripped}</h3>\n"));
         } else {
             // Regular text - treat as paragraph
-            if !in_paragraph {
+            if in_paragraph {
+                html.push(' ');
+            } else {
                 html.push_str("<p>");
                 in_paragraph = true;
-            } else {
-                html.push(' ');
             }
             html.push_str(trimmed);
         }

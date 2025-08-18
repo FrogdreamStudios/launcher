@@ -14,7 +14,7 @@ impl Default for GameStatus {
 
 impl GameStatus {
     pub const fn is_active(&self) -> bool {
-        matches!(self, GameStatus::Launching)
+        matches!(self, Self::Launching)
     }
 }
 

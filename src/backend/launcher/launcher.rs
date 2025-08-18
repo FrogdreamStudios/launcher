@@ -25,7 +25,7 @@ struct DownloadContext<'a> {
 }
 
 impl<'a> DownloadContext<'a> {
-    fn new(downloader: &'a HttpDownloader) -> Self {
+    const fn new(downloader: &'a HttpDownloader) -> Self {
         Self { downloader }
     }
 

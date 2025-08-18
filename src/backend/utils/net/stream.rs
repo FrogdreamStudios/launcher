@@ -10,7 +10,7 @@ pub struct ChunkStream {
 
 impl ChunkStream {
     /// Create a new chunk stream from our custom HTTP Response.
-    pub fn new(response: Response) -> Self {
+    pub const fn new(response: Response) -> Self {
         Self {
             response,
             finished: false,

@@ -30,7 +30,7 @@ pub fn launch_minecraft(game_status: Signal<GameStatus>, version: &str, instance
 
         // Handle the result
         match launch_result {
-            Ok(Ok(_)) => {
+            Ok(Ok(())) => {
                 log_info!("Minecraft {version_owned} launched and completed successfully");
             }
             Ok(Err(e)) => {

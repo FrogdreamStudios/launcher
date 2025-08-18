@@ -2,7 +2,7 @@
 
 use std::sync::atomic::{AtomicU8, Ordering};
 
-#[derive(Clone, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd)]
 #[repr(u8)]
 pub enum LogLevel {
     Error = 0,

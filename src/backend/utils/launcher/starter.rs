@@ -399,13 +399,13 @@ impl MinecraftCommand {
         cmd.arg("-Dcom.sun.jndi.rmi.object.trustURLCodebase=false");
         cmd.arg("-Dcom.sun.jndi.cosnaming.object.trustURLCodebase=false");
 
-        if !natives_empty {
+        if natives_empty {
+            cmd.arg("-Dorg.lwjgl.system.allocator=system");
+        } else {
             cmd.arg(format!(
                 "-Dorg.lwjgl.librarypath={}",
                 self.natives_dir.display()
             ));
-        } else {
-            cmd.arg("-Dorg.lwjgl.system.allocator=system");
         }
 
         if is_modern_mc && !is_java_8 {
@@ -640,9 +640,9 @@ pub async fn launch_minecraft(version: String, instance_id: u32) -> Result<()> {
 
         // Update manifest first
         match launcher.update_manifest().await {
-            Ok(_) => log_info!("Manifest updated successfully"),
+            Ok(()) => log_info!("Manifest updated successfully"),
             Err(e) => {
-                log_warn!("Failed to update manifest: {e}, continuing anyway...")
+                log_warn!("Failed to update manifest: {e}, continuing anyway...");
             }
         }
 

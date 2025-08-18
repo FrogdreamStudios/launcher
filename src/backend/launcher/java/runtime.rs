@@ -55,29 +55,23 @@ impl JavaRuntime {
             crate::utils::which("java")
         };
 
-        match java_path {
-            Ok(path) => {
-                let output = Command::new(&path).args(["-version"]).output();
-                match output {
-                    Ok(output) => {
-                        let stderr = String::from_utf8_lossy(&output.stderr);
-                        Self::parse_java_version(&stderr).map(|opt| {
-                            opt.map(|mut runtime| {
-                                runtime.path = path;
-                                runtime
-                            })
-                        })
-                    }
-                    Err(_) => {
-                        log_debug!("Failed to execute java at {path:?}");
-                        Ok(None)
-                    }
-                }
-            }
-            Err(_) => {
-                log_debug!("System Java not found in PATH");
+        if let Ok(path) = java_path {
+            let output = Command::new(&path).args(["-version"]).output();
+            if let Ok(output) = output {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                Self::parse_java_version(&stderr).map(|opt| {
+                    opt.map(|mut runtime| {
+                        runtime.path = path;
+                        runtime
+                    })
+                })
+            } else {
+                log_debug!("Failed to execute java at {path:?}");
                 Ok(None)
             }
+        } else {
+            log_debug!("System Java not found in PATH");
+            Ok(None)
         }
     }
 
