@@ -72,7 +72,8 @@
     background: #252525;
     border-radius: var(--block-radius);
     cursor: pointer;
-    transition: filter 0.25s;
+    filter: brightness(1);
+    transition: filter 200ms ease;
     z-index: 999;
 }
 
@@ -108,10 +109,11 @@
     background-size: contain;
     background-repeat: no-repeat;
     cursor: pointer;
-    transition: filter 0.25s;
+    filter: brightness(1);
+    transition: filter 200ms ease;
     z-index: 1000;
 }
 
 .new-additional-button:hover {
-    filter: brightness(1.15) !important;
+    filter: brightness(1.15);
 }

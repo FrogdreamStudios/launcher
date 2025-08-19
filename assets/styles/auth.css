@@ -110,26 +110,32 @@ button:focus-visible {
 .microsoft-login {
     background: #fff;
     color: #000;
+    filter: brightness(1);
+    transition: filter 200ms ease;
 }
+
 .microsoft-login:hover {
-    background: #f0f0f0;
+    filter: brightness(1.15);
 }
+
 .microsoft-icon {
     width: 32px;
     height: 32px;
     margin-right: 1rem;
     transition: transform 0.3s;
 }
-.microsoft-login:hover .microsoft-icon {
-    transform: scale(1.1) rotate(5deg);
-}
+
 .offline-login {
     background: #252525;
     color: #707070;
+    filter: brightness(1);
+    transition: filter 200ms ease;
 }
+
 .offline-login:hover {
-    background: #212121;
+    filter: brightness(1.15);
 }
+
 .login-button.offline-login .offline-content {
     display: flex;
     align-items: center;

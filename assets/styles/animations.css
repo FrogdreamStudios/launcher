@@ -39,11 +39,11 @@
 }
 
 /* Shared hover effects */
-.hover-brightness {
+.hover-smooth {
     filter: brightness(1);
-    transition: filter 0.25s ease-out;
+    transition: filter 200ms ease;
 }
 
-.hover-brightness:hover {
+.hover-smooth:hover {
     filter: brightness(1.15);
 }

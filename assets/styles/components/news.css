@@ -48,7 +48,7 @@
     opacity: 1;
     transform: translateX(0);
     filter: brightness(1);
-    transition: filter 0.25s ease-out;
+    transition: filter 200ms ease;
     user-select: none;
     -webkit-user-select: none;
     -moz-user-select: none;
@@ -57,6 +57,7 @@
 .news-item:last-child {
     margin-bottom: 0;
 }
+
 .news-item:hover {
     filter: brightness(1.15);
 }
