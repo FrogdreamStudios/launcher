@@ -91,6 +91,10 @@ impl ResourceLoader {
         style!("progress", "/assets/styles/components/progress.css");
         style!("new", "/assets/styles/components/new.css");
         style!("browser", "/assets/styles/components/browser.css");
+        style!(
+            "error_message",
+            "/assets/styles/components/error_message.css"
+        );
         m
     }
 
@@ -126,6 +130,7 @@ impl ResourceLoader {
             "progress",
             "new",
             "browser",
+            "error_message",
             "tailwind",
         ])
     }
