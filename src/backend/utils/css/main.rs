@@ -1,38 +1,47 @@
 //! Asset and CSS loading/caching utilities.
 
 use base64::{Engine as _, engine::general_purpose};
-use std::{collections::HashMap, fs, sync::OnceLock};
+use std::{collections::HashMap, sync::OnceLock};
 
 static ASSET_CACHE: OnceLock<HashMap<&'static str, String>> = OnceLock::new();
 static CSS_CACHE: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
 
-const ASSETS: &[(&str, &str)] = &[
-    ("logo", "assets/images/other/logo.png"),
-    ("home", "assets/images/buttons/home.png"),
-    ("packs", "assets/images/buttons/packs.png"),
-    ("settings", "assets/images/buttons/settings.png"),
-    ("cloud", "assets/images/buttons/cloud.png"),
-    ("plus", "assets/images/buttons/plus.png"),
-    ("microsoft", "assets/images/other/microsoft.png"),
-    ("play", "assets/images/buttons/play.png"),
-    ("additional", "assets/images/buttons/additional.png"),
-    ("change", "assets/images/buttons/change.png"),
-    ("delete", "assets/images/buttons/delete.png"),
-    ("folder", "assets/images/buttons/folder.png"),
-    ("debug", "assets/images/buttons/debug.png"),
-    ("add", "assets/images/buttons/add.png"),
-    ("open", "assets/images/buttons/open.png"),
-    ("minecraft_icon", "assets/images/other/minecraft.png"),
-    (
+macro_rules! embed_asset {
+    ($name:expr, $path:expr) => {
+        (
+            $name,
+            include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path)),
+        )
+    };
+}
+
+const ASSETS: &[(&str, &[u8])] = &[
+    embed_asset!("logo", "assets/images/other/logo.png"),
+    embed_asset!("home", "assets/images/buttons/home.png"),
+    embed_asset!("packs", "assets/images/buttons/packs.png"),
+    embed_asset!("settings", "assets/images/buttons/settings.png"),
+    embed_asset!("cloud", "assets/images/buttons/cloud.png"),
+    embed_asset!("plus", "assets/images/buttons/plus.png"),
+    embed_asset!("microsoft", "assets/images/other/microsoft.png"),
+    embed_asset!("play", "assets/images/buttons/play.png"),
+    embed_asset!("additional", "assets/images/buttons/additional.png"),
+    embed_asset!("change", "assets/images/buttons/change.png"),
+    embed_asset!("delete", "assets/images/buttons/delete.png"),
+    embed_asset!("folder", "assets/images/buttons/folder.png"),
+    embed_asset!("debug", "assets/images/buttons/debug.png"),
+    embed_asset!("add", "assets/images/buttons/add.png"),
+    embed_asset!("open", "assets/images/buttons/open.png"),
+    embed_asset!("minecraft_icon", "assets/images/other/minecraft.png"),
+    embed_asset!(
         "minecraft_wiki_icon",
-        "assets/images/other/minecraft_wiki.png",
+        "assets/images/other/minecraft_wiki.png"
     ),
-    (
+    embed_asset!(
         "planet_minecraft_icon",
-        "assets/images/other/planet_minecraft.png",
+        "assets/images/other/planet_minecraft.png"
     ),
-    ("curseforge_icon", "assets/images/other/curseforge.png"),
-    ("namemc_icon", "assets/images/other/namemc.png"),
+    embed_asset!("curseforge_icon", "assets/images/other/curseforge.png"),
+    embed_asset!("namemc_icon", "assets/images/other/namemc.png"),
 ];
 
 pub struct ResourceLoader;
@@ -41,9 +50,8 @@ impl ResourceLoader {
     fn get_all_assets() -> HashMap<&'static str, String> {
         ASSETS
             .iter()
-            .map(|&(n, p)| {
-                let data =
-                    fs::read(p).map_or(String::new(), |b| general_purpose::STANDARD.encode(b));
+            .map(|&(n, bytes)| {
+                let data = general_purpose::STANDARD.encode(bytes);
                 (n, format!("data:image/png;base64,{data}"))
             })
             .collect()
