@@ -265,6 +265,18 @@ impl MinecraftLauncher {
         // Test Java version
         Self::test_java_version(&java_path)?;
         let java_major_version = Self::get_java_major_version(&java_path)?;
+        log_info!(
+            "Java version verification complete: Java {}",
+            java_major_version
+        );
+
+        // Log detailed Java info on Windows for debugging
+        if cfg!(windows) {
+            log_info!("Windows Java debugging info:");
+            log_info!("  Java executable: {}", java_path.display());
+            log_info!("  Java major version: {}", java_major_version);
+            log_info!("  Use Rosetta: {}", use_rosetta);
+        }
 
         // Build library paths
         let libraries = self.get_library_paths(&version_details)?;
@@ -295,9 +307,28 @@ impl MinecraftLauncher {
         println!("Starting Minecraft...");
         log_info!("Full command: {:?}", cmd);
 
+        // Extra debugging for Windows
+        if cfg!(windows) {
+            log_info!("Windows launch debugging:");
+            log_info!("  Working directory: {:?}", cmd.get_current_dir());
+            log_info!("  Environment variables:");
+            for (key, value) in cmd.get_envs() {
+                if let (Some(k), Some(v)) = (key.to_str(), value.and_then(|v| v.to_str())) {
+                    if k.contains("JAVA") || k.contains("PATH") || k.contains("LWJGL") {
+                        log_info!("    {}: {}", k, v);
+                    }
+                }
+            }
+        }
+
         // Launch the game
         let mut child = cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
         log_info!("Minecraft process started with PID: {}", child.id());
+
+        // Log success on Windows
+        if cfg!(windows) {
+            log_info!("Windows process launch successful - PID: {}", child.id());
+        }
 
         // Hide progress bar immediately after successful process start
         if let Some(sender) = crate::backend::utils::progress_bridge::get_progress_sender() {
@@ -523,6 +554,17 @@ impl MinecraftLauncher {
         let platform_info = PlatformInfo::new();
         let natives_dir = get_natives_dir(&self.game_dir, &version_details.id);
 
+        log_info!("Extracting natives to: {}", natives_dir.display());
+        log_info!(
+            "Platform info: OS={}, Arch={}, Classifiers={:?}",
+            platform_info.os_name,
+            platform_info.os_arch,
+            platform_info.native_classifiers
+        );
+
+        let mut extracted_count = 0;
+        let mut total_natives = 0;
+
         for library in &version_details.libraries {
             if !library.should_use(
                 platform_info.os_name,
@@ -537,16 +579,71 @@ impl MinecraftLauncher {
                     if let Some(native_artifact) = classifiers.get(classifier)
                         && let Some(path) = &native_artifact.path
                     {
+                        total_natives += 1;
                         let native_path = get_library_path(&self.game_dir, path);
-                        if native_path.exists()
-                            && let Err(e) =
-                                crate::utils::extract_zip(&native_path, &natives_dir).await
-                        {
-                            log_warn!("Failed to extract {}: {}", native_path.display(), e);
+                        log_info!(
+                            "Processing native: {} -> {}",
+                            native_path.display(),
+                            natives_dir.display()
+                        );
+
+                        if native_path.exists() {
+                            match crate::utils::extract_zip(&native_path, &natives_dir).await {
+                                Ok(()) => {
+                                    extracted_count += 1;
+                                    log_info!(
+                                        "✓ Successfully extracted native: {}",
+                                        native_path
+                                            .file_name()
+                                            .unwrap_or_default()
+                                            .to_string_lossy()
+                                    );
+                                }
+                                Err(e) => {
+                                    log_warn!(
+                                        "✗ Failed to extract {}: {}",
+                                        native_path.display(),
+                                        e
+                                    );
+                                }
+                            }
+                        } else {
+                            log_warn!("✗ Native library not found: {}", native_path.display());
                         }
                         break;
                     }
                 }
+            }
+        }
+
+        log_info!(
+            "Native extraction complete: {}/{} libraries extracted",
+            extracted_count,
+            total_natives
+        );
+
+        // Verify natives directory contents on Windows
+        if cfg!(windows) {
+            if let Ok(entries) = std::fs::read_dir(&natives_dir) {
+                let files: Vec<_> = entries
+                    .filter_map(|entry| entry.ok().and_then(|e| e.file_name().into_string().ok()))
+                    .collect();
+                log_info!("Natives directory contents: {:?}", files);
+
+                // Look for essential LWJGL libraries
+                let essential_libs = ["lwjgl.dll", "lwjgl_opengl.dll", "lwjgl_glfw.dll"];
+                for lib in &essential_libs {
+                    if files.iter().any(|f| f.contains(lib)) {
+                        log_info!("✓ Found essential library: {}", lib);
+                    } else {
+                        log_warn!("✗ Missing essential library: {}", lib);
+                    }
+                }
+            } else {
+                log_warn!(
+                    "Failed to read natives directory: {}",
+                    natives_dir.display()
+                );
             }
         }
 

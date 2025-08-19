@@ -385,6 +385,34 @@ impl MinecraftCommand {
                 cmd.arg("-Dos.name=Windows 10");
                 cmd.arg("-Dos.version=10.0");
                 cmd.arg("-Dorg.lwjgl.opengl.Window.undecorated=false");
+
+                // LWJGL Windows-specific configurations
+                cmd.arg("-Dorg.lwjgl.util.Debug=false");
+                cmd.arg("-Dorg.lwjgl.util.NoChecks=false");
+
+                // Set native library paths for LWJGL
+                if !natives_empty {
+                    cmd.arg(format!(
+                        "-Djava.library.path={}",
+                        self.natives_dir.display()
+                    ));
+                    cmd.arg(format!(
+                        "-Dorg.lwjgl.librarypath={}",
+                        self.natives_dir.display()
+                    ));
+                    // Alternative LWJGL library path
+                    cmd.arg(format!(
+                        "-Dorg.lwjgl.system.SharedLibraryExtractPath={}",
+                        self.natives_dir.display()
+                    ));
+                } else {
+                    // Fallback for system libraries
+                    cmd.arg("-Dorg.lwjgl.system.allocator=system");
+                }
+
+                // Windows-specific LWJGL settings for better compatibility
+                cmd.arg("-Dorg.lwjgl.system.windows.debugloader=true");
+                cmd.arg("-Dorg.lwjgl.system.stackWalkEnabled=false");
             }
             _ => {
                 cmd.arg("-Dorg.lwjgl.opengl.libname=libGL.so.1");
