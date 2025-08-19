@@ -73,31 +73,55 @@ impl JavaManager {
         }
 
         // Check system Java (skip for x86_64 requirement as system Java might be ARM64)
-        if !needs_x86_64
-            && let Ok(Some(mut system_java)) = JavaRuntime::detect_system_java()
-            && system_java.is_compatible_with_minecraft(required_java)
-        {
-            // For legacy versions requiring Java 8, prefer the exact version match
-            // Only use system Java if it's exactly Java 8 or if no Java 8 is required
-            let should_use_system = if required_java == 8 {
-                system_java.major_version == 8
-            } else {
-                true
-            };
-
-            if should_use_system {
-                log_info!("Using system Java {} runtime", system_java.major_version);
-                if system_java.path.as_os_str().is_empty() {
-                    system_java.path =
-                        crate::utils::which("java").unwrap_or_else(|_| "java".into());
-                }
-                return Ok((system_java.get_executable_path(), false));
-            } else {
+        if !needs_x86_64 {
+            log_info!("Checking system Java for compatibility...");
+            if let Ok(Some(mut system_java)) = JavaRuntime::detect_system_java() {
                 log_info!(
-                    "System Java {} found but preferring exact Java 8 for legacy version",
-                    system_java.major_version
+                    "Found system Java {} ({})",
+                    system_java.major_version,
+                    system_java.version
                 );
+                let is_compatible = system_java.is_compatible_with_minecraft(required_java);
+                log_info!(
+                    "System Java {} compatibility with required Java {}: {}",
+                    system_java.major_version,
+                    required_java,
+                    is_compatible
+                );
+                if is_compatible {
+                    // For legacy versions requiring Java 8, prefer the exact version match
+                    // For modern versions requiring Java 17+, use any compatible system Java
+                    let should_use_system = if required_java == 8 {
+                        system_java.major_version == 8
+                    } else {
+                        true
+                    };
+
+                    if should_use_system {
+                        log_info!("Using system Java {} runtime", system_java.major_version);
+                        if system_java.path.as_os_str().is_empty() {
+                            system_java.path =
+                                crate::utils::which("java").unwrap_or_else(|_| "java".into());
+                        }
+                        return Ok((system_java.get_executable_path(), false));
+                    } else {
+                        log_info!(
+                            "System Java {} found but preferring exact Java 8 for legacy version",
+                            system_java.major_version
+                        );
+                    }
+                } else {
+                    log_info!(
+                        "System Java {} is not compatible with required Java {}",
+                        system_java.major_version,
+                        required_java
+                    );
+                }
+            } else {
+                log_info!("No system Java found");
             }
+        } else {
+            log_info!("Skipping system Java check (x86_64 required)");
         }
 
         // Java installation
@@ -111,35 +135,54 @@ impl JavaManager {
             Err(e) => {
                 log_warn!("Failed to install Java {required_java} ({arch}): {e}");
                 // Fallback to system Java
-                if let Ok(Some(mut system_java)) = JavaRuntime::detect_system_java()
-                    && system_java.is_compatible_with_minecraft(required_java)
-                {
-                    // For legacy versions requiring Java 8, prefer the exact version match even in fallback
-                    let should_use_system = if required_java == 8 {
-                        system_java.major_version == 8
-                    } else {
-                        true
-                    };
+                log_info!("Attempting system Java fallback...");
+                if let Ok(Some(mut system_java)) = JavaRuntime::detect_system_java() {
+                    log_info!(
+                        "System Java fallback: Found Java {} ({})",
+                        system_java.major_version,
+                        system_java.version
+                    );
+                    let is_compatible = system_java.is_compatible_with_minecraft(required_java);
+                    log_info!("System Java fallback compatibility: {}", is_compatible);
+                    if is_compatible {
+                        // For legacy versions requiring Java 8, prefer the exact version match even in fallback
+                        // For modern versions (Java 17+), use any compatible system Java
+                        let should_use_system = if required_java == 8 {
+                            system_java.major_version == 8
+                        } else {
+                            true
+                        };
 
-                    if should_use_system {
-                        log_info!(
-                            "Using system Java {} as fallback",
-                            system_java.major_version
-                        );
-                        if system_java.path.as_os_str().is_empty() {
-                            system_java.path =
-                                crate::utils::which("java").unwrap_or_else(|_| "java".into());
+                        if should_use_system {
+                            log_info!(
+                                "Using system Java {} as fallback",
+                                system_java.major_version
+                            );
+                            if system_java.path.as_os_str().is_empty() {
+                                system_java.path =
+                                    crate::utils::which("java").unwrap_or_else(|_| "java".into());
+                            }
+                            return Ok((system_java.get_executable_path(), false));
+                        } else {
+                            log_warn!(
+                                "System Java {} found but refusing to use for legacy version requiring Java 8",
+                                system_java.major_version
+                            );
                         }
-                        return Ok((system_java.get_executable_path(), false));
                     } else {
                         log_warn!(
-                            "System Java {} found but refusing to use for legacy version requiring Java 8",
-                            system_java.major_version
+                            "System Java {} is not compatible with required Java {} in fallback",
+                            system_java.major_version,
+                            required_java
                         );
                     }
+                } else {
+                    log_warn!("No system Java found for fallback");
                 }
                 Err(simple_error!(
-                    "Failed to install Java {required_java} ({arch}) and no compatible system Java found"
+                    "Failed to install Java {} ({}) and no compatible system Java found",
+                    required_java,
+                    arch
                 ))
             }
         }
@@ -189,7 +232,7 @@ impl JavaManager {
             package.download_url
         );
         self.downloader
-            .download_file(&package.download_url, &download_path, None)
+            .download_java_archive(&package.download_url, &download_path, None)
             .await
             .map_err(|e| {
                 let _ = remove_file_if_exists(&download_path);
