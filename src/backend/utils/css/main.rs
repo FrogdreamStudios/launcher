@@ -5,6 +5,7 @@ use std::{collections::HashMap, sync::OnceLock};
 
 static ASSET_CACHE: OnceLock<HashMap<&'static str, String>> = OnceLock::new();
 static CSS_CACHE: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+static FONT_CACHE: OnceLock<HashMap<&'static str, String>> = OnceLock::new();
 
 macro_rules! embed_asset {
     ($name:expr, $path:expr) => {
@@ -45,6 +46,9 @@ const ASSETS: &[(&str, &[u8])] = &[
 ];
 
 pub struct ResourceLoader;
+
+// Include generated font constants
+include!(concat!(env!("OUT_DIR"), "/fonts.rs"));
 
 impl ResourceLoader {
     fn get_all_assets() -> HashMap<&'static str, String> {
@@ -124,6 +128,67 @@ impl ResourceLoader {
             "browser",
             "tailwind",
         ])
+    }
+
+    fn get_all_fonts() -> HashMap<&'static str, String> {
+        get_fonts()
+            .into_iter()
+            .map(|(k, v)| (k, v.to_string()))
+            .collect()
+    }
+
+    pub fn get_font(name: &str) -> String {
+        FONT_CACHE
+            .get_or_init(Self::get_all_fonts)
+            .get(name)
+            .cloned()
+            .unwrap_or_else(|| "".into())
+    }
+
+    pub fn get_embedded_css_with_fonts() -> String {
+        let fonts_css = format!(
+            r#"
+            @font-face {{
+                font-family: "Gilroy-Medium";
+                src: url("{}") format("truetype");
+                font-weight: 400;
+                font-style: normal;
+            }}
+            @font-face {{
+                font-family: "Gilroy-Bold";
+                src: url("{}") format("truetype");
+                font-weight: 700;
+                font-style: normal;
+            }}
+            "#,
+            Self::get_font("gilroy_medium"),
+            Self::get_font("gilroy_bold")
+        );
+
+        format!("{}\n{}", fonts_css, Self::get_combined_main_css())
+    }
+
+    pub fn get_auth_css_with_fonts() -> String {
+        let fonts_css = format!(
+            r#"
+            @font-face {{
+                font-family: "Gilroy-Medium";
+                src: url("{}") format("truetype");
+                font-weight: 400;
+                font-style: normal;
+            }}
+            @font-face {{
+                font-family: "Gilroy-Bold";
+                src: url("{}") format("truetype");
+                font-weight: 700;
+                font-style: normal;
+            }}
+            "#,
+            Self::get_font("gilroy_medium"),
+            Self::get_font("gilroy_bold")
+        );
+
+        format!("{}\n{}", fonts_css, Self::get_css("auth"))
     }
 }
 

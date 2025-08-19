@@ -14,7 +14,7 @@ pub fn AuthLayout(children: Element) -> Element {
 
     rsx! {
         style {
-            dangerous_inner_html: ResourceLoader::get_css("auth")
+            dangerous_inner_html: ResourceLoader::get_auth_css_with_fonts()
         }
 
         div {
