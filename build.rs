@@ -62,7 +62,7 @@ fn build_with_npx_fallback() {
 
     match fallback_status {
         Ok(s) if s.success() => {
-            println!("cargo:warning=Tailwind CSS built successfully with npx.");
+            println!("cargo:warning=Tailwind CSS built successfully with npx");
         }
         Ok(s) => {
             println!("cargo:warning=npx Tailwind CSS build failed with status: {s}");
@@ -95,7 +95,7 @@ fn main() {
 
         match npm_install_status {
             Ok(s) if s.success() => {
-                println!("cargo:warning=npm install completed successfully.");
+                println!("cargo:warning=npm install completed successfully");
             }
             Ok(s) => {
                 println!("cargo:warning=npm install failed with status: {s}");
@@ -110,7 +110,7 @@ fn main() {
 
         match npm_build_status {
             Ok(s) if s.success() => {
-                println!("cargo:warning=npm build:css completed successfully.");
+                println!("cargo:warning=npm build:css completed successfully");
             }
             Ok(s) => {
                 println!("cargo:warning=npm build:css failed with status: {s}");
@@ -154,17 +154,11 @@ fn main() {
         #[path = "utils/winres.rs"]
         mod winres;
 
-        println!("cargo:warning=Using custom winres implementation for Windows resources");
         let mut res = winres::WindowsResource::new();
         res.set_icon("assets/images/other/icon.ico");
         res.set("ProductName", "Dream Launcher");
-        res.set("FileDescription", "A powerful Minecraft launcher");
+        res.set("FileDescription", "A powerful and lightweight Minecraft launcher that will be perfect for every player");
         res.set("CompanyName", "Frogdream Studios");
         res.set("ProductVersion", env!("CARGO_PKG_VERSION"));
-    }
-
-    #[cfg(not(target_os = "windows"))]
-    {
-        println!("cargo:warning=Skipping Windows resources on non-Windows platform");
     }
 }
