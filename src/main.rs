@@ -58,15 +58,17 @@ fn main() {
         if let Some(home_dir) = dirs::home_dir() {
             let user_data_dir = home_dir.join(".dream-launcher");
 
-            // Create directory if it doesn't exist
+            // Create the directory if it doesn't exist
             let _ = std::fs::create_dir_all(&user_data_dir);
 
             // Set environment variables for WebView2 (safe in single-threaded startup)
-            std::env::set_var("WEBVIEW2_USER_DATA_FOLDER", &user_data_dir);
-            std::env::set_var(
-                "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
-                format!("--user-data-dir={}", user_data_dir.display()),
-            );
+            unsafe {
+                std::env::set_var("WEBVIEW2_USER_DATA_FOLDER", &user_data_dir);
+                std::env::set_var(
+                    "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
+                    format!("--user-data-dir={}", user_data_dir.display()),
+                );
+            }
         }
     }
 
