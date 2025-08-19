@@ -190,6 +190,7 @@ impl JavaManager {
 
     // Universal Java runtime
     async fn install_java(&mut self, java_version: u8, arch: &str) -> Result<&JavaRuntime> {
+        use crate::backend::utils::progress_bridge::update_global_progress;
         let manifest = Self::fetch_azul_manifest();
         let os = AzulPackage::get_os_name();
 
@@ -226,6 +227,14 @@ impl JavaManager {
         let extract_path = self.java_dir.join(format!("java-{java_version}-{arch}"));
 
         // Downloading
+        update_global_progress(
+            0.76,
+            format!(
+                "Downloading Java {} ({:.1} MB)...",
+                java_version,
+                package.size as f32 / 1024.0 / 1024.0
+            ),
+        );
         log_info!(
             "Downloading Java {} from: {}",
             java_version,
@@ -251,6 +260,7 @@ impl JavaManager {
         }
 
         // Unpacking
+        update_global_progress(0.82, format!("Extracting Java {} runtime...", java_version));
         log_info!("Extracting Java {java_version} runtime...");
         extract_archive(&download_path, &extract_path)
             .await
@@ -264,6 +274,10 @@ impl JavaManager {
         remove_file_if_exists(&download_path).await?;
 
         // Find Java
+        update_global_progress(
+            0.85,
+            format!("Configuring Java {} installation...", java_version),
+        );
         let java_executable = Self::find_java_executable(&extract_path)?;
         let runtime = JavaRuntime::from_path(&java_executable)?.ok_or_else(|| {
             simple_error!("Failed to detect installed Java {java_version} runtime")

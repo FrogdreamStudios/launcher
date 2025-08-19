@@ -622,7 +622,12 @@ impl Default for CommandBuilder {
 
 /// Launch Minecraft with the specified version and instance
 pub async fn launch_minecraft(version: String, instance_id: u32) -> Result<()> {
+    use crate::backend::utils::progress_bridge::update_global_progress;
+
     log_info!("Starting Minecraft launch for version: {version}");
+
+    // Initialize progress
+    update_global_progress(0.0, "Initializing launcher...".to_string());
 
     let mut launcher = MinecraftLauncher::new(None, Some(instance_id)).await?;
     log_info!("Launcher created successfully");
@@ -639,6 +644,7 @@ pub async fn launch_minecraft(version: String, instance_id: u32) -> Result<()> {
         log_info!("Version {version} not found locally, attempting to install...");
 
         // Update manifest first
+        update_global_progress(0.1, format!("Updating manifest for {}...", version));
         match launcher.update_manifest().await {
             Ok(()) => log_info!("Manifest updated successfully"),
             Err(e) => {
@@ -647,6 +653,7 @@ pub async fn launch_minecraft(version: String, instance_id: u32) -> Result<()> {
         }
 
         // Install/prepare the version
+        update_global_progress(0.2, format!("Downloading Minecraft {}...", version));
         launcher.prepare_version(&version).await.map_err(|e| {
             log_error!("Failed to install version {version}: {e}");
             e
@@ -656,10 +663,12 @@ pub async fn launch_minecraft(version: String, instance_id: u32) -> Result<()> {
     }
 
     // Check Java availability
+    update_global_progress(0.7, format!("Checking Java for {}...", version));
     let java_available = launcher.is_java_available(&version);
 
     if !java_available {
         log_info!("Java not available for version {version}, installing...");
+        update_global_progress(0.75, "Installing Java runtime...".to_string());
 
         launcher.install_java(&version).await.map_err(|e| {
             log_error!("Failed to install Java for version {version}: {e}");
@@ -670,12 +679,16 @@ pub async fn launch_minecraft(version: String, instance_id: u32) -> Result<()> {
     }
 
     log_info!("Starting Minecraft {version}...");
+    update_global_progress(0.9, format!("Starting Minecraft {}...", version));
 
     // Launch Minecraft
     launcher.launch(&version).await.map_err(|e| {
         log_error!("Failed to launch Minecraft {version}: {e}");
         e
     })?;
+
+    // Launch was successful - progress bar is automatically hidden in launcher.rs
+    // when the Minecraft process starts
 
     log_info!("Minecraft {version} launched successfully");
     Ok(())

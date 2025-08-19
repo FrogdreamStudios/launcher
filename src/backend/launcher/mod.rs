@@ -10,6 +10,8 @@ pub mod java;
 pub mod launcher;
 /// Data models and structures.
 pub mod models;
+/// Progress tracking and callbacks.
+pub mod progress;
 /// Version management functionality.
 pub mod versions;
 

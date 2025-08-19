@@ -10,8 +10,11 @@ pub fn launch_minecraft(game_status: Signal<GameStatus>, version: &str, instance
     spawn(async move {
         log_info!("Starting Minecraft launch for version: {version_owned}");
 
-        // Set the launching state
-        game_status_signal.set(GameStatus::Launching);
+        // Set the initial launching state
+        game_status_signal.set(GameStatus::Launching {
+            progress: 0.0,
+            message: "Initializing launch...".to_string(),
+        });
 
         // Use the simplified launch function from starter.rs
         let launch_result = tokio::task::spawn_blocking({
@@ -35,14 +38,13 @@ pub fn launch_minecraft(game_status: Signal<GameStatus>, version: &str, instance
             }
             Ok(Err(e)) => {
                 log_error!("Failed to launch Minecraft {version_owned}: {e}");
+                game_status_signal.set(GameStatus::Idle);
             }
             Err(e) => {
                 log_error!("Minecraft launch task failed: {e}");
+                game_status_signal.set(GameStatus::Idle);
             }
         }
-
-        // Set back to idle state
-        game_status_signal.set(GameStatus::Idle);
-        log_info!("Minecraft launch completed");
+        log_info!("Minecraft launch process completed");
     });
 }
