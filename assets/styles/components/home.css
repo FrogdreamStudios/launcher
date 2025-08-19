@@ -92,8 +92,6 @@
     background: var(--card-bg);
     border-radius: var(--card-radius);
     left: 48px;
-    filter: brightness(1);
-    transition: filter 0.25s;
 }
 .connection-card-1 {
     top: 79px;
@@ -111,40 +109,61 @@
     height: var(--instance-size);
     border-radius: var(--instance-radius);
     cursor: pointer;
-    filter: brightness(1) !important;
-    transition:
-        filter 0.25s,
-        opacity 0.25s;
     position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
+    filter: brightness(1);
+    transition: filter 200ms ease;
 }
-.instance-card:not(:hover):not(.instance-card-pulsing):not(.editing),
-.instance-card-add:not(:hover) {
-    filter: brightness(1) !important;
-}
-.instance-card:hover:not(.instance-card-pulsing):not(.editing),
+
+.instance-card:hover,
 .instance-card-add:hover {
-    filter: brightness(1.15) !important;
+    filter: brightness(1.15);
+}
+
+.instance-card-add {
+    background: var(--card-bg);
+}
+
+.instance-add-icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.instance-add-icon img {
+    width: 32px;
+    height: 32px;
+    filter: invert(44%) sepia(8%) saturate(0%) hue-rotate(185deg)
+        brightness(96%) contrast(91%);
+}
+
+.instance-card {
+}
+
+.instance-card-add {
 }
 .instance-card.editing {
-    opacity: 0.8;
-    filter: brightness(1.1) !important;
+    filter: brightness(1.1);
     cursor: default;
 }
+
 .instance-card.editing .instance-level-text {
     cursor: text;
 }
 .instance-card-pulsing {
     animation: instance-pulse 2s ease-in-out infinite alternate;
 }
+
 @keyframes instance-pulse {
     0% {
-        filter: brightness(0.9) !important;
+        filter: brightness(0.9);
     }
     100% {
-        filter: brightness(1.2) !important;
+        filter: brightness(1.2);
     }
 }
 
@@ -276,20 +295,24 @@
 .primary-button {
     background: var(--button-bg);
     color: var(--font-color);
+    filter: brightness(1);
+    transition: filter 200ms ease;
 }
+
 .primary-button:hover {
-    background: var(--button-bg-hover);
-    transform: translateY(-2px);
+    filter: brightness(1.15);
 }
+
 .secondary-button {
     background: var(--button-secondary-bg);
     color: var(--font-color);
     border: 1px solid var(--button-secondary-border);
+    filter: brightness(1);
+    transition: filter 200ms ease;
 }
+
 .secondary-button:hover {
-    background: var(--button-secondary-bg-hover);
-    border-color: var(--button-secondary-border-hover);
-    transform: translateY(-2px);
+    filter: brightness(1.15);
 }
 
 .server-icon {
@@ -359,6 +382,12 @@
     width: 92px;
     height: 33px;
     background: var(--icon-bg);
+    filter: brightness(1);
+    transition: filter 200ms ease;
+}
+
+.last-connection-play:hover {
+    filter: brightness(1.15);
 }
 .last-connection-play-1 {
     top: 95px;
@@ -368,9 +397,6 @@
 }
 .last-connection-play-3 {
     top: 257px;
-}
-.last-connection-play:hover {
-    filter: brightness(1.15);
 }
 
 .play-icon {
@@ -410,6 +436,11 @@
 .additional-button-3 {
     top: 257px;
 }
+.additional-button {
+    filter: brightness(1);
+    transition: filter 200ms ease;
+}
+
 .additional-button:hover {
-    filter: brightness(1.15) !important;
+    filter: brightness(1.15);
 }

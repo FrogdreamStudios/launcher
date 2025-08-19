@@ -68,6 +68,8 @@
     cursor: pointer;
     transition: background-color 0.15s ease;
     flex-shrink: 0;
+    filter: brightness(1);
+    transition: filter 200ms ease;
 }
 
 .context-menu-button:hover {
@@ -146,8 +148,10 @@
     align-items: center;
     justify-content: center;
     transition: background-color 0.15s ease;
+    filter: brightness(1);
+    transition: filter 200ms ease;
 }
 
 .context-menu-rename-confirm:hover {
-    background: #2ecc08;
+    filter: brightness(1.15);
 }

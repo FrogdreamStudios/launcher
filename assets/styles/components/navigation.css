@@ -52,16 +52,10 @@
     background: #141414;
     border-radius: 8px;
     cursor: pointer;
-    transition:
-        background-color 0.25s ease-out,
-        transform 0.25s ease-out,
-        filter 0.25s ease-out;
-}
-.nav-item:not(.active) {
     filter: brightness(1);
+    transition: filter 200ms ease;
 }
-.nav-item:hover:not(.active),
-.nav-item.active:hover {
+.nav-item:hover {
     filter: brightness(1.15);
 }
 
