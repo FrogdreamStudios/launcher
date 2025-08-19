@@ -9,9 +9,10 @@ use tokio::time::sleep;
 pub fn Auth() -> Element {
     let nav = use_navigator();
     let mut auth = use_context::<AuthState>();
-    let mut input_visible = use_signal(|| true);
+    let mut input_visible = use_signal(|| false);
     let mut username = use_signal(String::new);
     let mut hide_ui = use_signal(|| false);
+    let mut input_ref = use_signal(|| None as Option<std::rc::Rc<MountedData>>);
 
     // Validation function for the username
     let is_valid = move || {
@@ -34,6 +35,26 @@ pub fn Auth() -> Element {
             });
         }
     };
+
+    // Auto-focus input when component mounts or when input becomes visible
+    use_effect(move || {
+        if input_visible() {
+            spawn(async move {
+                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+                if let Some(element) = input_ref.read().as_ref() {
+                    let _ = element.set_focus(true);
+                }
+            });
+        }
+    });
+
+    // Reset state and show input when component mounts (for Change button navigation)
+    use_effect(move || {
+        spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            input_visible.set(true);
+        });
+    });
 
     rsx! {
         AuthLayout {
@@ -66,7 +87,16 @@ pub fn Auth() -> Element {
                         }
                         button {
                             class: "login-button offline-login",
-                            onclick: move |_| input_visible.set(true),
+                            onclick: move |_| {
+                                input_visible.set(true);
+                                // Focus the input after it becomes visible
+                                spawn(async move {
+                                    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+                                    if let Some(element) = input_ref.read().as_ref() {
+                                        let _ = element.set_focus(true);
+                                    }
+                                });
+                            },
                             div {
                                 class: "offline-content",
                                 if input_visible() {
@@ -78,7 +108,15 @@ pub fn Auth() -> Element {
                                         oninput: move |e| username.set(e.value()),
                                         onkeypress: on_keypress,
                                         placeholder: "Offline account",
-                                        autofocus: true
+                                        autofocus: true,
+                                        onmounted: move |element| {
+                                            input_ref.set(Some(element.data()));
+                                            // Ensure focus when mounted
+                                            spawn(async move {
+                                                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+                                                let _ = element.set_focus(true);
+                                            });
+                                        }
                                     }
                                 } else {
                                     span { "Offline account" }
