@@ -1,2 +1,4 @@
 target
 node_modules
+*.WebView2/
+.dream-launcher/

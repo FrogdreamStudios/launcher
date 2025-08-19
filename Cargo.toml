@@ -14,7 +14,7 @@ dioxus = { version = "0.7.0-rc.0", features = ["desktop"] }
 dioxus-router = "0.7.0-rc.0"
 dioxus-desktop = { version = "0.7.0-rc.0", default-features = false }
 serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.142"
+serde_json = "1.0.143"
 tokio = { version = "1.47.1", features = [
     "rt-multi-thread",
     "fs",
@@ -29,12 +29,17 @@ tokio-native-tls = "0.3.1"
 base64 = "0.22.1"
 webbrowser = "1.0.5"
 once_cell = "1.21.3"
+dirs = "6.0.0"
 
 [features]
 default = ["desktop"]
 desktop = ["dioxus/desktop"]
 
 minimal = []
+
+[[bin]]
+name = "DreamLauncher"
+path = "src/main.rs"
 
 [profile.dev]
 incremental = true
@@ -64,3 +69,22 @@ inherits = "dev"
 
 [profile.android-dev]
 inherits = "dev"
+
+[target.'cfg(windows)'.dependencies]
+dioxus-desktop = { version = "0.7.0-rc.0", default-features = false, features = [
+    "tokio_runtime",
+] }
+
+[package.metadata.bundle]
+name = "Dream Launcher"
+identifier = "com.frogdream.launcher"
+version = "1.0.0"
+copyright = "© 2024 Frogdream Studios"
+category = "Game"
+short_description = "A powerful and lightweight Minecraft launcher"
+long_description = "A powerful and lightweight Minecraft launcher that will be perfect for every player."
+
+[package.metadata.bundle.windows]
+webview2_install_mode = "embedbootstrapper"
+webview2_user_data_folder = ".dream-launcher"
+console_subsystem = false

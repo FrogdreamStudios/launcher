@@ -1,5 +1,7 @@
 //! Entry point of the application.
 
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 mod backend;
 mod frontend;
 mod utils;
@@ -49,6 +51,21 @@ fn main() {
                 .with_resizable(false),
         )
         .with_menu(None);
+
+    // Configure WebView2
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(home_dir) = dirs::home_dir() {
+            let user_data_dir = home_dir.join(".dream-launcher");
+            std::env::set_var("WEBVIEW2_USER_DATA_FOLDER", user_data_dir);
+
+            // Additional WebView2 arguments to prevent unwanted folders
+            std::env::set_var(
+                "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
+                format!("--user-data-dir={}", user_data_dir.display()),
+            );
+        }
+    }
 
     LaunchBuilder::new().with_cfg(config).launch(AppRoot);
 }
