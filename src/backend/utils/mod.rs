@@ -5,4 +5,5 @@ pub mod archiever;
 pub mod css;
 pub mod launcher;
 pub mod net;
+pub mod progress_bridge;
 pub mod system;

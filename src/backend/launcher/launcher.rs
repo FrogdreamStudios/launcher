@@ -49,6 +49,8 @@ impl<'a> DownloadContext<'a> {
 
     /// Execute download tasks in batches with progress reporting.
     async fn execute_downloads(&self, tasks: Vec<DownloadTask>, item_type: &str) -> Result<()> {
+        use crate::backend::utils::progress_bridge::update_global_progress;
+
         if tasks.is_empty() {
             return Ok(());
         }
@@ -59,6 +61,24 @@ impl<'a> DownloadContext<'a> {
         log_info!("Downloading {total} {item_type}...");
 
         for (i, chunk) in tasks.chunks(batch_size).enumerate() {
+            let completed = i * batch_size;
+            let progress_percent = completed as f32 / total as f32;
+
+            // Calculate base progress based on item type
+            let base_progress = match item_type {
+                "libraries" => 0.4,
+                "natives" => 0.5,
+                "assets" => 0.55,
+                _ => 0.3,
+            };
+            let stage_range = 0.05; // Each download stage gets 5% of total progress
+            let current_progress = base_progress + (progress_percent * stage_range);
+
+            update_global_progress(
+                current_progress,
+                format!("Downloading {} ({}/{})", item_type, completed + 1, total),
+            );
+
             self.downloader.download_multiple(chunk.to_vec(), 8).await?;
             let completed = (i + 1) * chunk.len().min(total - i * batch_size);
             DownloadHelper::log_progress(completed, total, item_type);
@@ -146,6 +166,8 @@ impl MinecraftLauncher {
 
     /// Prepares a Minecraft version for launch by downloading all necessary files.
     pub async fn prepare_version(&self, version_id: &str) -> Result<()> {
+        use crate::backend::utils::progress_bridge::update_global_progress;
+
         log_info!("Preparing Minecraft version: {version_id}");
 
         // Check if a version already exists offline
@@ -154,8 +176,14 @@ impl MinecraftLauncher {
             .is_version_ready_offline(&self.game_dir, version_id)?
         {
             log_info!("Version {version_id} is already prepared offline");
+            update_global_progress(0.65, format!("Version {} is already prepared", version_id));
             return Ok(());
         }
+
+        update_global_progress(
+            0.25,
+            format!("Loading version manifest for {}...", version_id),
+        );
 
         let version_info = self.version_manager.get_version_info(version_id)?;
         let version_details = match self.version_manager.get_version_details(version_info).await {
@@ -167,26 +195,31 @@ impl MinecraftLauncher {
         };
 
         // Download all required components
+        update_global_progress(0.3, format!("Downloading {} game files...", version_id));
         log_info!("Downloading client jar...");
         if let Err(e) = self.download_client_jar(&version_details).await {
             log_warn!("Failed to download client jar: {e}");
         }
 
+        update_global_progress(0.4, "Downloading game libraries...".to_string());
         log_info!("Downloading libraries...");
         if let Err(e) = self.download_libraries(&version_details).await {
             log_warn!("Failed to download libraries: {e}");
         }
 
+        update_global_progress(0.5, "Downloading native libraries...".to_string());
         log_info!("Downloading and extracting native libraries...");
         if let Err(e) = self.download_natives(&version_details).await {
             log_warn!("Failed to download natives: {e}");
         }
 
+        update_global_progress(0.55, "Downloading game assets...".to_string());
         log_info!("Downloading assets...");
         if let Err(e) = self.download_assets(&version_details).await {
             log_warn!("Failed to download assets: {e}");
         }
 
+        update_global_progress(0.65, "Verifying installation...".to_string());
         // Try to verify installation, but don't fail if some files are missing
         match self.verify_installation(&version_details).await {
             Ok(()) => log_info!("Version {version_id} prepared successfully"),
@@ -232,6 +265,18 @@ impl MinecraftLauncher {
         // Test Java version
         Self::test_java_version(&java_path)?;
         let java_major_version = Self::get_java_major_version(&java_path)?;
+        log_info!(
+            "Java version verification complete: Java {}",
+            java_major_version
+        );
+
+        // Log detailed Java info on Windows for debugging
+        if cfg!(windows) {
+            log_info!("Windows Java debugging info:");
+            log_info!("  Java executable: {}", java_path.display());
+            log_info!("  Java major version: {}", java_major_version);
+            log_info!("  Use Rosetta: {}", use_rosetta);
+        }
 
         // Build library paths
         let libraries = self.get_library_paths(&version_details)?;
@@ -262,9 +307,38 @@ impl MinecraftLauncher {
         println!("Starting Minecraft...");
         log_info!("Full command: {:?}", cmd);
 
+        // Extra debugging for Windows
+        if cfg!(windows) {
+            log_info!("Windows launch debugging:");
+            log_info!("  Working directory: {:?}", cmd.get_current_dir());
+            log_info!("  Environment variables:");
+            for (key, value) in cmd.get_envs() {
+                if let (Some(k), Some(v)) = (key.to_str(), value.and_then(|v| v.to_str())) {
+                    if k.contains("JAVA") || k.contains("PATH") || k.contains("LWJGL") {
+                        log_info!("    {}: {}", k, v);
+                    }
+                }
+            }
+        }
+
         // Launch the game
         let mut child = cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
         log_info!("Minecraft process started with PID: {}", child.id());
+
+        // Log success on Windows
+        if cfg!(windows) {
+            log_info!("Windows process launch successful - PID: {}", child.id());
+        }
+
+        // Hide progress bar immediately after successful process start
+        if let Some(sender) = crate::backend::utils::progress_bridge::get_progress_sender() {
+            // Send completion signal to hide progress bar
+            let _ = sender.send(crate::backend::launcher::progress::ProgressInfo {
+                progress: 0.0,
+                message: "".to_string(),
+                stage: crate::backend::launcher::progress::ProgressStage::Completed,
+            });
+        }
 
         // Monitor output streams
         if let Some(stdout) = child.stdout.take() {
@@ -480,6 +554,17 @@ impl MinecraftLauncher {
         let platform_info = PlatformInfo::new();
         let natives_dir = get_natives_dir(&self.game_dir, &version_details.id);
 
+        log_info!("Extracting natives to: {}", natives_dir.display());
+        log_info!(
+            "Platform info: OS={}, Arch={}, Classifiers={:?}",
+            platform_info.os_name,
+            platform_info.os_arch,
+            platform_info.native_classifiers
+        );
+
+        let mut extracted_count = 0;
+        let mut total_natives = 0;
+
         for library in &version_details.libraries {
             if !library.should_use(
                 platform_info.os_name,
@@ -494,16 +579,71 @@ impl MinecraftLauncher {
                     if let Some(native_artifact) = classifiers.get(classifier)
                         && let Some(path) = &native_artifact.path
                     {
+                        total_natives += 1;
                         let native_path = get_library_path(&self.game_dir, path);
-                        if native_path.exists()
-                            && let Err(e) =
-                                crate::utils::extract_zip(&native_path, &natives_dir).await
-                        {
-                            log_warn!("Failed to extract {}: {}", native_path.display(), e);
+                        log_info!(
+                            "Processing native: {} -> {}",
+                            native_path.display(),
+                            natives_dir.display()
+                        );
+
+                        if native_path.exists() {
+                            match crate::utils::extract_zip(&native_path, &natives_dir).await {
+                                Ok(()) => {
+                                    extracted_count += 1;
+                                    log_info!(
+                                        "✓ Successfully extracted native: {}",
+                                        native_path
+                                            .file_name()
+                                            .unwrap_or_default()
+                                            .to_string_lossy()
+                                    );
+                                }
+                                Err(e) => {
+                                    log_warn!(
+                                        "✗ Failed to extract {}: {}",
+                                        native_path.display(),
+                                        e
+                                    );
+                                }
+                            }
+                        } else {
+                            log_warn!("✗ Native library not found: {}", native_path.display());
                         }
                         break;
                     }
                 }
+            }
+        }
+
+        log_info!(
+            "Native extraction complete: {}/{} libraries extracted",
+            extracted_count,
+            total_natives
+        );
+
+        // Verify natives directory contents on Windows
+        if cfg!(windows) {
+            if let Ok(entries) = std::fs::read_dir(&natives_dir) {
+                let files: Vec<_> = entries
+                    .filter_map(|entry| entry.ok().and_then(|e| e.file_name().into_string().ok()))
+                    .collect();
+                log_info!("Natives directory contents: {:?}", files);
+
+                // Look for essential LWJGL libraries
+                let essential_libs = ["lwjgl.dll", "lwjgl_opengl.dll", "lwjgl_glfw.dll"];
+                for lib in &essential_libs {
+                    if files.iter().any(|f| f.contains(lib)) {
+                        log_info!("✓ Found essential library: {}", lib);
+                    } else {
+                        log_warn!("✗ Missing essential library: {}", lib);
+                    }
+                }
+            } else {
+                log_warn!(
+                    "Failed to read natives directory: {}",
+                    natives_dir.display()
+                );
             }
         }
 

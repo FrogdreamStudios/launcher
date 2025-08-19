@@ -34,6 +34,31 @@ impl HttpDownloader {
         })
     }
 
+    /// Creates a downloader.
+    pub fn new_for_java() -> Result<Self> {
+        Ok(Self {
+            client: Client::builder()
+                .timeout(Duration::from_secs(300))
+                .connect_timeout(Duration::from_secs(60))
+                .user_agent("DreamLauncher/1.0.0")
+                .build()?,
+        })
+    }
+
+    /// Downloads a Java archive.
+    pub async fn download_java_archive(
+        &self,
+        url: &str,
+        destination: &Path,
+        expected_sha1: Option<&str>,
+    ) -> Result<()> {
+        // Use a special Java downloader with longer timeouts
+        let java_downloader = Self::new_for_java()?;
+        java_downloader
+            .download_file(url, destination, expected_sha1)
+            .await
+    }
+
     /// Downloads a file with optional SHA1 verification.
     pub async fn download_file(
         &self,

@@ -23,3 +23,8 @@ long_description = "A powerful and lightweight Minecraft launcher that will be p
 app_name = "Dream Launcher"
 files = {}
 hardened_runtime = false
+
+[bundle.windows]
+webview2_install_mode = "embedbootstrapper"
+webview2_user_data_folder = ".dream-launcher"
+console_subsystem = false

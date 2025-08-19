@@ -230,5 +230,9 @@ fn main() {
         );
         res.set("CompanyName", "Frogdream Studios");
         res.set("ProductVersion", env!("CARGO_PKG_VERSION"));
+
+        if let Err(e) = res.compile() {
+            println!("cargo:warning=Failed to compile Windows resources: {}", e);
+        }
     }
 }

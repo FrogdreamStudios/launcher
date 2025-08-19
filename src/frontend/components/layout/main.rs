@@ -509,9 +509,17 @@ pub fn Layout() -> Element {
             }
 
             // Progress bar at bottom when game is launching
-            if game_status() == GameStatus::Launching {
+            if game_status().is_active() {
                 div {
-                    class: "launch-progress-bar",
+                    class: "launch-progress-container",
+                    div {
+                        class: "launch-progress-bar",
+                        style: "width: {game_status().get_progress() * 100.0}%",
+                    }
+                    div {
+                        class: "launch-progress-text",
+                        "{game_status().get_message()}"
+                    }
                 }
             }
         }

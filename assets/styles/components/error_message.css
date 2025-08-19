@@ -1,0 +1,26 @@
+.error-message {
+    font-family: 'Gilroy', sans-serif;
+    color: #ff4444;
+    font-size: 14px;
+    margin-top: 8px;
+    text-align: center;
+    transition: all 0.3s ease-in-out;
+    transform-origin: center;
+}
+
+.error-hidden {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+    max-height: 0;
+    overflow: hidden;
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.error-visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    max-height: 50px;
+    margin-top: 8px;
+    margin-bottom: 8px;
+}
