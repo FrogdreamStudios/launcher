@@ -1,15 +1,4 @@
-@font-face {
-    font-family: "Gilroy";
-    src: url("/assets/fonts/Gilroy/Gilroy-Medium.ttf") format("truetype");
-    font-weight: 400;
-    font-style: normal;
-}
-@font-face {
-    font-family: "Gilroy";
-    src: url("/assets/fonts/Gilroy/Gilroy-Bold.ttf") format("truetype");
-    font-weight: 700;
-    font-style: normal;
-}
+/* Font faces are now embedded via get_auth_css_with_fonts() */
 
 * {
     box-sizing: border-box;
@@ -78,7 +67,7 @@ button:focus-visible {
 }
 
 .welcome-text {
-    font-family: "Gilroy", sans-serif;
+    font-family: "Gilroy-Bold", Helvetica, Arial, sans-serif;
     font-weight: 700;
     color: #fff;
     font-size: 36px;
@@ -100,7 +89,7 @@ button:focus-visible {
     width: 100%;
     height: 55px;
     border-radius: 8px;
-    font-family: "Gilroy", sans-serif;
+    font-family: "Gilroy-Medium", Helvetica, Arial, sans-serif;
     font-weight: 500;
     font-size: 18px;
     cursor: pointer;
@@ -196,7 +185,7 @@ button:focus-visible {
     border: none;
     outline: none;
     width: 100%;
-    font-family: "Gilroy", sans-serif;
+    font-family: "Gilroy-Medium", Helvetica, Arial, sans-serif;
     font-weight: 500;
     font-size: 18px;
     text-align: center;
