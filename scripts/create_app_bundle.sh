@@ -76,10 +76,7 @@ cat > "$APP_PATH/Contents/Info.plist" << EOF
 </plist>
 EOF
 
-# Copy assets directory if it exists.
-if [[ -d "assets" ]]; then
-    cp -R "assets" "$APP_PATH/Contents/Resources/"
-fi
+
 
 # Copy app icon if it exists.
 if [[ -f "assets/icons/app_icon.icns" ]]; then
