@@ -18,6 +18,12 @@
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+    -webkit-user-zoom: none;
+    -moz-user-zoom: none;
+    -ms-user-zoom: none;
+    user-zoom: none;
 }
 
 *::-webkit-scrollbar {
@@ -48,6 +54,15 @@ body {
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+    -webkit-user-zoom: none;
+    -moz-user-zoom: none;
+    -ms-user-zoom: none;
+    user-zoom: none;
+    zoom: 1;
+    min-zoom: 1;
+    max-zoom: 1;
 }
 
 .desktop {

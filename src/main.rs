@@ -10,13 +10,23 @@ use dioxus::{LaunchBuilder, prelude::*};
 use dioxus_desktop::{Config, LogicalSize, WindowBuilder};
 use dioxus_router::Router;
 
+#[cfg(target_os = "windows")]
+use winapi::um::wincon::FreeConsole;
+
 use crate::backend::utils::app::main::Route;
 use tokio::runtime::Runtime;
 
 static RUNTIME: OnceLock<Runtime> = OnceLock::new();
 
 /// Main function for starting the application.
+#[cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 fn main() {
+    // Hide console on Windows in release mode
+    #[cfg(all(target_os = "windows", not(debug_assertions)))]
+    unsafe {
+        FreeConsole();
+    }
+
     // Logging
     utils::logging::init_from_env();
 
@@ -46,9 +56,13 @@ fn main() {
                 .with_title("Dream Launcher")
                 .with_inner_size(size)
                 .with_min_inner_size(size)
-                .with_resizable(false),
+                .with_resizable(false)
+                .with_closable(true)
+                .with_maximizable(false)
+                .with_minimizable(true),
         )
-        .with_menu(None);
+        .with_menu(None)
+        .with_disable_context_menu(true);
 
     LaunchBuilder::new().with_cfg(config).launch(AppRoot);
 }
