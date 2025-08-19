@@ -1,4 +1,6 @@
 use std::env;
+use std::fs;
+use std::path::Path;
 use std::process::Command;
 
 fn is_command_available(command: &str) -> bool {
@@ -73,8 +75,73 @@ fn build_with_npx_fallback() {
     }
 }
 
+fn generate_font_constants() {
+    let fonts = vec![
+        ("gilroy_medium", "assets/fonts/Gilroy/Gilroy-Medium.ttf"),
+        ("gilroy_bold", "assets/fonts/Gilroy/Gilroy-Bold.ttf"),
+    ];
+
+    let out_dir = env::var("OUT_DIR").unwrap();
+    let dest_path = Path::new(&out_dir).join("fonts.rs");
+
+    let mut content = String::from("// Auto-generated font constants\n\n");
+    content.push_str(
+        "pub fn get_fonts() -> std::collections::HashMap<&'static str, &'static str> {\n",
+    );
+    content.push_str("    let mut fonts = std::collections::HashMap::new();\n");
+
+    for (name, path) in &fonts {
+        if let Ok(data) = fs::read(path) {
+            let base64_data = base64_encode(&data);
+            content.push_str(&format!(
+                "    fonts.insert(\"{name}\", \"data:font/truetype;base64,{base64_data}\");\n"
+            ));
+            println!("cargo:rerun-if-changed={path}");
+        } else {
+            println!("cargo:warning=Failed to read font: {path}");
+        }
+    }
+
+    content.push_str("    fonts\n");
+    content.push_str("}\n");
+
+    fs::write(&dest_path, content).unwrap();
+}
+
+fn base64_encode(data: &[u8]) -> String {
+    const CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut result = String::new();
+
+    for chunk in data.chunks(3) {
+        let mut buf = [0u8; 3];
+        for (i, &byte) in chunk.iter().enumerate() {
+            buf[i] = byte;
+        }
+
+        let b = ((buf[0] as u32) << 16) | ((buf[1] as u32) << 8) | (buf[2] as u32);
+
+        result.push(CHARS[((b >> 18) & 63) as usize] as char);
+        result.push(CHARS[((b >> 12) & 63) as usize] as char);
+        result.push(if chunk.len() > 1 {
+            CHARS[((b >> 6) & 63) as usize] as char
+        } else {
+            '='
+        });
+        result.push(if chunk.len() > 2 {
+            CHARS[(b & 63) as usize] as char
+        } else {
+            '='
+        });
+    }
+
+    result
+}
+
 fn main() {
     println!("cargo:rerun-if-changed=assets/icons/app_icon.icns");
+
+    // Generate font constants
+    generate_font_constants();
 
     println!("cargo:rerun-if-changed=assets/styles/main.css");
     println!("cargo:rerun-if-changed=assets/styles/auth.css");
@@ -157,7 +224,10 @@ fn main() {
         let mut res = winres::WindowsResource::new();
         res.set_icon("assets/images/other/icon.ico");
         res.set("ProductName", "Dream Launcher");
-        res.set("FileDescription", "A powerful and lightweight Minecraft launcher that will be perfect for every player");
+        res.set(
+            "FileDescription",
+            "A powerful and lightweight Minecraft launcher that will be perfect for every player",
+        );
         res.set("CompanyName", "Frogdream Studios");
         res.set("ProductVersion", env!("CARGO_PKG_VERSION"));
     }

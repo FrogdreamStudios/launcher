@@ -101,7 +101,7 @@ pub fn Layout() -> Element {
 
     rsx! {
         style {
-            dangerous_inner_html: ResourceLoader::get_combined_main_css()
+            dangerous_inner_html: ResourceLoader::get_embedded_css_with_fonts()
         }
 
         div {
