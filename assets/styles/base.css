@@ -23,7 +23,6 @@
     -webkit-user-zoom: none;
     -moz-user-zoom: none;
     -ms-user-zoom: none;
-    user-zoom: none;
 }
 
 *::-webkit-scrollbar {
@@ -59,10 +58,33 @@ body {
     -webkit-user-zoom: none;
     -moz-user-zoom: none;
     -ms-user-zoom: none;
-    user-zoom: none;
-    zoom: 1;
-    min-zoom: 1;
-    max-zoom: 1;
+    zoom: 1 !important;
+    transform-origin: 0 0 !important;
+    -moz-transform: scale(1) !important;
+    -ms-transform: scale(1) !important;
+    transform: scale(1) !important;
+    position: fixed !important;
+    width: 100vw !important;
+}
+
+html,
+body {
+    max-zoom: 1 !important;
+}
+
+html,
+body {
+    height: 100vh !important;
+}
+
+html,
+body {
+    -webkit-transform: scale(1) !important;
+}
+
+html,
+body {
+    min-zoom: 1 !important;
 }
 
 .desktop {
@@ -134,4 +156,30 @@ body {
     opacity: 0;
     transform: scale(0.98);
     transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Zoom prevention */
+* {
+    will-change: auto !important;
+}
+
+body {
+    -webkit-text-size-adjust: 100% !important;
+    -moz-text-size-adjust: 100% !important;
+    -ms-text-size-adjust: 100% !important;
+    text-size-adjust: 100% !important;
+}
+
+/* Prevent pinch zoom on all elements */
+html,
+body,
+*,
+*:before,
+*:after {
+    -ms-touch-action: manipulation !important;
+    touch-action: manipulation !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
 }
