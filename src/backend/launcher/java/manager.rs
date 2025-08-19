@@ -77,11 +77,27 @@ impl JavaManager {
             && let Ok(Some(mut system_java)) = JavaRuntime::detect_system_java()
             && system_java.is_compatible_with_minecraft(required_java)
         {
-            log_info!("Using system Java {} runtime", system_java.major_version);
-            if system_java.path.as_os_str().is_empty() {
-                system_java.path = crate::utils::which("java").unwrap_or_else(|_| "java".into());
+            // For legacy versions requiring Java 8, prefer the exact version match
+            // Only use system Java if it's exactly Java 8 or if no Java 8 is required
+            let should_use_system = if required_java == 8 {
+                system_java.major_version == 8
+            } else {
+                true
+            };
+
+            if should_use_system {
+                log_info!("Using system Java {} runtime", system_java.major_version);
+                if system_java.path.as_os_str().is_empty() {
+                    system_java.path =
+                        crate::utils::which("java").unwrap_or_else(|_| "java".into());
+                }
+                return Ok((system_java.get_executable_path(), false));
+            } else {
+                log_info!(
+                    "System Java {} found but preferring exact Java 8 for legacy version",
+                    system_java.major_version
+                );
             }
-            return Ok((system_java.get_executable_path(), false));
         }
 
         // Java installation
@@ -98,15 +114,29 @@ impl JavaManager {
                 if let Ok(Some(mut system_java)) = JavaRuntime::detect_system_java()
                     && system_java.is_compatible_with_minecraft(required_java)
                 {
-                    log_info!(
-                        "Using system Java {} as fallback",
-                        system_java.major_version
-                    );
-                    if system_java.path.as_os_str().is_empty() {
-                        system_java.path =
-                            crate::utils::which("java").unwrap_or_else(|_| "java".into());
+                    // For legacy versions requiring Java 8, prefer the exact version match even in fallback
+                    let should_use_system = if required_java == 8 {
+                        system_java.major_version == 8
+                    } else {
+                        true
+                    };
+
+                    if should_use_system {
+                        log_info!(
+                            "Using system Java {} as fallback",
+                            system_java.major_version
+                        );
+                        if system_java.path.as_os_str().is_empty() {
+                            system_java.path =
+                                crate::utils::which("java").unwrap_or_else(|_| "java".into());
+                        }
+                        return Ok((system_java.get_executable_path(), false));
+                    } else {
+                        log_warn!(
+                            "System Java {} found but refusing to use for legacy version requiring Java 8",
+                            system_java.major_version
+                        );
                     }
-                    return Ok((system_java.get_executable_path(), false));
                 }
                 Err(simple_error!(
                     "Failed to install Java {required_java} ({arch}) and no compatible system Java found"
@@ -458,7 +488,14 @@ impl JavaManager {
             self.get_compatible_runtime(required_java).is_some()
                 || JavaRuntime::detect_system_java()
                     .map(|opt| {
-                        opt.is_some_and(|sys| sys.is_compatible_with_minecraft(required_java))
+                        opt.is_some_and(|sys| {
+                            // For legacy versions requiring Java 8, prefer the exact version match
+                            if required_java == 8 {
+                                sys.major_version == 8
+                            } else {
+                                sys.is_compatible_with_minecraft(required_java)
+                            }
+                        })
                     })
                     .unwrap_or(false)
         }

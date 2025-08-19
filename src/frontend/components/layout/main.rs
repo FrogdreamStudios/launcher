@@ -28,9 +28,9 @@ pub fn Layout() -> Element {
     let mut auth = use_context::<AuthState>();
 
     // Visit tracker with reactive signals
-    let mut visit_tracker = use_signal(|| VisitTracker::new());
+    let visit_tracker = use_signal(|| VisitTracker::new());
     let mut sites = use_signal(|| Vec::new());
-    let mut refresh_trigger = use_signal(|| 0);
+    let refresh_trigger = use_signal(|| 0);
 
     // Initialize sites on first render
     use_effect(move || {
