@@ -52,14 +52,17 @@ fn main() {
         )
         .with_menu(None);
 
-    // Configure WebView2
+    // Configure WebView2 user data folder on Windows
     #[cfg(target_os = "windows")]
     {
         if let Some(home_dir) = dirs::home_dir() {
             let user_data_dir = home_dir.join(".dream-launcher");
-            std::env::set_var("WEBVIEW2_USER_DATA_FOLDER", user_data_dir);
 
-            // Additional WebView2 arguments to prevent unwanted folders
+            // Create directory if it doesn't exist
+            let _ = std::fs::create_dir_all(&user_data_dir);
+
+            // Set environment variables for WebView2 (safe in single-threaded startup)
+            std::env::set_var("WEBVIEW2_USER_DATA_FOLDER", &user_data_dir);
             std::env::set_var(
                 "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
                 format!("--user-data-dir={}", user_data_dir.display()),
