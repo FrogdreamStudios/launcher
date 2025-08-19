@@ -21,6 +21,18 @@ const ASSETS: &[(&str, &str)] = &[
     ("folder", "assets/images/buttons/folder.png"),
     ("debug", "assets/images/buttons/debug.png"),
     ("add", "assets/images/buttons/add.png"),
+    ("open", "assets/images/buttons/open.png"),
+    ("minecraft_icon", "assets/images/other/minecraft.png"),
+    (
+        "minecraft_wiki_icon",
+        "assets/images/other/minecraft_wiki.png",
+    ),
+    (
+        "planet_minecraft_icon",
+        "assets/images/other/planet_minecraft.png",
+    ),
+    ("curseforge_icon", "assets/images/other/curseforge.png"),
+    ("namemc_icon", "assets/images/other/namemc.png"),
 ];
 
 pub struct ResourceLoader;
@@ -64,6 +76,9 @@ impl ResourceLoader {
         style!("context_menu", "/assets/styles/components/context_menu.css");
         style!("debug", "/assets/styles/components/debug.css");
         style!("settings", "/assets/styles/components/settings.css");
+        style!("progress", "/assets/styles/components/progress.css");
+        style!("new", "/assets/styles/components/new.css");
+        style!("browser", "/assets/styles/components/browser.css");
         m
     }
 
@@ -96,6 +111,9 @@ impl ResourceLoader {
             "context_menu",
             "debug",
             "settings",
+            "progress",
+            "new",
+            "browser",
             "tailwind",
         ])
     }

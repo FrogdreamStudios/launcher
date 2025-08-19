@@ -11,10 +11,12 @@ dependencies = [
  "dioxus-desktop",
  "dioxus-router",
  "native-tls",
+ "once_cell",
  "serde",
  "serde_json",
  "tokio",
  "tokio-native-tls",
+ "webbrowser",
 ]
 
 [[package]]

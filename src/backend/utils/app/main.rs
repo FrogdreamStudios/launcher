@@ -2,6 +2,7 @@
 
 use crate::frontend::pages::auth::Auth;
 use crate::frontend::pages::main::main::Main;
+use crate::frontend::pages::new::New as NewPage;
 use crate::frontend::pages::settings::Settings as SettingsPage;
 use crate::frontend::services::chats::main::Chat;
 
@@ -30,7 +31,7 @@ pub fn Cloud() -> Element {
 
 #[component]
 pub fn New() -> Element {
-    rsx! { div {} }
+    rsx! { NewPage {} }
 }
 
 /// Main routing enum for the application.

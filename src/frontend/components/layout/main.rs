@@ -1,11 +1,13 @@
+use crate::backend::services::VisitTracker;
 use crate::backend::utils::app::main::Route;
 use crate::backend::utils::css::main::ResourceLoader;
-use crate::frontend::components::launcher::debug_window::use_version_selection;
 use crate::frontend::pages::auth::AuthState;
 use crate::frontend::{
     components::{
         common::{News, StandaloneLogo},
-        launcher::{ContextMenu, DebugWindow, launch_minecraft},
+        launcher::{
+            ContextMenu, DebugWindow, debug_window::use_version_selection, launch_minecraft,
+        },
         layout::Navigation,
     },
     services::instances::main::InstanceManager,
@@ -13,6 +15,7 @@ use crate::frontend::{
 };
 use dioxus::prelude::{Key, *};
 use dioxus_router::{components::Outlet, navigator, use_route};
+use webbrowser;
 
 #[component]
 pub fn Layout() -> Element {
@@ -23,6 +26,17 @@ pub fn Layout() -> Element {
     let mut last_active_page = use_signal(|| "Home");
     let nav = navigator();
     let mut auth = use_context::<AuthState>();
+
+    // Visit tracker with reactive signals
+    let mut visit_tracker = use_signal(|| VisitTracker::new());
+    let mut sites = use_signal(|| Vec::new());
+    let mut refresh_trigger = use_signal(|| 0);
+
+    // Initialize sites on first render
+    use_effect(move || {
+        let initial_sites = visit_tracker.with(|tracker| tracker.get_sorted_sites());
+        sites.set(initial_sites);
+    });
 
     // Context menu state
     let mut show_context_menu = use_signal(|| false);
@@ -64,6 +78,7 @@ pub fn Layout() -> Element {
 
     let is_home = current_page == "Home";
     let is_settings = current_page == "Settings";
+    let is_new = current_page == "New";
 
     use_effect(move || {
         if initial_load() {
@@ -370,6 +385,109 @@ pub fn Layout() -> Element {
                 }
             }
 
+            if is_new {
+                div {
+                    class: "new-title",
+                    style: "top: 90px !important;",
+                    "What will you jump into?"
+                }
+
+                div {
+                    class: "new-divider",
+                    style: "top: 106px !important; left: 369px",
+                }
+
+                {
+                    // Trigger refresh if needed
+                    let _ = refresh_trigger();
+
+                    sites().into_iter().take(5).enumerate().map(|(i, site)| {
+                        let site_key = match site.url.as_str() {
+                            "https://www.minecraft.net" => "minecraft",
+                            "https://minecraft.wiki/" => "minecraft_wiki",
+                            "https://www.planetminecraft.com" => "planet_minecraft",
+                            "https://www.curseforge.com/minecraft" => "curseforge",
+                            "https://namemc.com" => "namemc",
+                            _ => "unknown",
+                        };
+
+                        rsx! {
+                            div {
+                                key: "{site.url}",
+                                class: "new-panel",
+                                style: format!("top: {}px;", 143 + (i * 81)),
+                            }
+
+                            div {
+                                class: "new-server-icon",
+                                style: format!("top: {}px;", 151 + (i * 81)),
+                                img {
+                                    src: ResourceLoader::get_asset(&site.icon_key),
+                                    class: "server-icon-img",
+                                    style: "width: 49px; height: 49px; border-radius: 4px;"
+                                }
+                            }
+
+                            div {
+                                class: "new-server-name",
+                                style: format!("top: {}px;", 155 + (i * 81)),
+                                "{site.name}"
+                            }
+
+                            div {
+                                class: "new-server-last-played",
+                                style: format!("top: {}px;", 174 + (i * 81)),
+                                {
+                                    if site.visit_count == 0 {
+                                        "You haven't visited this website yet".to_string()
+                                    } else {
+                                        VisitTracker::format_time_ago(site.last_visited)
+                                    }
+                                }
+                            }
+
+                            div {
+                                class: "new-open-button",
+                                style: format!("top: {}px;", 159 + (i * 81)),
+                                onclick: {
+                                    let url = site.url.clone();
+                                    let site_key = site_key.to_string();
+                                    let mut tracker = visit_tracker.clone();
+                                    let mut sites_signal = sites.clone();
+                                    let mut refresh = refresh_trigger.clone();
+                                    move |_| {
+                                        // Record visit
+                                        tracker.with_mut(|t| t.record_visit(&site_key));
+
+                                        // Update sites list
+                                        let updated_sites = tracker.with(|t| t.get_sorted_sites());
+                                        sites_signal.set(updated_sites);
+
+                                        // Trigger refresh
+                                        refresh.set(refresh() + 1);
+
+                                        let url_clone = url.clone();
+                                        spawn(async move {
+                                            if let Err(e) = webbrowser::open(&url_clone) {
+                                                eprintln!("Failed to open browser: {e}");
+                                            }
+                                        });
+                                    }
+                                },
+                                img { src: ResourceLoader::get_asset("open"), class: "open-icon" }
+                                div { class: "open-text", "Open" }
+                            }
+
+                            img {
+                                src: ResourceLoader::get_asset("additional"),
+                                class: "new-additional-button",
+                                style: format!("top: {}px;", 159 + (i * 81)),
+                            }
+                        }
+                    })
+                }
+            }
+
             // Context menu
             ContextMenu {
                 show: show_context_menu,
@@ -388,6 +506,13 @@ pub fn Layout() -> Element {
                 version_selection: version_selection,
                 game_status: game_status,
                 instance_id: context_menu_instance_id
+            }
+
+            // Progress bar at bottom when game is launching
+            if game_status() == GameStatus::Launching {
+                div {
+                    class: "launch-progress-bar",
+                }
             }
         }
 

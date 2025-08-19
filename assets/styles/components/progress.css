@@ -1,0 +1,33 @@
+/* Launch progress bar styles */
+.launch-progress-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: rgba(56, 255, 16, 0.3);
+    z-index: 9999;
+}
+
+.launch-progress-bar::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: #38ff10;
+    animation: progress-fill 2s ease-in-out infinite;
+    box-shadow: 0 0 4px #38ff10;
+}
+
+@keyframes progress-fill {
+    0% {
+        width: 0%;
+    }
+    50% {
+        width: 70%;
+    }
+    100% {
+        width: 100%;
+    }
+}

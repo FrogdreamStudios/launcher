@@ -186,7 +186,7 @@ pub fn get_instance_directory(instance_id: u32) -> PathBuf {
 pub fn get_instances_config_path() -> PathBuf {
     get_launcher_dir()
         .unwrap_or_else(|_| PathBuf::from("DreamLauncher"))
-        .join("instances.json")
+        .join("launcher.json")
 }
 
 /// Create all necessary directories for an instance.
