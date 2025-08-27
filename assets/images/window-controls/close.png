@@ -1,0 +1,4 @@
+# Placeholder for close.png
+# The close icon is currently implemented using SVG data URI in titlebar.css
+# If you want to replace it with a PNG file, place your 16x16 white close icon here
+# The CSS will automatically use this file if it exists

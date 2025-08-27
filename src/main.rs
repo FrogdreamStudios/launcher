@@ -49,6 +49,7 @@ fn main() {
                 .with_title("Dream Launcher")
                 .with_inner_size(size)
                 .with_min_inner_size(size)
+                .with_max_inner_size(size)
                 .with_resizable(false)
                 .with_decorations(false)
                 .with_transparent(true),

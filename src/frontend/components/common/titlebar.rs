@@ -1,3 +1,4 @@
+use crate::backend::utils::css::main::ResourceLoader;
 use dioxus::prelude::*;
 
 #[component]
@@ -13,6 +14,9 @@ pub fn TitleBar() -> Element {
                         let _ = window.drag();
                     }
                 });
+            },
+            ondoubleclick: move |e| {
+                e.prevent_default();
             }
         }
 
@@ -30,7 +34,12 @@ pub fn TitleBar() -> Element {
                         }
                     });
                 },
-                span { class: "minimize-icon", "─" }
+                img {
+                    src: "{ResourceLoader::get_asset(\"minimize\")}",
+                    alt: "Minimize",
+                    width: "20",
+                    height: "20"
+                }
             }
 
             button {
@@ -49,7 +58,12 @@ pub fn TitleBar() -> Element {
                         }
                     });
                 },
-                span { class: "close-icon", "✕" }
+                img {
+                    src: "{ResourceLoader::get_asset(\"big_close\")}",
+                    alt: "Close",
+                    width: "20",
+                    height: "20"
+                }
             }
         }
     }

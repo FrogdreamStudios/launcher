@@ -1,0 +1,4 @@
+# Placeholder for minimize.png
+# The minimize icon is currently implemented using SVG data URI in titlebar.css
+# If you want to replace it with a PNG file, place your 16x16 white minimize icon here
+# The CSS will automatically use this file if it exists
