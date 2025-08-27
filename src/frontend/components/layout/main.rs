@@ -27,12 +27,12 @@ pub fn Layout() -> Element {
     let nav = navigator();
     let mut auth = use_context::<AuthState>();
 
-    // Visit tracker with reactive signals
-    let visit_tracker = use_signal(|| VisitTracker::new());
-    let mut sites = use_signal(|| Vec::new());
+    // Visit the tracker with reactive signals
+    let visit_tracker = use_signal(VisitTracker::new);
+    let mut sites = use_signal(Vec::new);
     let refresh_trigger = use_signal(|| 0);
 
-    // Initialize sites on first render
+    // Initialize sites on the first render
     use_effect(move || {
         let initial_sites = visit_tracker.with(|tracker| tracker.get_sorted_sites());
         sites.set(initial_sites);
@@ -455,9 +455,9 @@ pub fn Layout() -> Element {
                                 onclick: {
                                     let url = site.url.clone();
                                     let site_key = site_key.to_string();
-                                    let mut tracker = visit_tracker.clone();
-                                    let mut sites_signal = sites.clone();
-                                    let mut refresh = refresh_trigger.clone();
+                                    let mut tracker = visit_tracker;
+                                    let mut sites_signal = sites;
+                                    let mut refresh = refresh_trigger;
                                     move |_| {
                                         // Record visit
                                         tracker.with_mut(|t| t.record_visit(&site_key));

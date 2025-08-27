@@ -64,7 +64,7 @@ impl<'a> DownloadContext<'a> {
             let completed = i * batch_size;
             let progress_percent = completed as f32 / total as f32;
 
-            // Calculate base progress based on item type
+            // Calculate base progress based on the item type
             let base_progress = match item_type {
                 "libraries" => 0.4,
                 "natives" => 0.5,
@@ -313,13 +313,12 @@ impl MinecraftLauncher {
             log_info!("  Working directory: {:?}", cmd.get_current_dir());
             log_info!("  Environment variables:");
             for (key, value) in cmd.get_envs() {
-                if let (Some(k), Some(v)) = (key.to_str(), value.and_then(|v| v.to_str())) {
-                    if k.contains("JAVA") || k.contains("PATH") || k.contains("LWJGL") {
+                if let (Some(k), Some(v)) = (key.to_str(), value.and_then(|v| v.to_str()))
+                    && (k.contains("JAVA") || k.contains("PATH") || k.contains("LWJGL")) {
                         log_info!("    {}: {}", k, v);
                     }
                 }
             }
-        }
 
         // Launch the game
         let mut child = cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;

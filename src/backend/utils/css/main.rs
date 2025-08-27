@@ -32,6 +32,7 @@ const ASSETS: &[(&str, &[u8])] = &[
     embed_asset!("debug", "assets/images/buttons/debug.png"),
     embed_asset!("add", "assets/images/buttons/add.png"),
     embed_asset!("open", "assets/images/buttons/open.png"),
+    embed_asset!("close", "assets/images/buttons/close.png"),
     embed_asset!("minecraft_icon", "assets/images/other/minecraft.png"),
     embed_asset!(
         "minecraft_wiki_icon",

@@ -1,10 +1,8 @@
 use crate::backend::utils::launcher::paths::get_launcher_dir;
 use crate::{
     backend::launcher::{launcher::MinecraftLauncher, models::VersionInfo},
-    frontend::{
-        components::launcher::minecraft_launcher::launch_minecraft,
-        services::instances::main::INSTANCES, states::GameStatus,
-    },
+    backend::utils::css::main::ResourceLoader,
+    frontend::{services::instances::main::INSTANCES, states::GameStatus},
 };
 use crate::{log_error, log_info, simple_error};
 use dioxus::prelude::*;
@@ -42,7 +40,7 @@ pub fn DebugWindow(
         return rsx! { div { display: "none" } };
     }
 
-    let mut vs = version_selection();
+    let vs = version_selection();
     let (loading, deleting) = (*vs.is_loading.read(), *vs.is_deleting.read());
     let busy = loading || deleting;
 
@@ -66,7 +64,7 @@ pub fn DebugWindow(
             "No instance selected".to_string(),
         )
     };
-    
+
     rsx! {
         div {
             class: "debug-window-overlay",
@@ -83,7 +81,11 @@ pub fn DebugWindow(
                         h3 { class: "debug-title", "{title}" }
                         div { class: "debug-subtitle", "{subtitle}" }
                     }
-                    button { class: "debug-close", onclick: move |_| show.set(false), "✕" }
+                    button {
+                        class: "debug-close",
+                        onclick: move |_| show.set(false),
+                        img { src: ResourceLoader::get_asset("close") }
+                    }
                 }
 
                 // Content

@@ -1,5 +1,6 @@
 use crate::{
     backend::launcher::{launcher::MinecraftLauncher, models::VersionInfo},
+    backend::utils::css::main::ResourceLoader,
     frontend::services::instances::main::InstanceManager,
 };
 use crate::{log_error, log_info};
@@ -44,11 +45,11 @@ pub struct VersionSelectorProps {
 #[component]
 pub fn VersionSelector(props: VersionSelectorProps) -> Element {
     let mut show = props.show;
-    let mut selected_version = use_signal(|| "1.21.8".to_string());
-    let mut available_versions = use_signal(|| Vec::<VersionInfo>::new());
-    let mut filtered_versions = use_signal(|| Vec::<VersionInfo>::new());
+    let selected_version = use_signal(|| "1.21.8".to_string());
+    let mut available_versions = use_signal(Vec::<VersionInfo>::new);
+    let filtered_versions = use_signal(Vec::<VersionInfo>::new);
     let mut is_loading = use_signal(|| false);
-    let mut current_filter = use_signal(|| VersionFilter::Release);
+    let current_filter = use_signal(|| VersionFilter::Release);
     let mut is_hiding = use_signal(|| false);
     let mut should_render = use_signal(|| false);
 
@@ -111,7 +112,7 @@ pub fn VersionSelector(props: VersionSelectorProps) -> Element {
         if let Some(instance_id) = InstanceManager::create_instance_with_version(version.clone()) {
             log_info!("Created instance {instance_id} with version {version}");
 
-            // Verify the instance was created with correct version
+            // Verify the instance was created with a correct version
             use crate::frontend::services::instances::main::INSTANCES;
             let instances = INSTANCES.read();
             if let Some(instance) = instances.get(&instance_id) {
@@ -149,7 +150,7 @@ pub fn VersionSelector(props: VersionSelectorProps) -> Element {
                     button {
                         class: "version-selector-close",
                         onclick: move |_| show.set(false),
-                        "X"
+                        img { src: ResourceLoader::get_asset("close") }
                     }
                 }
 
