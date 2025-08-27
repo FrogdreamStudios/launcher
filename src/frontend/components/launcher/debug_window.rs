@@ -1,6 +1,6 @@
 use crate::backend::utils::launcher::paths::get_launcher_dir;
 use crate::{
-    backend::launcher::{launcher::MinecraftLauncher, models::VersionInfo},
+    backend::launcher::core::MinecraftLauncher,
     backend::utils::css::main::ResourceLoader,
     frontend::{services::instances::main::INSTANCES, states::GameStatus},
 };
@@ -10,8 +10,6 @@ use std::fs;
 
 #[derive(Clone)]
 pub struct VersionSelection {
-    pub selected_version: Signal<String>,
-    pub available_versions: Signal<Vec<VersionInfo>>,
     pub is_loading: Signal<bool>,
     pub is_deleting: Signal<bool>,
     pub system_info: Signal<String>,
@@ -20,8 +18,6 @@ pub struct VersionSelection {
 impl Default for VersionSelection {
     fn default() -> Self {
         Self {
-            selected_version: Signal::new("1.21.8".to_string()),
-            available_versions: Signal::new(Vec::new()),
             is_loading: Signal::new(false),
             is_deleting: Signal::new(false),
             system_info: Signal::new(String::new()),

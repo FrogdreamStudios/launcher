@@ -95,8 +95,6 @@ pub struct MinecraftLauncher {
     game_dir: PathBuf,
     cache_dir: PathBuf,
     version_manager: VersionManager,
-    #[allow(dead_code)]
-    instance_id: Option<u32>,
 }
 
 impl MinecraftLauncher {
@@ -131,7 +129,6 @@ impl MinecraftLauncher {
             game_dir,
             cache_dir,
             version_manager,
-            instance_id,
         })
     }
 
@@ -314,11 +311,12 @@ impl MinecraftLauncher {
             log_info!("  Environment variables:");
             for (key, value) in cmd.get_envs() {
                 if let (Some(k), Some(v)) = (key.to_str(), value.and_then(|v| v.to_str()))
-                    && (k.contains("JAVA") || k.contains("PATH") || k.contains("LWJGL")) {
-                        log_info!("    {}: {}", k, v);
-                    }
+                    && (k.contains("JAVA") || k.contains("PATH") || k.contains("LWJGL"))
+                {
+                    log_info!("    {}: {}", k, v);
                 }
             }
+        }
 
         // Launch the game
         let mut child = cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;

@@ -1,5 +1,5 @@
 use crate::{
-    backend::launcher::{launcher::MinecraftLauncher, models::VersionInfo},
+    backend::launcher::{core::MinecraftLauncher, models::VersionInfo},
     backend::utils::css::main::ResourceLoader,
     frontend::services::instances::main::InstanceManager,
 };

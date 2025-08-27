@@ -10,7 +10,6 @@ dependencies = [
  "dioxus",
  "dioxus-desktop",
  "dioxus-router",
- "dirs",
  "native-tls",
  "once_cell",
  "serde",

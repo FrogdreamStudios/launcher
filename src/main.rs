@@ -55,7 +55,11 @@ fn main() {
     // Configure WebView2 user data folder on Windows
     #[cfg(target_os = "windows")]
     {
-        if let Some(home_dir) = dirs::home_dir() {
+        if let Some(home_dir) = std::env::var("USERPROFILE")
+            .ok()
+            .or_else(|| std::env::var("HOME").ok())
+            .map(std::path::PathBuf::from)
+        {
             let user_data_dir = home_dir.join(".dream-launcher");
 
             // Create the directory if it doesn't exist

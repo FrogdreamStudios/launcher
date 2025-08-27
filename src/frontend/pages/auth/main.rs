@@ -48,7 +48,7 @@ pub fn Auth() -> Element {
             spawn(async move {
                 tokio::time::sleep(Duration::from_millis(50)).await;
                 if let Some(element) = input_ref.read().as_ref() {
-                    let _ = element.set_focus(true);
+                    std::mem::drop(element.set_focus(true));
                 }
             });
         }
