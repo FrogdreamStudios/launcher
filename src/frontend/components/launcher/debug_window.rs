@@ -104,6 +104,8 @@ pub fn DebugWindow(
                             pre { "{vs.system_info.read()}" }
                         }
                     }
+
+
                 }
 
                 // Actions
@@ -154,6 +156,8 @@ pub fn DebugWindow(
                         },
                         if loading { "Updating..." } else { "Update Manifest" }
                     }
+
+
 
                     button {
                         class: if busy { "debug-btn debug-btn-disabled" } else { "debug-btn debug-btn-danger" },

@@ -1,0 +1,243 @@
+/* Rename Dialog Styles */
+.rename-dialog-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.rename-dialog {
+    position: relative;
+    width: 420px;
+    background-color: #141414;
+    border-radius: 8px;
+    border: 2px solid #1b1b1b;
+    display: flex;
+    flex-direction: column;
+    transform-origin: center;
+}
+
+.rename-dialog-show {
+    animation: rename-dialog-scale-in 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94)
+        forwards;
+}
+
+.rename-dialog-hide {
+    animation: rename-dialog-scale-out 0.15s
+        cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+@keyframes rename-dialog-scale-in {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes rename-dialog-scale-out {
+    from {
+        opacity: 1;
+        transform: scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+}
+
+/* Header */
+.rename-dialog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #1b1b1b;
+}
+
+.rename-dialog-title {
+    margin: 0;
+    font-family: "Gilroy-Bold", Helvetica;
+    font-weight: 700;
+    color: #ffffff;
+    font-size: 18px;
+    letter-spacing: 0;
+    line-height: normal;
+}
+
+.rename-dialog-close {
+    all: unset;
+    box-sizing: border-box;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #252525;
+    border-radius: 8px;
+    color: #6f6f6f;
+    font-family: "Gilroy-Bold", Helvetica;
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+    transition: filter 200ms ease;
+}
+
+.rename-dialog-close:hover {
+    filter: brightness(1.15);
+}
+
+.rename-dialog-close img {
+    width: 20px;
+    height: 20px;
+    filter: brightness(1);
+    transition: filter 200ms ease;
+}
+
+.rename-dialog-close:hover img {
+    filter: brightness(1.15);
+}
+
+/* Content */
+.rename-dialog-content {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Current name display */
+.rename-current-name {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.rename-current-label {
+    font-family: "Gilroy-Bold", Helvetica;
+    font-weight: 700;
+    color: #6f6f6f;
+    font-size: 14px;
+}
+
+.rename-current-value {
+    font-family: "Gilroy-Bold", Helvetica;
+    font-weight: 700;
+    color: #ffffff;
+    font-size: 18px;
+    padding: 12px 16px;
+    background: #1b1b1b;
+    border-radius: 8px;
+    border: 2px solid #252525;
+    text-align: center;
+}
+
+/* New name input section */
+.rename-input-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.rename-input-label {
+    font-family: "Gilroy-Bold", Helvetica;
+    font-weight: 700;
+    color: #6f6f6f;
+    font-size: 14px;
+}
+
+.rename-input {
+    font-family: "Gilroy-Bold", Helvetica;
+    font-weight: 700;
+    color: #ffffff;
+    font-size: 18px;
+    padding: 12px 16px;
+    background: #1b1b1b;
+    border: 2px solid #252525;
+    border-radius: 8px;
+    text-align: center;
+    transition: all 200ms ease;
+}
+
+.rename-input:focus {
+    outline: none;
+    border-color: #38ff10;
+    background: #1f1f1f;
+}
+
+.rename-input::placeholder {
+    color: #6f6f6f;
+    font-weight: 400;
+}
+
+.rename-char-count {
+    font-family: "Gilroy-Bold", Helvetica;
+    font-weight: 700;
+    color: #6f6f6f;
+    font-size: 12px;
+    text-align: right;
+    margin-top: -4px;
+}
+
+/* Actions */
+.rename-dialog-actions {
+    display: flex;
+    gap: 12px;
+    padding: 16px 20px;
+    border-top: 1px solid #1b1b1b;
+    justify-content: flex-end;
+}
+
+.rename-action-btn {
+    all: unset;
+    box-sizing: border-box;
+    display: inline-flex;
+    height: 33px;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 4px 20px;
+    border-radius: 8px;
+    font-family: "Gilroy-Bold", Helvetica;
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 200ms ease;
+    min-width: 80px;
+    position: relative;
+}
+
+.rename-action-btn:hover {
+    filter: brightness(1.15);
+    transform: translateY(-1px);
+}
+
+.rename-action-btn.cancel {
+    background: #252525;
+    color: #6f6f6f;
+}
+
+.rename-action-btn.rename {
+    background: #38ff10;
+    color: #000000;
+}
+
+.rename-action-btn.disabled {
+    background: #1b1b1b;
+    color: #6f6f6f;
+    cursor: not-allowed;
+    filter: none;
+}
+
+.rename-action-btn.disabled:hover {
+    filter: none;
+}

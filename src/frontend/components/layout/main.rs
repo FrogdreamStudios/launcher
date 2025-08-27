@@ -7,7 +7,8 @@ use crate::frontend::{
     components::{
         common::{News, StandaloneLogo, VersionSelector},
         launcher::{
-            ContextMenu, DebugWindow, debug_window::use_version_selection, launch_minecraft,
+            ContextMenu, DebugWindow, RenameDialog, debug_window::use_version_selection,
+            launch_minecraft,
         },
         layout::Navigation,
     },
@@ -61,9 +62,10 @@ pub fn Layout() -> Element {
     // Version selector state
     let mut show_version_selector = use_signal(|| false);
 
-    // Inline editing state
-    let mut editing_instance_id = use_signal(|| None::<u32>);
-    let mut editing_text = use_signal(String::new);
+    // Rename dialog state
+    let show_rename_dialog = use_signal(|| false);
+    let rename_instance_id = use_signal(|| None::<u32>);
+    let rename_current_name = use_signal(String::new);
 
     // Determine current page and update last active if not in chat
     let current_page = match route {
@@ -190,9 +192,7 @@ pub fn Layout() -> Element {
                                     key: "{instance.id}",
                                     class: {
                                         let mut classes = vec!["instance-card"];
-                                        if editing_instance_id() == Some(instance.id) {
-                                            classes.push("editing");
-                                        } else if game_status().is_active() && active_instance_id() == Some(instance.id) {
+                                        if game_status().is_active() && active_instance_id() == Some(instance.id) {
                                             classes.push("instance-card-pulsing");
                                         }
                                         classes.join(" ")
@@ -202,8 +202,8 @@ pub fn Layout() -> Element {
                                         let instance_version = instance.version.clone();
                                         let instance_id = instance.id;
                                         move |_| {
-                                            // Don't launch if this instance is being edited or the game is running
-                                            if !game_status().is_active() && editing_instance_id() != Some(instance_id) {
+                                            // Don't launch if the game is running
+                                            if !game_status().is_active() {
                                                 active_instance_id.set(Some(instance_id));
                                                 launch_minecraft(game_status, &instance_version, instance_id);
                                             }
@@ -213,92 +213,29 @@ pub fn Layout() -> Element {
                                         let instance_id = instance.id;
                                         move |e| {
                                             e.prevent_default();
-
-                                            // Don't show the context menu if this instance is being edited
-                                            if editing_instance_id() != Some(instance_id) {
-                                                let client_x = e.client_coordinates().x;
-                                                let client_y = e.client_coordinates().y;
-                                                context_menu_x.set(client_x);
-                                                context_menu_y.set(client_y);
-                                                context_menu_instance_id.set(Some(instance_id));
-                                                show_context_menu.set(true);
-                                            }
+                                            let client_x = e.client_coordinates().x;
+                                            let client_y = e.client_coordinates().y;
+                                            context_menu_x.set(client_x);
+                                            context_menu_y.set(client_y);
+                                            context_menu_instance_id.set(Some(instance_id));
+                                            show_context_menu.set(true);
                                         }
                                     },
 
-                                    if editing_instance_id() == Some(instance.id) {
-                                        input {
-                                            r#type: "text",
-                                            class: "instance-name-input",
-                                            value: "{editing_text()}",
-                                            maxlength: "7",
-                                            autofocus: true,
-                                            style: {
-                                                let text_len = editing_text().len();
-                                                let font_size = match text_len {
-                                                    0..=3 => "36px",
-                                                    4 => "30px",
-                                                    5 => "26px",
-                                                    6 => "22px",
-                                                    _ => "18px",
-                                                };
-                                                format!("background: transparent; border: none; color: #ffffff !important; text-align: center; font-size: {font_size}; font-weight: 700; font-family: 'Gilroy-Bold', Helvetica, Arial, sans-serif; width: 100%; outline: none; z-index: 1000; padding: 0 8px; margin: 0; box-sizing: border-box; -webkit-text-fill-color: #ffffff !important; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);")
-                                            },
-                                            oninput: move |e| {
-                                                editing_text.set(e.value().chars().take(7).collect());
-                                            },
-                                            onkeydown: {
-                                                let instance_id = instance.id;
-                                                move |e| {
-                                                    match e.key() {
-                                                        Key::Enter => {
-                                                            InstanceManager::rename_instance(instance_id, &editing_text());
-                                                            editing_instance_id.set(None);
-                                                            editing_text.set(String::new());
-                                                        },
-                                                        Key::Escape => {
-                                                            editing_instance_id.set(None);
-                                                            editing_text.set(String::new());
-                                                        },
-                                                        _ => {}
-                                                    }
-                                                }
-                                            },
-                                            onblur: {
-                                                let instance_id = instance.id;
-                                                move |_| {
-                                                    if !editing_text().is_empty() {
-                                                        InstanceManager::rename_instance(instance_id, &editing_text());
-                                                    }
-                                                    editing_instance_id.set(None);
-                                                    editing_text.set(String::new());
-                                                }
-                                            }
-                                        }
-                                    } else {
-                                        div {
-                                            class: "instance-level-text",
-                                            style: {
-                                                let text_len = instance.name.len();
-                                                let font_size = match text_len {
-                                                    0..=3 => "36px",
-                                                    4 => "30px",
-                                                    5 => "26px",
-                                                    6 => "22px",
-                                                    _ => "18px",
-                                                };
-                                                format!("font-size: {font_size}; padding: 0 16px;")
-                                            },
-                                            ondoubleclick: {
-                                                let instance_id = instance.id;
-                                                let instance_name = instance.name.clone();
-                                                move |_| {
-                                                    editing_instance_id.set(Some(instance_id));
-                                                    editing_text.set(instance_name.clone());
-                                                }
-                                            },
-                                            "{instance.name}"
-                                        }
+                                    div {
+                                        class: "instance-card-title",
+                                        style: {
+                                            let text_len = instance.name.len();
+                                            let font_size = match text_len {
+                                                0..=3 => "36px",
+                                                4 => "30px",
+                                                5 => "26px",
+                                                6 => "22px",
+                                                _ => "18px",
+                                            };
+                                            format!("font-size: {font_size}; padding: 0 16px;")
+                                        },
+                                        "{instance.name}"
                                     }
                                 }
                             }
@@ -502,8 +439,15 @@ pub fn Layout() -> Element {
                 game_status: game_status,
                 instance_id: context_menu_instance_id,
                 show_debug_window: show_debug_window,
-                editing_instance_id: editing_instance_id,
-                editing_text: editing_text
+                show_rename_dialog: show_rename_dialog,
+                rename_instance_id: rename_instance_id,
+                rename_current_name: rename_current_name
+            }
+
+            RenameDialog {
+                show: show_rename_dialog,
+                instance_id: rename_instance_id,
+                current_name: rename_current_name
             }
 
             // Debug window

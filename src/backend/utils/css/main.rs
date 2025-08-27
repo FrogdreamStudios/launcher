@@ -102,6 +102,10 @@ impl ResourceLoader {
             "version_selector",
             "/assets/styles/components/version_selector.css"
         );
+        style!(
+            "rename_dialog",
+            "/assets/styles/components/rename_dialog.css"
+        );
         style!("titlebar", "/assets/styles/components/titlebar.css");
         m
     }
@@ -140,6 +144,7 @@ impl ResourceLoader {
             "browser",
             "error_message",
             "version_selector",
+            "rename_dialog",
             "titlebar",
             "tailwind",
         ])

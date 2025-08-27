@@ -425,6 +425,17 @@ impl MinecraftLauncher {
                 log_info!("Downloaded client jar for {}", version_details.id);
             }
         }
+
+        // Save version JSON file
+        let version_dir = self.game_dir.join("versions").join(&version_details.id);
+        let json_path = version_dir.join(format!("{}.json", version_details.id));
+
+        ensure_directory(&version_dir).await?;
+
+        let version_json = serde_json::to_string_pretty(version_details)?;
+        tokio::fs::write(&json_path, version_json).await?;
+        log_info!("Saved version JSON for {}", version_details.id);
+
         Ok(())
     }
 

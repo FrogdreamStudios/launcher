@@ -178,7 +178,7 @@
     width: calc(7 * var(--instance-size) + 6 * var(--instance-gap));
 }
 
-.instance-level-text {
+.instance-card-title {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -191,10 +191,6 @@
     z-index: 999;
     text-align: center;
     box-sizing: border-box;
-}
-
-.instance-name-input:focus {
-    outline: none;
 }
 
 .play-together {

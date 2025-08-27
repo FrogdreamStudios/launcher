@@ -146,7 +146,7 @@ pub fn VersionSelector(props: VersionSelectorProps) -> Element {
                 // Header
                 div {
                     class: "version-selector-header",
-                    h3 { class: "version-selector-title", "Select Minecraft Version" }
+                    h3 { class: "version-selector-title", "Select Minecraft version" }
                     button {
                         class: "version-selector-close",
                         onclick: move |_| show.set(false),

@@ -16,8 +16,9 @@ pub struct ContextMenuProps {
     pub game_status: Signal<GameStatus>,
     pub instance_id: Signal<Option<u32>>,
     pub show_debug_window: Signal<bool>,
-    pub editing_instance_id: Signal<Option<u32>>,
-    pub editing_text: Signal<String>,
+    pub show_rename_dialog: Signal<bool>,
+    pub rename_instance_id: Signal<Option<u32>>,
+    pub rename_current_name: Signal<String>,
 }
 
 #[component]
@@ -28,8 +29,9 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
     let game_status = props.game_status;
     let instance_id = props.instance_id;
     let mut show_debug_window = props.show_debug_window;
-    let mut editing_instance_id = props.editing_instance_id;
-    let mut editing_text = props.editing_text;
+    let mut show_rename_dialog = props.show_rename_dialog;
+    let mut rename_instance_id = props.rename_instance_id;
+    let mut rename_current_name = props.rename_current_name;
     let mut is_hiding = use_signal(|| false);
     let mut should_render = use_signal(|| false);
 
@@ -121,11 +123,12 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
         if let Some(id) = instance_id() {
             println!("Change clicked for instance {id}");
 
-            // Get the current instance name and set up editing
+            // Get the current instance name and set up rename dialog
             let instances = INSTANCES.read();
             if let Some(instance) = instances.get(&id) {
-                editing_text.set(instance.name.clone());
-                editing_instance_id.set(Some(id));
+                rename_current_name.set(instance.name.clone());
+                rename_instance_id.set(Some(id));
+                show_rename_dialog.set(true);
             }
         }
         show.set(false);
