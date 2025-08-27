@@ -8,6 +8,8 @@ pub fn launch_minecraft(game_status: Signal<GameStatus>, version: &str, instance
     let mut game_status_signal = game_status;
 
     spawn(async move {
+        println!("Received version: {version_owned}");
+        println!("Received instance_id: {instance_id}");
         log_info!("Starting Minecraft launch for version: {version_owned}");
 
         // Set the initial launching state
@@ -26,6 +28,10 @@ pub fn launch_minecraft(game_status: Signal<GameStatus>, version: &str, instance
                     .build()
                     .map_err(|e| format!("Failed to create runtime: {e}"))?;
 
+                println!(
+                    "Calling starter::launch_minecraft with version: {}",
+                    version_owned
+                );
                 rt.block_on(async { starter::launch_minecraft(version_owned, instance_id).await })
             }
         })

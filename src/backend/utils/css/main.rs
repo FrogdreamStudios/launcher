@@ -95,6 +95,10 @@ impl ResourceLoader {
             "error_message",
             "/assets/styles/components/error_message.css"
         );
+        style!(
+            "version_selector",
+            "/assets/styles/components/version_selector.css"
+        );
         m
     }
 
@@ -131,6 +135,7 @@ impl ResourceLoader {
             "new",
             "browser",
             "error_message",
+            "version_selector",
             "tailwind",
         ])
     }
