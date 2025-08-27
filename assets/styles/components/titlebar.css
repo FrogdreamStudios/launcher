@@ -1,0 +1,147 @@
+/* Titlebar */
+html,
+body {
+    overflow: hidden;
+    border-radius: 8px;
+}
+
+#main {
+    overflow: hidden;
+    border-radius: 8px;
+}
+
+.custom-titlebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 24px;
+    background: transparent;
+    z-index: 1000;
+    -webkit-app-region: drag;
+    user-select: none;
+}
+
+/* Window Controls */
+/* Window Controls - Base Styles */
+.window-controls {
+    position: fixed;
+    display: flex;
+    z-index: 1001;
+    -webkit-app-region: no-drag;
+}
+
+/* Window Controls */
+.window-control-btn {
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Windows Window Controls */
+.window-controls-windows {
+    top: 0;
+    right: 0;
+    gap: 0;
+}
+
+.minimize-btn-windows,
+.close-btn-windows {
+    width: 46px;
+    height: 32px;
+    background: transparent;
+    color: #ffffff;
+    font-size: 10px;
+    font-family: "Segoe MDL2 Assets", "Segoe UI Symbol", sans-serif;
+    border-radius: 0;
+    opacity: 0.9;
+}
+
+.minimize-btn-windows:hover {
+    background: rgba(255, 255, 255, 0.1);
+    opacity: 1;
+}
+
+.close-btn-windows:hover {
+    background: #e81123;
+    color: #ffffff;
+    opacity: 1;
+    border-top-right-radius: 8px;
+}
+
+.minimize-icon,
+.close-icon {
+    font-size: 12px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Windows Icons - simplified */
+.minimize-btn-windows .minimize-icon {
+    font-size: 12px;
+    font-weight: 300;
+}
+
+.close-btn-windows .close-icon {
+    font-size: 12px;
+    font-weight: 300;
+}
+
+.desktop {
+    margin-top: 24px !important;
+    height: calc(100vh - 24px) !important;
+}
+
+.standalone-logo {
+    top: 6px !important;
+}
+
+.navigation {
+    margin-top: -6px !important;
+}
+
+.minimize-icon,
+.close-icon {
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.minimize-icon {
+    font-size: 16px;
+    font-weight: 300;
+}
+
+.close-icon {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.titlebar-btn:focus {
+    outline: 2px solid rgba(0, 123, 255, 0.5);
+    outline-offset: -2px;
+}
+
+.titlebar-btn:focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* Platform-specific adjustments */
+@media screen and (-webkit-min-device-pixel-ratio: 2) {
+    .window-controls-windows {
+        transform: none;
+    }
+}
+
+@media (prefers-contrast: more) {
+    .window-control-btn {
+        border: 1px solid #ffffff;
+    }
+}

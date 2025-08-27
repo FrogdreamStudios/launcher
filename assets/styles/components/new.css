@@ -9,7 +9,7 @@
 .new-title {
     position: absolute;
     left: 80px;
-    top: 96px;
+    top: 90px;
     font-size: 24px;
     font-weight: bold;
     color: var(--font-color);
@@ -19,7 +19,7 @@
 .new-divider {
     position: absolute;
     left: 112px;
-    top: 112px;
+    top: 106px;
     width: 367px;
     height: var(--divider-height);
     background-color: var(--divider-bg);

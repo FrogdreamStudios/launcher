@@ -40,7 +40,8 @@ fn main() {
     // Dioxus
     // Original size of the application is 1280x832, but we will change it in the future
     // to 1280x832
-    let size = LogicalSize::new(1056.0, 685.0);
+    // Added 24px height to account for the custom titlebar
+    let size = LogicalSize::new(1056.0, 709.0);
 
     let config = Config::default()
         .with_window(
@@ -48,7 +49,9 @@ fn main() {
                 .with_title("Dream Launcher")
                 .with_inner_size(size)
                 .with_min_inner_size(size)
-                .with_resizable(false),
+                .with_resizable(false)
+                .with_decorations(false)
+                .with_transparent(true),
         )
         .with_menu(None);
 

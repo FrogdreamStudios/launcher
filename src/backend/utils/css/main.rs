@@ -100,6 +100,7 @@ impl ResourceLoader {
             "version_selector",
             "/assets/styles/components/version_selector.css"
         );
+        style!("titlebar", "/assets/styles/components/titlebar.css");
         m
     }
 
@@ -137,6 +138,7 @@ impl ResourceLoader {
             "browser",
             "error_message",
             "version_selector",
+            "titlebar",
             "tailwind",
         ])
     }
@@ -199,7 +201,11 @@ impl ResourceLoader {
             Self::get_font("gilroy_bold")
         );
 
-        format!("{}\n{}", fonts_css, Self::get_css("auth"))
+        format!(
+            "{}\n{}",
+            fonts_css,
+            Self::combine_css(&["auth", "titlebar"])
+        )
     }
 }
 

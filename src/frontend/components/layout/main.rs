@@ -1,6 +1,7 @@
 use crate::backend::services::VisitTracker;
 use crate::backend::utils::app::main::Route;
 use crate::backend::utils::css::main::ResourceLoader;
+use crate::frontend::components::common::titlebar::TitleBar;
 use crate::frontend::pages::auth::AuthState;
 use crate::frontend::{
     components::{
@@ -106,6 +107,8 @@ pub fn Layout() -> Element {
         style {
             dangerous_inner_html: ResourceLoader::get_embedded_css_with_fonts()
         }
+
+        TitleBar {}
 
         div {
             class: if show_ui() { "desktop fade-in" } else { "desktop fade-out" },
@@ -391,13 +394,13 @@ pub fn Layout() -> Element {
             if is_new {
                 div {
                     class: "new-title",
-                    style: "top: 90px !important;",
+                    style: "top: 84px !important;",
                     "What will you jump into?"
                 }
 
                 div {
                     class: "new-divider",
-                    style: "top: 106px !important; left: 369px",
+                    style: "top: 100px !important; left: 369px",
                 }
 
                 {
@@ -418,12 +421,12 @@ pub fn Layout() -> Element {
                             div {
                                 key: "{site.url}",
                                 class: "new-panel",
-                                style: format!("top: {}px;", 143 + (i * 81)),
+                                style: format!("top: {}px;", 137 + (i * 81)),
                             }
 
                             div {
                                 class: "new-server-icon",
-                                style: format!("top: {}px;", 151 + (i * 81)),
+                                style: format!("top: {}px;", 145 + (i * 81)),
                                 img {
                                     src: ResourceLoader::get_asset(&site.icon_key),
                                     class: "server-icon-img",
@@ -433,13 +436,13 @@ pub fn Layout() -> Element {
 
                             div {
                                 class: "new-server-name",
-                                style: format!("top: {}px;", 155 + (i * 81)),
+                                style: format!("top: {}px;", 149 + (i * 81)),
                                 "{site.name}"
                             }
 
                             div {
                                 class: "new-server-last-played",
-                                style: format!("top: {}px;", 174 + (i * 81)),
+                                style: format!("top: {}px;", 168 + (i * 81)),
                                 {
                                     if site.visit_count == 0 {
                                         "You haven't visited this website yet".to_string()
@@ -451,7 +454,7 @@ pub fn Layout() -> Element {
 
                             div {
                                 class: "new-open-button",
-                                style: format!("top: {}px;", 159 + (i * 81)),
+                                style: format!("top: {}px;", 153 + (i * 81)),
                                 onclick: {
                                     let url = site.url.clone();
                                     let site_key = site_key.to_string();
@@ -484,7 +487,7 @@ pub fn Layout() -> Element {
                             img {
                                 src: ResourceLoader::get_asset("additional"),
                                 class: "new-additional-button",
-                                style: format!("top: {}px;", 159 + (i * 81)),
+                                style: format!("top: {}px;", 153 + (i * 81)),
                             }
                         }
                     })
