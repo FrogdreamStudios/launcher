@@ -13,6 +13,12 @@ pub struct Instance {
     pub name: String,
     pub color: String,
     pub level: u32,
+    #[serde(default = "default_version")]
+    pub version: String,
+}
+
+fn default_version() -> String {
+    "1.21.8".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -31,6 +37,20 @@ impl Instance {
             name: "1.21.8".to_string(),
             color,
             level: 28, // Default level
+            version: "1.21.8".to_string(),
+        }
+    }
+
+    pub fn new_with_version(id: u32, version: String) -> Self {
+        let colors = ["38FF10", "0077FF", "FF8C00", "F10246"];
+        let color = colors[id as usize % colors.len()].to_string();
+
+        Self {
+            id,
+            name: format!("Instance {}", id),
+            color,
+            level: 28, // Default level
+            version,
         }
     }
 }
@@ -59,7 +79,7 @@ impl InstanceManager {
         }
     }
 
-    pub fn create_instance() -> Option<u32> {
+    pub fn create_instance_with_version(version: String) -> Option<u32> {
         let mut instances = INSTANCES.write();
         let current_id = *NEXT_ID.read();
 
@@ -68,8 +88,13 @@ impl InstanceManager {
             return None;
         }
 
-        let new_instance = Instance::new(current_id);
+        let new_instance = Instance::new_with_version(current_id, version.clone());
         let instance_id = new_instance.id;
+        println!("Creating instance {instance_id} with version: {version}");
+        println!(
+            "Instance created: id={}, name={}, version={}",
+            new_instance.id, new_instance.name, new_instance.version
+        );
         instances.insert(instance_id, new_instance);
 
         // Create instance directories
@@ -88,9 +113,13 @@ impl InstanceManager {
             next_id: current_id + 1,
         };
         drop(instances); // Release the write lock
+
         spawn(async move {
+            println!("Saving instances data...");
             if let Err(e) = save_instances_data(&instances_data).await {
                 println!("Failed to save instances: {e}");
+            } else {
+                println!("Successfully saved instances data");
             }
         });
 
@@ -212,15 +241,24 @@ pub fn create_instance_directories(instance_id: u32) -> std::io::Result<PathBuf>
 async fn save_instances_data(data: &InstancesData) -> crate::utils::Result<()> {
     let config_path = get_instances_config_path();
 
-    // Ensure the parent directory exists
+    // Debug: Print what we're about to save
+    println!("Saving {} instances:", data.instances.len());
+    for (id, instance) in &data.instances {
+        println!(
+            "  Instance {}: name='{}', version='{}'",
+            id, instance.name, instance.version
+        );
+    }
+
+    // Ensure parent directory exists
     if let Some(parent) = config_path.parent() {
         async_fs::create_dir_all(parent).await?;
     }
 
     let json = serde_json::to_string_pretty(data)?;
+    println!("JSON to save: {}", json);
     async_fs::write(config_path, json).await?;
 
-    println!("Instances saved successfully");
     Ok(())
 }
 
@@ -244,6 +282,15 @@ async fn load_instances() -> crate::utils::Result<()> {
     *NEXT_ID.write() = data.next_id;
 
     println!("Loaded {} instances from config", INSTANCES.read().len());
+
+    // Debug
+    for (id, instance) in INSTANCES.read().iter() {
+        println!(
+            "Loaded instance {}: name='{}', version='{}'",
+            id, instance.name, instance.version
+        );
+    }
+
     Ok(())
 }
 

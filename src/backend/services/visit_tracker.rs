@@ -39,13 +39,11 @@ impl VisitTracker {
     }
 
     fn load_data(path: &PathBuf) -> VisitData {
-        if path.exists() {
-            if let Ok(content) = fs::read_to_string(path) {
-                if let Ok(data) = serde_json::from_str(&content) {
+        if path.exists()
+            && let Ok(content) = fs::read_to_string(path)
+                && let Ok(data) = serde_json::from_str(&content) {
                     return data;
                 }
-            }
-        }
 
         // Return default data with initial sites
         let mut data = VisitData::default();
@@ -109,32 +107,30 @@ impl VisitTracker {
     }
 
     fn save_data(&self) {
-        if let Ok(data) = self.data.lock() {
-            if let Ok(json) = serde_json::to_string_pretty(&*data) {
-                // Create config directory if it doesn't exist
+        if let Ok(data) = self.data.lock()
+            && let Ok(json) = serde_json::to_string_pretty(&*data) {
+                // Create a config directory if it doesn't exist
                 if let Some(parent) = Path::new(&self.config_path).parent() {
                     let _ = fs::create_dir_all(parent);
                 }
                 let _ = fs::write(&self.config_path, json);
             }
         }
-    }
 
     pub fn record_visit(&self, site_key: &str) {
-        if let Ok(mut data) = self.data.lock() {
-            if let Some(site) = data.sites.get_mut(site_key) {
+        if let Ok(mut data) = self.data.lock()
+            && let Some(site) = data.sites.get_mut(site_key) {
                 site.last_visited = Self::current_timestamp();
                 site.visit_count += 1;
                 drop(data);
                 self.save_data();
             }
         }
-    }
 
     pub fn get_sorted_sites(&self) -> Vec<SiteVisit> {
         if let Ok(data) = self.data.lock() {
             let mut sites: Vec<SiteVisit> = data.sites.values().cloned().collect();
-            // Sort by visit_count first (visited vs unvisited), then by last_visited descending
+            // Sort by visit_count first (visited vs. unvisited), then by last_visited descending
             sites.sort_by(|a, b| {
                 match (a.visit_count > 0, b.visit_count > 0) {
                     (true, false) => std::cmp::Ordering::Less, // Visited sites come first

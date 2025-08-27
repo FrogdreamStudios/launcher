@@ -4,7 +4,7 @@ use crate::backend::utils::css::main::ResourceLoader;
 use crate::frontend::pages::auth::AuthState;
 use crate::frontend::{
     components::{
-        common::{News, StandaloneLogo},
+        common::{News, StandaloneLogo, VersionSelector},
         launcher::{
             ContextMenu, DebugWindow, debug_window::use_version_selection, launch_minecraft,
         },
@@ -27,12 +27,12 @@ pub fn Layout() -> Element {
     let nav = navigator();
     let mut auth = use_context::<AuthState>();
 
-    // Visit tracker with reactive signals
-    let visit_tracker = use_signal(|| VisitTracker::new());
-    let mut sites = use_signal(|| Vec::new());
+    // Visit the tracker with reactive signals
+    let visit_tracker = use_signal(VisitTracker::new);
+    let mut sites = use_signal(Vec::new);
     let refresh_trigger = use_signal(|| 0);
 
-    // Initialize sites on first render
+    // Initialize sites on the first render
     use_effect(move || {
         let initial_sites = visit_tracker.with(|tracker| tracker.get_sorted_sites());
         sites.set(initial_sites);
@@ -56,6 +56,9 @@ pub fn Layout() -> Element {
     // Debug window and version selection state
     let show_debug_window = use_signal(|| false);
     let version_selection = use_version_selection();
+
+    // Version selector state
+    let mut show_version_selector = use_signal(|| false);
 
     // Inline editing state
     let mut editing_instance_id = use_signal(|| None::<u32>);
@@ -193,13 +196,13 @@ pub fn Layout() -> Element {
                                     },
                                     style: "background-color: #{instance.color};",
                                     onclick: {
-                                        let selected_version = version_selection().selected_version.read().clone();
+                                        let instance_version = instance.version.clone();
                                         let instance_id = instance.id;
                                         move |_| {
                                             // Don't launch if this instance is being edited or the game is running
                                             if !game_status().is_active() && editing_instance_id() != Some(instance_id) {
                                                 active_instance_id.set(Some(instance_id));
-                                                launch_minecraft(game_status, &selected_version, instance_id);
+                                                launch_minecraft(game_status, &instance_version, instance_id);
                                             }
                                         }
                                     },
@@ -302,7 +305,7 @@ pub fn Layout() -> Element {
                                 div {
                                     class: "instance-card instance-card-add",
                                     onclick: move |_| {
-                                        InstanceManager::create_instance();
+                                        show_version_selector.set(true);
                                     },
 
                                     div {
@@ -452,9 +455,9 @@ pub fn Layout() -> Element {
                                 onclick: {
                                     let url = site.url.clone();
                                     let site_key = site_key.to_string();
-                                    let mut tracker = visit_tracker.clone();
-                                    let mut sites_signal = sites.clone();
-                                    let mut refresh = refresh_trigger.clone();
+                                    let mut tracker = visit_tracker;
+                                    let mut sites_signal = sites;
+                                    let mut refresh = refresh_trigger;
                                     move |_| {
                                         // Record visit
                                         tracker.with_mut(|t| t.record_visit(&site_key));
@@ -508,17 +511,22 @@ pub fn Layout() -> Element {
                 instance_id: context_menu_instance_id
             }
 
+            // Version selector
+            VersionSelector {
+                show: show_version_selector
+            }
+
             // Progress bar at bottom when game is launching
             if game_status().is_active() {
                 div {
                     class: "launch-progress-container",
                     div {
-                        class: "launch-progress-bar",
-                        style: "width: {game_status().get_progress() * 100.0}%",
-                    }
-                    div {
                         class: "launch-progress-text",
                         "{game_status().get_message()}"
+                    }
+                    div {
+                        class: "launch-progress-bar",
+                        style: "--progress-width: {game_status().get_progress() * 100.0}%",
                     }
                 }
             }

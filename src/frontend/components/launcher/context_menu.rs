@@ -58,12 +58,45 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
     let handle_run_click = move |e: Event<MouseData>| {
         e.stop_propagation();
         if let Some(id) = instance_id() {
-            println!("Run clicked, launching Minecraft for instance {id}");
+            println!("Instance ID: {}", id);
+
+            // Get the instance version
+            let version = {
+                let instances = INSTANCES.read();
+                println!("Total instances loaded: {}", instances.len());
+
+                // Debug
+                for (inst_id, inst) in instances.iter() {
+                    println!(
+                        "Instance {}: name='{}', version='{}'",
+                        inst_id, inst.name, inst.version
+                    );
+                }
+
+                if let Some(instance) = instances.get(&id) {
+                    println!(
+                        "Found target instance {}: name='{}', version='{}'",
+                        id, instance.name, instance.version
+                    );
+                    instance.version.clone()
+                } else {
+                    println!("ERROR: Instance {} not found in loaded instances!", id);
+                    println!(
+                        "Available instance IDs: {:?}",
+                        instances.keys().collect::<Vec<_>>()
+                    );
+                    "1.21.8".to_string() // Fallback
+                }
+            };
+
+            println!("Final version to launch: {}", version);
+
             show.set(false);
             // Start Minecraft launch after menu closes
             spawn(async move {
                 tokio::time::sleep(std::time::Duration::from_millis(160)).await;
-                launch_minecraft(game_status, "1.21.8", id);
+                println!("About to call launch_minecraft with version: {}", version);
+                launch_minecraft(game_status, &version, id);
             });
         }
     };

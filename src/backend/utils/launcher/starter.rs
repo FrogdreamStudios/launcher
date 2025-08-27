@@ -9,7 +9,7 @@ use crate::utils::Result;
 use crate::{log_error, log_info, log_warn, simple_error};
 use std::{path::PathBuf, process::Command};
 
-use crate::backend::launcher::launcher::MinecraftLauncher;
+use crate::backend::launcher::core::MinecraftLauncher;
 use crate::backend::launcher::models::{ArgumentValue, ArgumentValueInner, VersionDetails};
 
 use crate::backend::utils::launcher::paths::{get_classpath_separator, get_natives_dir};

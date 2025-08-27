@@ -13,6 +13,8 @@
 @import url("./components/home.css");
 @import url("./components/news.css");
 @import url("./components/debug.css");
+@import url("./components/context_menu.css");
+@import url("./components/version_selector.css");
 
 /* Component-specific text selection rules */
 .nav-text,

@@ -1,10 +1,8 @@
 use crate::backend::utils::launcher::paths::get_launcher_dir;
 use crate::{
-    backend::launcher::{launcher::MinecraftLauncher, models::VersionInfo},
-    frontend::{
-        components::launcher::minecraft_launcher::launch_minecraft,
-        services::instances::main::INSTANCES, states::GameStatus,
-    },
+    backend::launcher::core::MinecraftLauncher,
+    backend::utils::css::main::ResourceLoader,
+    frontend::{services::instances::main::INSTANCES, states::GameStatus},
 };
 use crate::{log_error, log_info, simple_error};
 use dioxus::prelude::*;
@@ -12,8 +10,6 @@ use std::fs;
 
 #[derive(Clone)]
 pub struct VersionSelection {
-    pub selected_version: Signal<String>,
-    pub available_versions: Signal<Vec<VersionInfo>>,
     pub is_loading: Signal<bool>,
     pub is_deleting: Signal<bool>,
     pub system_info: Signal<String>,
@@ -22,8 +18,6 @@ pub struct VersionSelection {
 impl Default for VersionSelection {
     fn default() -> Self {
         Self {
-            selected_version: Signal::new("1.21.8".to_string()),
-            available_versions: Signal::new(Vec::new()),
             is_loading: Signal::new(false),
             is_deleting: Signal::new(false),
             system_info: Signal::new(String::new()),
@@ -42,7 +36,7 @@ pub fn DebugWindow(
         return rsx! { div { display: "none" } };
     }
 
-    let mut vs = version_selection();
+    let vs = version_selection();
     let (loading, deleting) = (*vs.is_loading.read(), *vs.is_deleting.read());
     let busy = loading || deleting;
 
@@ -67,20 +61,6 @@ pub fn DebugWindow(
         )
     };
 
-    // Load versions when the component mounts
-    use_effect(move || {
-        if vs.available_versions.read().is_empty() && !loading {
-            vs.is_loading.set(true);
-            spawn(async move {
-                match load_available_versions().await {
-                    Ok(versions) => vs.available_versions.set(versions),
-                    Err(e) => log_error!("Failed to load versions: {e}"),
-                }
-                vs.is_loading.set(false);
-            });
-        }
-    });
-
     rsx! {
         div {
             class: "debug-window-overlay",
@@ -97,67 +77,32 @@ pub fn DebugWindow(
                         h3 { class: "debug-title", "{title}" }
                         div { class: "debug-subtitle", "{subtitle}" }
                     }
-                    button { class: "debug-close", onclick: move |_| show.set(false), "✕" }
-                }
-
-                // Selected Version
-                div {
-                    class: "debug-section",
-                    div { class: "debug-section-title", "Selected Version" }
-                    div { class: "debug-selected-version", "{vs.selected_version.read()}" }
                     button {
-                        class: "debug-launch-btn",
-                        onclick: {
-                            let selected = vs.selected_version.read().clone();
-                            move |_| {
-                                if let Some(id) = instance_id() {
-                                    launch_minecraft(game_status, &selected, id);
-                                }
-                                show.set(false);
-                            }
-                        },
-                        "Launch"
+                        class: "debug-close",
+                        onclick: move |_| show.set(false),
+                        img { src: ResourceLoader::get_asset("close") }
                     }
                 }
 
-                // Loading or Version List
-                if busy {
-                    div {
-                        class: "debug-loading",
-                        if loading { "Loading versions..." } else { "Deleting launcher files..." }
-                    }
-                } else {
-                    div {
-                        div { class: "debug-section-title", "Available Versions" }
+                // Content
+                div {
+                    class: "debug-content",
+
+                    // Loading indicator
+                    if busy {
                         div {
-                            class: "debug-versions-list",
-                            for version in vs.available_versions.read().iter() {
-                                div {
-                                    key: "{version.id}",
-                                    class: format!("debug-version-item{}",
-                                        if version.id == *vs.selected_version.read() { " selected" } else { "" }),
-                                    onclick: {
-                                        let version_id = version.id.clone();
-                                        let mut selected_version = vs.selected_version;
-                                        move |_| selected_version.set(version_id.clone())
-                                    },
-                                    div { class: "debug-version-name", "{version.id}" }
-                                    div { class: "debug-version-meta", "{version.version_type} | {format_date(&version.release_time)}" }
-                                }
-                            }
-                            if vs.available_versions.read().is_empty() {
-                                div { class: "debug-empty", "No versions available" }
-                            }
+                            class: "debug-loading",
+                            if loading { "Updating manifest..." } else { "Deleting launcher files..." }
                         }
                     }
-                }
 
-                // System Info
-                if !vs.system_info.read().is_empty() {
-                    div {
-                        class: "debug-system-info",
-                        div { class: "debug-section-title", "System Info" }
-                        pre { "{vs.system_info.read()}" }
+                    // System Info
+                    if !vs.system_info.read().is_empty() {
+                        div {
+                            class: "debug-system-info",
+                            div { class: "debug-section-title", "System Info" }
+                            pre { "{vs.system_info.read()}" }
+                        }
                     }
                 }
 
@@ -166,22 +111,41 @@ pub fn DebugWindow(
                     class: "debug-actions",
 
                     button {
+                        class: if busy { "debug-btn debug-btn-disabled" } else { "debug-btn debug-btn-secondary" },
+                        disabled: busy,
+                        onclick: {
+                            let mut system_info = vs.system_info;
+                            let current_instance_id = instance_id();
+                            move |_| {
+                                spawn(async move {
+                                    let result = if let Some(id) = current_instance_id {
+                                        Ok(get_instance_info(id))
+                                    } else {
+                                        get_system_info().await
+                                    };
+                                    match result {
+                                        Ok(info) => system_info.set(info),
+                                        Err(e) => log_error!("Failed to get system info: {e}"),
+                                    }
+                                });
+                            }
+                        },
+                        "System Info"
+                    }
+
+                    button {
                         class: if busy { "debug-btn debug-btn-disabled" } else { "debug-btn debug-btn-primary" },
                         disabled: busy,
                         onclick: {
                             let mut is_loading = vs.is_loading;
-                            let mut available_versions = vs.available_versions;
                             let is_deleting = vs.is_deleting;
                             move |_| {
                                 if !*is_loading.read() && !*is_deleting.read() {
                                     is_loading.set(true);
                                     spawn(async move {
-                                        match update_and_load_versions().await {
-                                            Ok(versions) => {
-                                                available_versions.set(versions);
-                                                log_info!("Manifest updated");
-                                            }
-                                            Err(e) => log_error!("Failed to update versions: {e}"),
+                                        match update_manifest().await {
+                                            Ok(()) => log_info!("Manifest updated"),
+                                            Err(e) => log_error!("Failed to update manifest: {e}"),
                                         }
                                         is_loading.set(false);
                                     });
@@ -212,52 +176,16 @@ pub fn DebugWindow(
                         },
                         if deleting { "Deleting..." } else { "Delete Files" }
                     }
-
-                    button {
-                        class: "debug-btn debug-btn-secondary",
-                        onclick: {
-                            let mut selected_version = vs.selected_version;
-                            move |_| selected_version.set("1.21.8".to_string())
-                        },
-                        "Reset"
-                    }
-
-                    button {
-                        class: "debug-btn debug-btn-success",
-                        onclick: {
-                            let mut system_info = vs.system_info;
-                            let current_instance_id = instance_id();
-                            move |_| {
-                                spawn(async move {
-                                    let result = if let Some(id) = current_instance_id {
-                                        Ok(get_instance_info(id))
-                                    } else {
-                                        get_system_info().await
-                                    };
-                                    match result {
-                                        Ok(info) => system_info.set(info),
-                                        Err(e) => log_error!("Failed to get system info: {e}"),
-                                    }
-                                });
-                            }
-                        },
-                        "System Info"
-                    }
                 }
             }
         }
     }
 }
 
-async fn load_available_versions() -> crate::utils::Result<Vec<VersionInfo>> {
-    let launcher = MinecraftLauncher::new(None, None).await?;
-    Ok(launcher.get_available_versions()?.to_vec())
-}
-
-async fn update_and_load_versions() -> crate::utils::Result<Vec<VersionInfo>> {
+async fn update_manifest() -> crate::utils::Result<()> {
     let mut launcher = MinecraftLauncher::new(None, None).await?;
     launcher.update_manifest().await?;
-    Ok(launcher.get_available_versions()?.to_vec())
+    Ok(())
 }
 
 async fn delete_launcher_files() -> crate::utils::Result<()> {
@@ -400,13 +328,6 @@ fn get_instance_info(instance_id: u32) -> String {
     info.push_str(&format!("Architecture: {}\n", std::env::consts::ARCH));
 
     info
-}
-
-fn format_date(date_str: &str) -> String {
-    date_str
-        .split('T')
-        .next()
-        .map_or_else(|| date_str.to_string(), std::string::ToString::to_string)
 }
 
 pub fn use_version_selection() -> Signal<VersionSelection> {

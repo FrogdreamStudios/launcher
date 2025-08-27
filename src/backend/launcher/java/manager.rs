@@ -244,7 +244,7 @@ impl JavaManager {
             .download_java_archive(&package.download_url, &download_path, None)
             .await
             .map_err(|e| {
-                let _ = remove_file_if_exists(&download_path);
+                std::mem::drop(remove_file_if_exists(&download_path));
                 log_error!("Failed to download Java {java_version}: {e}");
                 e
             })?;
@@ -265,8 +265,8 @@ impl JavaManager {
         extract_archive(&download_path, &extract_path)
             .await
             .map_err(|e| {
-                let _ = remove_file_if_exists(&download_path);
-                let _ = remove_dir_if_exists(&extract_path);
+                std::mem::drop(remove_file_if_exists(&download_path));
+                std::mem::drop(remove_dir_if_exists(&extract_path));
                 log_error!("Failed to extract Java {java_version}: {e}");
                 e
             })?;
