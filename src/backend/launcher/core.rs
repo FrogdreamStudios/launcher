@@ -47,7 +47,7 @@ impl<'a> DownloadContext<'a> {
         }
     }
 
-    /// Execute download tasks in batches with progress reporting.
+    /// Execute download tasks with optimized concurrent processing and progress tracking.
     async fn execute_downloads(&self, tasks: Vec<DownloadTask>, item_type: &str) -> Result<()> {
         use crate::backend::utils::progress_bridge::update_global_progress;
 
@@ -56,10 +56,20 @@ impl<'a> DownloadContext<'a> {
         }
 
         let total = tasks.len();
-        let batch_size = DownloadHelper::calculate_batch_size(total, 32);
+        let batch_size = DownloadHelper::calculate_batch_size(total, 128);
 
-        log_info!("Downloading {total} {item_type}...");
+        let max_concurrent = match total {
+            0..=50 => 24,
+            51..=200 => 48,
+            201..=500 => 64,
+            _ => 96,
+        };
 
+        log_info!(
+            "Downloading {total} {item_type} with {max_concurrent} concurrent connections..."
+        );
+
+        // Process batches sequentially with high concurrency within each batch
         for (i, chunk) in tasks.chunks(batch_size).enumerate() {
             let completed = i * batch_size;
             let progress_percent = completed as f32 / total as f32;
@@ -79,9 +89,13 @@ impl<'a> DownloadContext<'a> {
                 format!("Downloading {} ({}/{})", item_type, completed + 1, total),
             );
 
-            self.downloader.download_multiple(chunk.to_vec(), 8).await?;
-            let completed = (i + 1) * chunk.len().min(total - i * batch_size);
-            DownloadHelper::log_progress(completed, total, item_type);
+            // Download batch with high concurrency
+            self.downloader
+                .download_multiple(chunk.to_vec(), max_concurrent)
+                .await?;
+
+            let batch_completed = (i + 1) * chunk.len().min(total - i * batch_size);
+            DownloadHelper::log_progress(batch_completed, total, item_type);
         }
 
         Ok(())
@@ -417,7 +431,9 @@ impl MinecraftLauncher {
     async fn download_libraries(&self, version_details: &VersionDetails) -> Result<()> {
         let platform_info = PlatformInfo::new();
         let download_ctx = DownloadContext::new(&self.downloader);
-        let mut download_tasks = Vec::new();
+
+        // Collect all potential downloads for batch validation
+        let mut potential_downloads = Vec::new();
 
         for library in &version_details.libraries {
             if !library.should_use(
@@ -432,20 +448,18 @@ impl MinecraftLauncher {
                 && let Some(path) = &artifact.path
             {
                 let lib_path = get_library_path(&self.game_dir, path);
-                if DownloadHelper::needs_download(
-                    &lib_path,
-                    Some(artifact.size),
-                    Some(&artifact.sha1),
-                )
-                .await?
-                {
-                    download_tasks.push(
-                        DownloadTask::new(artifact.url.clone(), lib_path)
-                            .with_sha1(artifact.sha1.clone()),
-                    );
-                }
+                potential_downloads.push((
+                    artifact.url.clone(),
+                    lib_path,
+                    artifact.size,
+                    artifact.sha1.clone(),
+                ));
             }
         }
+
+        // Batch validate files and create download tasks
+        let download_tasks =
+            DownloadHelper::batch_validate_and_create_tasks(potential_downloads).await?;
 
         download_ctx
             .execute_downloads(download_tasks, "libraries")
@@ -458,7 +472,8 @@ impl MinecraftLauncher {
         let natives_dir = get_natives_dir(&self.game_dir, &version_details.id);
         ensure_directory(&natives_dir).await?;
 
-        let mut download_tasks = Vec::new();
+        // Collect all potential native downloads for batch validation
+        let mut potential_downloads = Vec::new();
 
         for library in &version_details.libraries {
             if !library.should_use(
@@ -475,23 +490,20 @@ impl MinecraftLauncher {
                         && let Some(path) = &native_artifact.path
                     {
                         let native_path = get_library_path(&self.game_dir, path);
-                        if DownloadHelper::needs_download(
-                            &native_path,
-                            Some(native_artifact.size),
-                            Some(&native_artifact.sha1),
-                        )
-                        .await?
-                        {
-                            download_tasks.push(
-                                DownloadTask::new(native_artifact.url.clone(), native_path)
-                                    .with_sha1(native_artifact.sha1.clone()),
-                            );
-                        }
-                        break;
+                        potential_downloads.push((
+                            native_artifact.url.clone(),
+                            native_path,
+                            native_artifact.size,
+                            native_artifact.sha1.clone(),
+                        ));
                     }
                 }
             }
         }
+
+        // Batch validate natives and create download tasks
+        let download_tasks =
+            DownloadHelper::batch_validate_and_create_tasks(potential_downloads).await?;
 
         download_ctx
             .execute_downloads(download_tasks, "natives")
@@ -517,32 +529,33 @@ impl MinecraftLauncher {
             log_info!("Downloaded asset index: {}", version_details.asset_index.id);
         }
 
-        // Parse asset index and collect download tasks
-        let asset_content = tokio::fs::read_to_string(&asset_index_path).await?;
-        let asset_manifest: AssetManifest = serde_json::from_str(&asset_content)?;
+        // Load asset manifest
+        let asset_manifest: AssetManifest =
+            serde_json::from_slice(&tokio::fs::read(&asset_index_path).await?)?;
 
-        let mut download_tasks = Vec::new();
+        // Collect all potential asset downloads for batch validation
+        let mut potential_downloads = Vec::new();
         let mut assets_for_virtual = Vec::new();
 
         for (name, asset) in asset_manifest.objects {
             let asset_path = get_asset_path(&asset.hash)?;
-            if DownloadHelper::needs_download(&asset_path, Some(asset.size), Some(&asset.hash))
-                .await?
-            {
-                let url = format!(
-                    "https://resources.download.minecraft.net/{}/{}",
-                    &asset.hash[..2],
-                    asset.hash
-                );
-                download_tasks
-                    .push(DownloadTask::new(url, asset_path).with_sha1(asset.hash.clone()));
-            }
+            let url = format!(
+                "https://resources.download.minecraft.net/{}/{}",
+                &asset.hash[..2],
+                asset.hash
+            );
+            potential_downloads.push((url, asset_path, asset.size, asset.hash.clone()));
             assets_for_virtual.push((name, asset));
         }
+
+        // Batch validate assets and create download tasks
+        let download_tasks =
+            DownloadHelper::batch_validate_and_create_tasks(potential_downloads).await?;
 
         download_ctx
             .execute_downloads(download_tasks, "assets")
             .await?;
+
         self.create_virtual_assets(version_details, &assets_for_virtual)
             .await
     }
