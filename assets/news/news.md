@@ -1,7 +1,7 @@
 ---
 date: "August 20, 2025"
 ---
-# The first beta
+# Test
 
 We're excited to announce the release of Dream Launcher 1.0.0-beta.1 – the very first public beta of our new launcher!
 
