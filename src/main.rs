@@ -27,7 +27,7 @@ fn main() {
     set_macos_icon();
 
     // Tokio runtime
-    RUNTIME.get_or_init(|| {
+    let runtime = RUNTIME.get_or_init(|| {
         tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()
@@ -35,6 +35,11 @@ fn main() {
                 eprintln!("Failed to create tokio runtime, exiting");
                 std::process::exit(1);
             })
+    });
+
+    // Run the updater in a separate thread
+    runtime.spawn(async {
+        backend::services::updater::check_for_updates().await;
     });
 
     // Dioxus

@@ -1,6 +1,18 @@
 //! Minimal logging system.
 
+use once_cell::sync::Lazy;
 use std::sync::atomic::{AtomicU8, Ordering};
+use tokio::sync::broadcast;
+
+// Channel for sending logs to the UI
+static LOG_CHANNEL: Lazy<(broadcast::Sender<String>,)> = Lazy::new(|| {
+    let (sender, _) = broadcast::channel(100);
+    (sender,)
+});
+
+pub fn get_log_receiver() -> broadcast::Receiver<String> {
+    LOG_CHANNEL.0.subscribe()
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd)]
 #[repr(u8)]
@@ -52,7 +64,10 @@ pub fn enabled(level: LogLevel) -> bool {
 
 pub fn log(level: LogLevel, message: &str) {
     if enabled(level) {
-        println!("[{}] {}", level.as_str(), message);
+        let log_message = format!("[{}] {}", level.as_str(), message);
+        println!("{}", log_message);
+        // Send the log to the UI channel, ignore if no one is listening
+        let _ = LOG_CHANNEL.0.send(log_message);
     }
 }
 

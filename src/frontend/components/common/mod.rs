@@ -7,5 +7,4 @@ pub mod version_selector;
 
 pub use news::News;
 pub use standalone_logo::StandaloneLogo;
-pub use titlebar::TitleBar;
 pub use version_selector::VersionSelector;
