@@ -45,7 +45,7 @@ fn main() {
     // Dioxus
     // Original size of the application is 1280x832, but we will change it in the future
     // to 1280x832
-    // Added 24px height to account for the custom titlebar
+    // Added 24 px height to account for the custom titlebar
     let size = LogicalSize::new(1056.0, 709.0);
 
     let config = Config::default()
@@ -110,6 +110,21 @@ fn set_macos_icon() {
 #[component]
 fn AppRoot() -> Element {
     let is_authenticated = use_signal(|| false);
-    provide_context(frontend::pages::auth::AuthState { is_authenticated });
+    let current_user = use_signal(|| None);
+    let auth_state = frontend::pages::auth::AuthState {
+        is_authenticated,
+        current_user,
+    };
+
+    // Load saved user data on component mount
+    use_effect(move || {
+        let auth_state = auth_state.clone();
+        spawn(async move {
+            let mut auth_state_local = auth_state;
+            auth_state_local.load_saved_user().await;
+        });
+    });
+
+    provide_context(auth_state);
     rsx! { Router::<Route> {} }
 }

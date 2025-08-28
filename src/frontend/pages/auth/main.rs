@@ -8,58 +8,72 @@ use tokio::time::sleep;
 #[component]
 pub fn Auth() -> Element {
     let nav = use_navigator();
-    let mut auth = use_context::<AuthState>();
+    let auth = use_context::<AuthState>();
     let mut input_visible = use_signal(|| false);
     let mut username = use_signal(String::new);
-    let mut hide_ui = use_signal(|| false);
+    let hide_ui = use_signal(|| false);
     let mut input_ref = use_signal(|| None as Option<std::rc::Rc<MountedData>>);
     let mut show_error = use_signal(|| false);
-
-    // Validation function for the username
-    let is_valid = move || {
-        let name = username.read();
-        (3..=16).contains(&name.len())
-            && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
-    };
 
     let logo = ResourceLoader::get_asset("logo");
     let microsoft = ResourceLoader::get_asset("microsoft");
 
     // Function to handle keypress events
-    let on_keypress = move |e: KeyboardEvent| {
-        if e.key() == Key::Enter {
-            if is_valid() {
+    let on_keypress = {
+        let auth = auth.clone();
+        let nav = nav.clone();
+        let username = username.clone();
+        let show_error = show_error.clone();
+        let hide_ui = hide_ui.clone();
+
+        move |e: KeyboardEvent| {
+            if e.key() == Key::Enter {
+                let username_value = username.read().clone();
+                let mut auth = auth.clone();
+                let nav = nav.clone();
+                let mut show_error = show_error.clone();
+                let mut hide_ui = hide_ui.clone();
+
                 show_error.set(false);
                 hide_ui.set(true);
                 spawn(async move {
                     sleep(Duration::from_millis(700)).await;
-                    auth.is_authenticated.set(true);
-                    nav.push("/home");
+                    match auth.login(username_value).await {
+                        Ok(()) => {
+                            nav.push("/home");
+                        }
+                        Err(_) => {
+                            show_error.set(true);
+                            hide_ui.set(false);
+                        }
+                    }
                 });
-            } else {
-                show_error.set(true);
             }
         }
     };
 
-    // Auto-focus input when component mounts or when input becomes visible
+    // Autofocus input when the component mounts or when input becomes visible
     use_effect(move || {
         if input_visible() {
             spawn(async move {
                 tokio::time::sleep(Duration::from_millis(50)).await;
                 if let Some(element) = input_ref.read().as_ref() {
-                    std::mem::drop(element.set_focus(true));
+                    drop(element.set_focus(true));
                 }
             });
         }
     });
 
-    // Reset state and show input when component mounts (for Change button navigation)
+    // Check if a user is already authenticated and redirect
     use_effect(move || {
-        spawn(async move {
-            tokio::time::sleep(Duration::from_millis(100)).await;
-            input_visible.set(true);
-        });
+        if auth.is_authenticated.read().clone() {
+            nav.push("/home");
+        } else {
+            spawn(async move {
+                tokio::time::sleep(Duration::from_millis(100)).await;
+                input_visible.set(true);
+            });
+        }
     });
 
     rsx! {

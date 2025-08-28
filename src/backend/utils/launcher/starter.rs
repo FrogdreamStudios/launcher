@@ -649,7 +649,7 @@ impl Default for CommandBuilder {
 }
 
 /// Launch Minecraft with the specified version and instance
-pub async fn launch_minecraft(version: String, instance_id: u32) -> Result<()> {
+pub async fn launch_minecraft(version: String, instance_id: u32, username: String) -> Result<()> {
     use crate::backend::utils::progress_bridge::update_global_progress;
 
     log_info!("Starting Minecraft launch for version: {version}");
@@ -710,7 +710,7 @@ pub async fn launch_minecraft(version: String, instance_id: u32) -> Result<()> {
     update_global_progress(0.9, format!("Starting Minecraft {}...", version));
 
     // Launch Minecraft
-    launcher.launch(&version).await.map_err(|e| {
+    launcher.launch(&version, &username).await.map_err(|e| {
         log_error!("Failed to launch Minecraft {version}: {e}");
         e
     })?;

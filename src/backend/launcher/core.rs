@@ -244,7 +244,7 @@ impl MinecraftLauncher {
     }
 
     /// Launches Minecraft with the specified version.
-    pub async fn launch(&mut self, version_id: &str) -> Result<()> {
+    pub async fn launch(&mut self, version_id: &str, username: &str) -> Result<()> {
         log_info!("Launching Minecraft version: {version_id}");
 
         // System diagnostics
@@ -301,7 +301,7 @@ impl MinecraftLauncher {
             .java_path(java_path.clone())
             .game_dir(self.game_dir.clone())
             .version_details(version_details.clone())
-            .username("Player".to_string())
+            .username(username.to_string())
             .uuid("00000000-0000-0000-0000-000000000000".to_string())
             .access_token("null".to_string())
             .user_type("mojang".to_string())

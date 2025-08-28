@@ -2,11 +2,24 @@ use crate::{
     backend::utils::css::main::ResourceLoader,
     frontend::{
         components::launcher::minecraft_launcher::launch_minecraft,
+        pages::auth::AuthState,
         services::instances::main::{INSTANCES, InstanceManager, open_instance_folder},
         states::GameStatus,
     },
 };
 use dioxus::prelude::*;
+
+// Define async logic outside the component (because of closure issues)
+async fn spawn_launch_minecraft(
+    game_status: Signal<GameStatus>,
+    version: String,
+    id: u32,
+    username: String,
+) {
+    tokio::time::sleep(std::time::Duration::from_millis(160)).await;
+    println!("About to call launch_minecraft with version: {version}");
+    launch_minecraft(game_status, &version, id, &username);
+}
 
 #[derive(Props, Clone, PartialEq, Eq)]
 pub struct ContextMenuProps {
@@ -31,6 +44,7 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
     let mut show_debug_window = props.show_debug_window;
     let mut show_rename_dialog = props.show_rename_dialog;
     let mut rename_instance_id = props.rename_instance_id;
+    let auth = use_context::<AuthState>();
     let mut rename_current_name = props.rename_current_name;
     let mut is_hiding = use_signal(|| false);
     let mut should_render = use_signal(|| false);
@@ -91,15 +105,10 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
                 }
             };
 
-            println!("Final version to launch: {}", version);
-
+            let username = auth.get_username();
             show.set(false);
             // Start Minecraft launch after menu closes
-            spawn(async move {
-                tokio::time::sleep(std::time::Duration::from_millis(160)).await;
-                println!("About to call launch_minecraft with version: {}", version);
-                launch_minecraft(game_status, &version, id);
-            });
+            spawn(spawn_launch_minecraft(game_status, version, id, username));
         }
     };
 
@@ -123,7 +132,7 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
         if let Some(id) = instance_id() {
             println!("Change clicked for instance {id}");
 
-            // Get the current instance name and set up rename dialog
+            // Get the current instance name and set up the rename dialog
             let instances = INSTANCES.read();
             if let Some(instance) = instances.get(&id) {
                 rename_current_name.set(instance.name.clone());
@@ -160,15 +169,14 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
     let has_instance = instance_id().is_some();
 
     rsx! {
-    div {
-        class: "context-menu-backdrop",
-        onclick: handle_backdrop_click,
-
         div {
-            class: if is_hiding() { "context-menu context-menu-hide" } else { "context-menu context-menu-show" },
-            style: "left: {x()}px; top: {y()}px;",
-            onclick: |e| e.stop_propagation(),
+            class: "context-menu-backdrop",
+            onclick: handle_backdrop_click,
 
+            div {
+                class: if is_hiding() { "context-menu context-menu-hide" } else { "context-menu context-menu-show" },
+                style: "left: {x()}px; top: {y()}px;",
+                onclick: |e| e.stop_propagation(),
 
                 button {
                     class: "context-menu-button",

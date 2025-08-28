@@ -3,8 +3,14 @@ use crate::{log_error, log_info};
 use dioxus::prelude::*;
 
 /// Launch Minecraft.
-pub fn launch_minecraft(game_status: Signal<GameStatus>, version: &str, instance_id: u32) {
+pub fn launch_minecraft(
+    game_status: Signal<GameStatus>,
+    version: &str,
+    instance_id: u32,
+    username: &str,
+) {
     let version_owned = version.to_string();
+    let username_owned = username.to_string();
     let mut game_status_signal = game_status;
 
     spawn(async move {
@@ -21,6 +27,7 @@ pub fn launch_minecraft(game_status: Signal<GameStatus>, version: &str, instance
         // Use the simplified launch function from starter.rs
         let launch_result = tokio::task::spawn_blocking({
             let version_owned = version_owned.clone();
+            let username_owned = username_owned.clone();
             move || {
                 // Create a new Tokio runtime for this blocking thread
                 let rt = tokio::runtime::Builder::new_current_thread()
@@ -29,10 +36,11 @@ pub fn launch_minecraft(game_status: Signal<GameStatus>, version: &str, instance
                     .map_err(|e| format!("Failed to create runtime: {e}"))?;
 
                 println!(
-                    "Calling starter::launch_minecraft with version: {}",
-                    version_owned
+                    "Calling starter::launch_minecraft with version: {version_owned}"
                 );
-                rt.block_on(async { starter::launch_minecraft(version_owned, instance_id).await })
+                rt.block_on(async {
+                    starter::launch_minecraft(version_owned, instance_id, username_owned).await
+                })
             }
         })
         .await;

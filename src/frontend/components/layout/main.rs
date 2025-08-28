@@ -27,7 +27,7 @@ pub fn Layout() -> Element {
     let route = use_route::<Route>();
     let mut last_active_page = use_signal(|| "Home");
     let nav = navigator();
-    let mut auth = use_context::<AuthState>();
+    let auth = use_context::<AuthState>();
 
     // Visit the tracker with reactive signals
     let visit_tracker = use_signal(VisitTracker::new);
@@ -201,11 +201,13 @@ pub fn Layout() -> Element {
                                     onclick: {
                                         let instance_version = instance.version.clone();
                                         let instance_id = instance.id;
+                                        let auth = auth.clone();
                                         move |_| {
                                             // Don't launch if the game is running
                                             if !game_status().is_active() {
                                                 active_instance_id.set(Some(instance_id));
-                                                launch_minecraft(game_status, &instance_version, instance_id);
+                                                let username = auth.get_username();
+                                                launch_minecraft(game_status, &instance_version, instance_id, &username);
                                             }
                                         }
                                     },
@@ -319,9 +321,15 @@ pub fn Layout() -> Element {
 
                 div {
                     class: "settings-change-button",
-                    onclick: move |_| {
-                        auth.is_authenticated.set(false);
-                        nav.push("/auth");
+                    onclick: {
+                        let mut auth = auth.clone();
+                        let nav = nav.clone();
+                        move |_| {
+                            spawn(async move {
+                                auth.logout().await;
+                                nav.push("/auth");
+                            });
+                        }
                     },
                     img { src: ResourceLoader::get_asset("change"), class: "change-icon" }
                     div { class: "change-text", "Change" }
