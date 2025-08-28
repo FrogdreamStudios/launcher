@@ -78,7 +78,7 @@ jobs:
             chmod -R 755 "target/release/Dream Launcher.app"
             chmod +x "target/release/Dream Launcher.app/Contents/MacOS/DreamLauncher"
             echo "Creating entitlements file..."
-          
+
             echo '<?xml version="1.0" encoding="UTF-8"?>' > entitlements.plist
             echo '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' >> entitlements.plist
             echo '<plist version="1.0">' >> entitlements.plist
@@ -91,27 +91,20 @@ jobs:
             echo '    <true/>' >> entitlements.plist
             echo '</dict>' >> entitlements.plist
             echo '</plist>' >> entitlements.plist
-          
+
             echo "Signing application bundle..."
             codesign --force --deep --sign - --entitlements entitlements.plist --options runtime "target/release/Dream Launcher.app" || echo "codesign failed, continuing..."
-            
-            echo "Creating DMG..."
-            if ! create-dmg --volname "Dream Launcher" --window-pos 200 120 --window-size 800 400 --icon-size 100 --icon "Dream Launcher.app" 200 190 --hide-extension "Dream Launcher.app" --app-drop-link 600 185 --no-internet-enable "DreamLauncher-macOS.dmg" "target/release/Dream Launcher.app" 2>/dev/null; then
-              echo "create-dmg failed, using hdiutil as fallback..."
-              hdiutil create -volname "Dream Launcher" -srcfolder "target/release/Dream Launcher.app" -ov -format UDZO "DreamLauncher-macOS.dmg"
-            fi
-            
-            echo "Processing DMG file..."
+
+            echo "Creating DMG with simple hdiutil..."
+            hdiutil create -volname "Dream Launcher" -srcfolder "target/release/Dream Launcher.app" -ov -format UDZO "DreamLauncher-macOS.dmg" || echo "DMG creation failed, continuing without DMG"
+
+            echo "Processing DMG file (basic)..."
             if [[ -f "DreamLauncher-macOS.dmg" ]]; then
-              xattr -c "DreamLauncher-macOS.dmg" 2>/dev/null || echo "xattr -c failed, continuing..."
-              xattr -d com.apple.quarantine "DreamLauncher-macOS.dmg" 2>/dev/null || echo "xattr -d failed, continuing..."
-              codesign --force --sign - "DreamLauncher-macOS.dmg" || echo "codesign DMG failed, continuing..."
+              echo "DMG created successfully"
             else
-              echo "DMG file not found, skipping xattr/codesign for DMG"
+              echo "No DMG file found"
             fi
-            
-            spctl --add --label "DreamLauncher-CI" "target/release/Dream Launcher.app" 2>/dev/null || echo "spctl add failed (that's okay)"
-            
+
             echo "macOS packaging completed"
           else
             cp target/release/DreamLauncher dist/
