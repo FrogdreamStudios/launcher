@@ -1,5 +1,5 @@
 ---
-date: "August 20, 2025"
+date: "August 29, 2025"
 ---
 # The first beta
 

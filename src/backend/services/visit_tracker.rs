@@ -41,9 +41,10 @@ impl VisitTracker {
     fn load_data(path: &PathBuf) -> VisitData {
         if path.exists()
             && let Ok(content) = fs::read_to_string(path)
-                && let Ok(data) = serde_json::from_str(&content) {
-                    return data;
-                }
+            && let Ok(data) = serde_json::from_str(&content)
+        {
+            return data;
+        }
 
         // Return default data with initial sites
         let mut data = VisitData::default();
@@ -108,24 +109,26 @@ impl VisitTracker {
 
     fn save_data(&self) {
         if let Ok(data) = self.data.lock()
-            && let Ok(json) = serde_json::to_string_pretty(&*data) {
-                // Create a config directory if it doesn't exist
-                if let Some(parent) = Path::new(&self.config_path).parent() {
-                    let _ = fs::create_dir_all(parent);
-                }
-                let _ = fs::write(&self.config_path, json);
+            && let Ok(json) = serde_json::to_string_pretty(&*data)
+        {
+            // Create a config directory if it doesn't exist
+            if let Some(parent) = Path::new(&self.config_path).parent() {
+                let _ = fs::create_dir_all(parent);
             }
+            let _ = fs::write(&self.config_path, json);
         }
+    }
 
     pub fn record_visit(&self, site_key: &str) {
         if let Ok(mut data) = self.data.lock()
-            && let Some(site) = data.sites.get_mut(site_key) {
-                site.last_visited = Self::current_timestamp();
-                site.visit_count += 1;
-                drop(data);
-                self.save_data();
-            }
+            && let Some(site) = data.sites.get_mut(site_key)
+        {
+            site.last_visited = Self::current_timestamp();
+            site.visit_count += 1;
+            drop(data);
+            self.save_data();
         }
+    }
 
     pub fn get_sorted_sites(&self) -> Vec<SiteVisit> {
         if let Ok(data) = self.data.lock() {
