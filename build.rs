@@ -3,6 +3,7 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
+
 fn is_command_available(command: &str) -> bool {
     let check_command = if cfg!(target_os = "windows") {
         "where"

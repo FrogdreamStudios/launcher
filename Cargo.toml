@@ -35,7 +35,6 @@ self_update = { version = "0.42.0", features = [
     "compression-flate2",
 ] }
 reqwest = { version = "0.12.23", features = ["json"] }
-winres = "0.1.12"
 
 [features]
 default = ["desktop"]
@@ -46,6 +45,9 @@ minimal = []
 [[bin]]
 name = "DreamLauncher"
 path = "src/main.rs"
+
+[build-dependencies]
+winres = "0.1.12"
 
 [profile.dev]
 incremental = true
