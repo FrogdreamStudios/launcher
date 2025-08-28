@@ -36,13 +36,14 @@ impl VersionManager {
             return Ok(());
         }
 
-        if let Err(e) = self.load_cached_manifest().await {
-            log_warn!("Failed to load cached manifest: {e}, attempting to update from network.");
-            self.update_manifest().await?;
-        } else if self.manifest.is_none() {
-            log_info!("No cached manifest, fetching from Mojang...");
-            self.update_manifest().await?;
+        // Try to load from a cache
+        if self.load_cached_manifest().await.is_ok() {
+            return Ok(());
         }
+
+        // If the cache load failed, try to update from network
+        log_warn!("Failed to load cached manifest, attempting to update from network");
+        self.update_manifest().await?;
         Ok(())
     }
 
@@ -67,6 +68,12 @@ impl VersionManager {
 
         // Cache the manifest
         let manifest_path = self.cache_dir.join("version_manifest_v2.json");
+
+        // Ensure the parent directory exists before writing the file
+        if let Some(parent) = manifest_path.parent() {
+            tokio::fs::create_dir_all(parent).await?;
+        }
+        log_info!("Attempting to write manifest to: {}", manifest_path.display());
         let manifest_json = serde_json::to_string_pretty(&manifest)?;
         tokio::fs::write(&manifest_path, manifest_json).await?;
 

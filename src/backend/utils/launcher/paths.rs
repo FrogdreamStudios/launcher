@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::simple_error;
+use crate::{log_info, simple_error};
 use crate::utils::Result;
 
 /// Name of the main launcher directory.
@@ -176,6 +176,7 @@ pub async fn ensure_launcher_directories() -> Result<()> {
     ];
 
     for dir in dirs {
+        log_info!("Ensuring directory exists: {}", dir.display());
         tokio::fs::create_dir_all(&dir).await?;
     }
 
