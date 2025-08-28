@@ -6,7 +6,6 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream as TokioTcpStream;
 use tokio_native_tls::{TlsConnector, TlsStream};
 
-use crate::utils::Result;
 use crate::{log_debug, simple_error};
 
 /// Simple HTTP client with HTTPS support.
@@ -68,18 +67,18 @@ impl Response {
     }
 
     /// Deserialize the response body as JSON.
-    pub fn json<T>(&self) -> Result<T>
+    pub fn json<T>(&self) -> crate::utils::Result<T>
     where
         T: serde::de::DeserializeOwned,
     {
         let text = String::from_utf8(self.body.clone())
-            .map_err(|_e| simple_error!("Invalid UTF-8 in response: {e}"))?;
+            .map_err(|e| crate::utils::error::main::Error::new(format!("Invalid UTF-8 in response: {e}")))?;
 
-        serde_json::from_str(&text).map_err(|_e| simple_error!("JSON parse error: {e}"))
+        serde_json::from_str(&text).map_err(|e| crate::utils::error::main::Error::new(format!("JSON parse error: {e}")))
     }
 
     /// Get the next chunk of data (for streaming).
-    pub fn chunk(&mut self) -> Result<Option<Vec<u8>>> {
+    pub fn take_body(&mut self) -> crate::utils::Result<Option<Vec<u8>>> {
         // Return all remaining data as one chunk for simplicity
         // In a real streaming implementation, this would read chunks from the network
         if self.body.is_empty() {
@@ -109,12 +108,12 @@ impl Client {
     }
 
     /// Perform a GET request.
-    pub async fn get(&self, url: &str) -> Result<Response> {
+    pub async fn get(&self, url: &str) -> crate::utils::Result<Response> {
         self.request("GET", url, None).await
     }
 
     /// Perform an HTTP request.
-    async fn request(&self, method: &str, url: &str, body: Option<&[u8]>) -> Result<Response> {
+    async fn request(&self, method: &str, url: &str, body: Option<&[u8]>) -> crate::utils::Result<Response> {
         let parsed_url = parse_url(url)?;
 
         log_debug!("Making {method} request to {url}");
@@ -175,7 +174,7 @@ impl Client {
         parsed_url: &ParsedUrl,
         body: Option<&[u8]>,
         mut stream: StreamWrapper,
-    ) -> Result<Vec<u8>> {
+    ) -> crate::utils::Result<Vec<u8>> {
         // Build HTTP request with reliable connection handling
         let mut request = format!(
             "{} {} HTTP/1.1\r\n\
@@ -269,7 +268,7 @@ impl ClientBuilder {
         self
     }
 
-    pub fn build(self) -> Result<Client> {
+    pub fn build(self) -> crate::utils::Result<Client> {
         Ok(Client {
             timeout: self.timeout,
             connect_timeout: self.connect_timeout,
@@ -345,7 +344,7 @@ struct ParsedUrl {
     is_https: bool,
 }
 
-fn parse_url(url: &str) -> Result<ParsedUrl> {
+fn parse_url(url: &str) -> crate::utils::Result<ParsedUrl> {
     let is_https = url.starts_with("https://");
     let is_http = url.starts_with("http://");
 
@@ -385,7 +384,7 @@ fn parse_url(url: &str) -> Result<ParsedUrl> {
     })
 }
 
-fn parse_response(data: Vec<u8>) -> Result<Response> {
+fn parse_response(data: Vec<u8>) -> crate::utils::Result<Response> {
     // Find the end of headers (double CRLF or double LF)
     let header_end = find_header_end(&data)?;
 
@@ -439,7 +438,7 @@ fn parse_response(data: Vec<u8>) -> Result<Response> {
 }
 
 /// Find the end of HTTP headers in the response data.
-fn find_header_end(data: &[u8]) -> Result<usize> {
+fn find_header_end(data: &[u8]) -> crate::utils::Result<usize> {
     // Look for \r\n\r\n
     for i in 0..data.len().saturating_sub(3) {
         if &data[i..i + 4] == b"\r\n\r\n" {
@@ -458,34 +457,4 @@ fn find_header_end(data: &[u8]) -> Result<usize> {
     Ok(data.len())
 }
 
-/// Simple error type for HTTP operations.
-#[derive(Debug)]
-pub struct Error {
-    message: String,
-}
 
-impl Error {
-    pub const fn new(message: String) -> Self {
-        Self { message }
-    }
-}
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.message)
-    }
-}
-
-impl std::error::Error for Error {}
-
-impl From<std::io::Error> for Error {
-    fn from(err: std::io::Error) -> Self {
-        Self::new(format!("IO error: {err}"))
-    }
-}
-
-impl From<serde_json::Error> for Error {
-    fn from(err: serde_json::Error) -> Self {
-        Self::new(format!("JSON error: {err}"))
-    }
-}

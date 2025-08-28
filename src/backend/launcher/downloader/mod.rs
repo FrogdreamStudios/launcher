@@ -3,6 +3,8 @@
 //! HTTP downloading functionality with progress
 //! tracking for downloading game files, libraries, and assets.
 
+pub mod context;
+pub mod helper;
 /// HTTP downloader implementation.
 pub mod main;
 /// Data models for download tasks.

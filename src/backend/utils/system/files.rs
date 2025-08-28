@@ -1,7 +1,5 @@
+
 //! File system utilities for common operations.
-//!
-//! This module provides async file operations including directory creation,
-//! file verification with SHA1 hashing, and Minecraft-specific file checks.
 
 use crate::utils::Result;
 use crate::utils::{Digest, Sha1};

@@ -1,5 +1,5 @@
 use crate::{
-    backend::utils::css::main::ResourceLoader,
+    frontend::assets::main::ResourceLoader,
     frontend::{
         components::launcher::minecraft_launcher::launch_minecraft,
         pages::auth::AuthState,

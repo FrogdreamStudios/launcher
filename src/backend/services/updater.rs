@@ -140,7 +140,7 @@ fn bypass_macos_security(executable_path: &PathBuf) -> Result<(), String> {
             }
         }
         Err(e) => {
-            log_info!("Warning: Failed to run xattr command: {}", e);
+            log_info!("Warning: Failed to run xattr command: {e}");
         }
     }
 
@@ -315,7 +315,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
             }
         }
         Err(e) => {
-            log_info!("Warning: Failed to run xattr command: {}", e);
+            log_info!("Warning: Failed to run xattr command: {e}");
         }
     }
 
@@ -336,7 +336,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
             }
         }
         Err(e) => {
-            log_info!("Warning: Failed to run spctl command: {}", e);
+            log_info!("Warning: Failed to run spctl command: {e}");
         }
     }
 
@@ -361,7 +361,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
         .args(["detach", "-quiet"])
         .arg(mount_point)
         .output()
-        .map_err(|e| format!("Failed to unmount DMG: {}", e))?;
+        .map_err(|e| format!("Failed to unmount DMG: {e}"))?;
 
     if !detach_output.status.success() {
         log_info!("Warning: Failed to unmount DMG, but installation completed");

@@ -1,8 +1,11 @@
 use crate::backend::utils::launcher::paths::get_launcher_dir;
 use crate::{
     backend::launcher::core::MinecraftLauncher,
-    backend::utils::css::main::ResourceLoader,
-    frontend::{services::{instances::main::INSTANCES, launcher}, states::GameStatus},
+    frontend::assets::main::ResourceLoader,
+    frontend::{
+        services::{instances::main::INSTANCES, launcher},
+        states::GameStatus,
+    },
 };
 use crate::{log_error, log_info, simple_error};
 use dioxus::prelude::*;
@@ -222,7 +225,7 @@ async fn delete_launcher_files() -> crate::utils::Result<()> {
 
     if total_found == 0 {
         log_info!("No launcher files found to delete");
-        return Ok(())
+        return Ok(());
     }
 
     log_info!("Found {total_found} directories to delete");
@@ -283,7 +286,6 @@ async fn get_system_info() -> crate::utils::Result<String> {
 
     Ok(info)
 }
-
 
 fn get_instance_info(instance_id: u32) -> String {
     use crate::frontend::services::instances::main::get_instance_directory;

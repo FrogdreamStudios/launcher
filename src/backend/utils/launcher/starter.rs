@@ -169,7 +169,7 @@ impl MinecraftCommand {
                 self.process_argument(cmd, arg, false);
             }
         } else if let Some(minecraft_arguments) = &self.version_details.minecraft_arguments {
-            let args = self.substitute_legacy_arguments(minecraft_arguments);
+            let args = self.apply_replacements(minecraft_arguments.to_string(), true);
             let mut current_arg = String::new();
             let mut in_quotes = false;
             for ch in args.chars() {
@@ -196,7 +196,7 @@ impl MinecraftCommand {
     fn process_argument(&self, cmd: &mut Command, arg: &ArgumentValue, is_jvm: bool) {
         match arg {
             ArgumentValue::String(s) => {
-                let substituted = self.substitute_variables(s, is_jvm);
+                let substituted = self.apply_replacements(s.to_string(), !is_jvm);
                 if !substituted.trim().is_empty() {
                     cmd.arg(substituted);
                 }
@@ -205,14 +205,14 @@ impl MinecraftCommand {
                 if Self::evaluate_rules(rules) {
                     match value {
                         ArgumentValueInner::String(s) => {
-                            let substituted = self.substitute_variables(s, is_jvm);
+                            let substituted = self.apply_replacements(s.to_string(), !is_jvm);
                             if !substituted.trim().is_empty() {
                                 cmd.arg(substituted);
                             }
                         }
                         ArgumentValueInner::Array(array) => {
                             for s in array {
-                                let substituted = self.substitute_variables(s, is_jvm);
+                                let substituted = self.apply_replacements(s.to_string(), !is_jvm);
                                 if !substituted.trim().is_empty() {
                                     cmd.arg(substituted);
                                 }
@@ -235,54 +235,37 @@ impl MinecraftCommand {
             .all(|rule| rule.matches(os_name, os_arch, &features))
     }
 
-    /// Substitutes variables in a string with actual values.
-    fn substitute_variables(&self, input: &str, is_jvm: bool) -> String {
-        let mut result = input.to_string();
+    /// Applies variable substitutions to an input string.
+    /// `is_legacy` determines if the legacy path quoting is used and if JVM-specific variables are included.
+    fn apply_replacements(&self, mut input: String, is_legacy: bool) -> String {
+        // Common replacements
+        input = input.replace("${auth_player_name}", &self.username);
+        input = input.replace("${version_name}", &self.version_details.id);
+        input = input.replace("${auth_uuid}", &self.uuid);
+        input = input.replace("${auth_access_token}", &self.access_token);
+        input = input.replace("${auth_session}", &self.access_token);
+        input = input.replace("${user_type}", &self.user_type);
+        input = input.replace("${version_type}", &self.version_type);
+        input = input.replace("${user_properties}", "{}");
 
-        result = result.replace("${game_directory}", &self.get_game_directory(false));
-        result = result.replace("${assets_root}", &self.get_assets_root(false));
-        result = result.replace("${assets_index_name}", &self.version_details.assets);
-        result = result.replace("${game_assets}", &self.get_game_assets(false));
-        result = result.replace("${auth_player_name}", &self.username);
-        result = result.replace("${auth_uuid}", &self.uuid);
-        result = result.replace("${auth_access_token}", &self.access_token);
-        result = result.replace("${auth_session}", &self.access_token);
-        result = result.replace("${user_type}", &self.user_type);
-        result = result.replace("${user_properties}", "{}");
-        result = result.replace("${version_name}", &self.version_details.id);
-        result = result.replace("${version_type}", &self.version_type);
-        result = result.replace("${launcher_name}", "DreamLauncher");
-        result = result.replace("${launcher_version}", "1.0.0-beta.1");
+        // Path-related replacements (handle quoting based on is_legacy)
+        input = input.replace("${game_directory}", &self.get_game_directory(is_legacy));
+        input = input.replace("${assets_root}", &self.get_assets_root(is_legacy));
+        input = input.replace("${assets_index_name}", &self.version_details.assets);
+        input = input.replace("${game_assets}", &self.get_game_assets(is_legacy));
 
-        if is_jvm {
-            result = result.replace(
+        if !is_legacy {
+            // These are only for modern/JVM arguments
+            input = input.replace("${launcher_name}", "DreamLauncher");
+            input = input.replace("${launcher_version}", "1.0.0-beta.1");
+            input = input.replace(
                 "${natives_directory}",
                 &self.natives_dir.display().to_string(),
             );
-            result = result.replace("${classpath}", &self.build_classpath());
+            input = input.replace("${classpath}", &self.build_classpath());
         }
 
-        result
-    }
-
-    /// Substitutes variables in legacy argument strings.
-    fn substitute_legacy_arguments(&self, args: &str) -> String {
-        let mut result = args.to_string();
-
-        result = result.replace("${auth_player_name}", &self.username);
-        result = result.replace("${version_name}", &self.version_details.id);
-        result = result.replace("${game_directory}", &self.get_game_directory(true));
-        result = result.replace("${assets_root}", &self.get_assets_root(true));
-        result = result.replace("${assets_index_name}", &self.version_details.assets);
-        result = result.replace("${game_assets}", &self.get_game_assets(true));
-        result = result.replace("${auth_uuid}", &self.uuid);
-        result = result.replace("${auth_access_token}", &self.access_token);
-        result = result.replace("${auth_session}", &self.access_token);
-        result = result.replace("${user_type}", &self.user_type);
-        result = result.replace("${version_type}", &self.version_type);
-        result = result.replace("${user_properties}", "{}");
-
-        result
+        input
     }
 
     /// Builds the classpath string.
@@ -650,6 +633,50 @@ impl Default for CommandBuilder {
     }
 }
 
+async fn check_and_install_version(launcher: &mut MinecraftLauncher, version: &str) -> Result<()> {
+    use crate::backend::utils::progress_bridge::update_global_progress;
+
+    let game_dir = launcher.get_game_dir();
+    let version_dir = game_dir.join("versions").join(version);
+    let jar_file = version_dir.join(format!("{version}.jar"));
+    let json_file = version_dir.join(format!("{version}.json"));
+
+    let version_exists = jar_file.exists() && json_file.exists();
+
+    if !version_exists {
+        log_info!("Version {version} not found locally, attempting to install...");
+
+        update_global_progress(0.2, format!("Downloading Minecraft {version}..."));
+        launcher.prepare_version(version).await.map_err(|e| {
+            log_error!("Failed to install version {version}: {e}");
+            e
+        })?;
+
+        log_info!("Version {version} installed successfully");
+    }
+    Ok(())
+}
+
+async fn check_and_install_java(launcher: &mut MinecraftLauncher, version: &str) -> Result<()> {
+    use crate::backend::utils::progress_bridge::update_global_progress;
+
+    update_global_progress(0.7, format!("Checking Java for {version}..."));
+    let java_available = launcher.is_java_available(version);
+
+    if !java_available {
+        log_info!("Java not available for version {version}, installing...");
+        update_global_progress(0.75, "Installing Java runtime...".to_string());
+
+        launcher.install_java(version).await.map_err(|e| {
+            log_error!("Failed to install Java for version {version}: {e}");
+            e
+        })?;
+
+        log_info!("Java installed successfully for version {version}");
+    }
+    Ok(())
+}
+
 /// Launch Minecraft with the specified version and instance
 pub async fn launch_minecraft(version: String, instance_id: u32, username: String) -> Result<()> {
     use crate::backend::utils::progress_bridge::update_global_progress;
@@ -659,46 +686,13 @@ pub async fn launch_minecraft(version: String, instance_id: u32, username: Strin
     // Initialize progress
     update_global_progress(0.0, "Initializing launcher...".to_string());
 
-    let manifest = launcher::get_version_manifest()?; // Get the pre-loaded manifest
+    let manifest = launcher::get_version_manifest()?; // Get the preloaded manifest
     let mut launcher = MinecraftLauncher::new(None, Some(instance_id), Some(manifest)).await?; // Pass the manifest
     log_info!("Launcher created successfully");
 
-    // Check if a version exists locally
-    let game_dir = launcher.get_game_dir();
-    let version_dir = game_dir.join("versions").join(&version);
-    let jar_file = version_dir.join(format!("{version}.jar"));
-    let json_file = version_dir.join(format!("{version}.json"));
+    check_and_install_version(&mut launcher, &version).await?;
 
-    let version_exists = jar_file.exists() && json_file.exists();
-
-    if !version_exists {
-        log_info!("Version {version} not found locally, attempting to install...");
-
-        // Install/prepare the version
-        update_global_progress(0.2, format!("Downloading Minecraft {}...", version));
-        launcher.prepare_version(&version).await.map_err(|e| {
-            log_error!("Failed to install version {version}: {e}");
-            e
-        })?;
-
-        log_info!("Version {version} installed successfully");
-    }
-
-    // Check Java availability
-    update_global_progress(0.7, format!("Checking Java for {}...", version));
-    let java_available = launcher.is_java_available(&version);
-
-    if !java_available {
-        log_info!("Java not available for version {version}, installing...");
-        update_global_progress(0.75, "Installing Java runtime...".to_string());
-
-        launcher.install_java(&version).await.map_err(|e| {
-            log_error!("Failed to install Java for version {version}: {e}");
-            e
-        })?;
-
-        log_info!("Java installed successfully for version {version}");
-    }
+    check_and_install_java(&mut launcher, &version).await?;
 
     log_info!("Starting Minecraft {version}...");
     update_global_progress(0.9, format!("Starting Minecraft {}...", version));
@@ -708,9 +702,6 @@ pub async fn launch_minecraft(version: String, instance_id: u32, username: Strin
         log_error!("Failed to launch Minecraft {version}: {e}");
         e
     })?;
-
-    // Launch was successful - progress bar is automatically hidden in launcher.rs
-    // when the Minecraft process starts
 
     log_info!("Minecraft {version} launched successfully");
     Ok(())

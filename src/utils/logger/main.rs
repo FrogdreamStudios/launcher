@@ -1,18 +1,6 @@
 //! Minimal logging system.
 
-use once_cell::sync::Lazy;
 use std::sync::atomic::{AtomicU8, Ordering};
-use tokio::sync::broadcast;
-
-// Channel for sending logs to the UI
-static LOG_CHANNEL: Lazy<(broadcast::Sender<String>,)> = Lazy::new(|| {
-    let (sender, _) = broadcast::channel(100);
-    (sender,)
-});
-
-pub fn get_log_receiver() -> broadcast::Receiver<String> {
-    LOG_CHANNEL.0.subscribe()
-}
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd)]
 #[repr(u8)]
@@ -65,30 +53,28 @@ pub fn enabled(level: LogLevel) -> bool {
 pub fn log(level: LogLevel, message: &str) {
     if enabled(level) {
         let log_message = format!("[{}] {}", level.as_str(), message);
-        println!("{}", log_message);
-        // Send the log to the UI channel, ignore if no one is listening
-        let _ = LOG_CHANNEL.0.send(log_message);
+        println!("{log_message}");
     }
 }
 
 #[macro_export]
 macro_rules! log_error {
     ($($arg:tt)*) => {
-        $crate::utils::logging::log($crate::utils::logging::LogLevel::Error, &format!($($arg)*))
+        $crate::utils::logger::main::log($crate::utils::logger::main::LogLevel::Error, &format!($($arg)*))
     };
 }
 
 #[macro_export]
 macro_rules! log_warn {
     ($($arg:tt)*) => {
-        $crate::utils::logging::log($crate::utils::logging::LogLevel::Warn, &format!($($arg)*))
+        $crate::utils::logger::main::log($crate::utils::logger::main::LogLevel::Warn, &format!($($arg)*))
     };
 }
 
 #[macro_export]
 macro_rules! log_info {
     ($($arg:tt)*) => {
-        $crate::utils::logging::log($crate::utils::logging::LogLevel::Info, &format!($($arg)*))
+        $crate::utils::logger::main::log($crate::utils::logger::main::LogLevel::Info, &format!($($arg)*))
     };
 }
 
@@ -96,7 +82,7 @@ macro_rules! log_info {
 macro_rules! log_debug {
     ($($arg:tt)*) => {
         if cfg!(debug_assertions) {
-            $crate::utils::logging::log($crate::utils::logging::LogLevel::Debug, &format!($($arg)*))
+            $crate::utils::logger::main::log($crate::utils::logger::main::LogLevel::Debug, &format!($($arg)*))
         }
     };
 }

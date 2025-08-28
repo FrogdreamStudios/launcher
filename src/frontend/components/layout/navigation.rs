@@ -1,5 +1,5 @@
-use crate::backend::utils::app::main::Route;
-use crate::backend::utils::css::main::ResourceLoader;
+use crate::frontend::app::main::Route;
+use crate::frontend::assets::main::ResourceLoader;
 use dioxus::prelude::*;
 use dioxus_router::{navigator, use_route};
 

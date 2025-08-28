@@ -1,5 +1,5 @@
 use crate::{
-    backend::utils::css::main::ResourceLoader, frontend::services::instances::main::InstanceManager,
+    frontend::assets::main::ResourceLoader, frontend::services::instances::main::InstanceManager,
 };
 use dioxus::prelude::*;
 
@@ -20,7 +20,7 @@ pub fn RenameDialog(props: RenameDialogProps) -> Element {
     let mut is_hiding = use_signal(|| false);
     let mut should_render = use_signal(|| false);
 
-    // Initialize new_name when dialog opens
+    // Initialize new_name when the dialog opens
     use_effect(move || {
         if show() && !current_name().is_empty() {
             new_name.set(current_name());

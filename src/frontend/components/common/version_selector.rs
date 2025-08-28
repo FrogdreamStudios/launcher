@@ -1,5 +1,6 @@
-use crate::{backend::launcher::models::VersionInfo,
-    backend::utils::css::main::ResourceLoader,
+use crate::{
+    backend::launcher::models::VersionInfo,
+    frontend::assets::main::ResourceLoader,
     frontend::services::{instances::main::InstanceManager, launcher},
 };
 use crate::{log_error, log_info};

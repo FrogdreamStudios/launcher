@@ -12,7 +12,7 @@ use dioxus::{LaunchBuilder, prelude::*};
 use dioxus_desktop::{Config, LogicalSize, WindowBuilder};
 use dioxus_router::Router;
 
-use crate::backend::utils::app::main::Route;
+use crate::frontend::app::main::Route;
 use tokio::runtime::Runtime;
 
 static RUNTIME: OnceLock<Runtime> = OnceLock::new();
@@ -20,7 +20,7 @@ static RUNTIME: OnceLock<Runtime> = OnceLock::new();
 /// Main function for starting the application.
 fn main() {
     // Logging
-    utils::logging::init_from_env();
+    utils::logger::main::init_from_env();
 
     // Set icon on macOS
     #[cfg(target_os = "macos")]

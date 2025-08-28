@@ -6,7 +6,7 @@ repository = "https://github.com/FrogdreamStudios/launcher"
 keywords = ["minecraft", "launcher", "java", "gaming", "cross-platform"]
 categories = ["games"]
 license = "LGPL-3.0-only"
-version = "0.0.1"
+version = "0.1.0"
 edition = "2024"
 
 [dependencies]
@@ -35,6 +35,20 @@ self_update = { version = "0.42.0", features = [
     "compression-flate2",
 ] }
 reqwest = { version = "0.12.23", features = ["json"] }
+
+[package.metadata.bundle]
+name = "Dream Launcher"
+identifier = "com.frogdream.launcher"
+version = "0.1.0"
+copyright = "© 2025 Frogdream Studios"
+category = "Game"
+short_description = "A powerful and lightweight Minecraft launcher"
+long_description = "A powerful and lightweight Minecraft launcher that will be perfect for every player."
+
+[package.metadata.bundle.windows]
+webview2_install_mode = "embedbootstrapper"
+webview2_user_data_folder = ".dream-launcher"
+console_subsystem = false
 
 [features]
 default = ["desktop"]
@@ -82,17 +96,3 @@ inherits = "dev"
 dioxus-desktop = { version = "0.7.0-rc.0", default-features = false, features = [
     "tokio_runtime",
 ] }
-
-[package.metadata.bundle]
-name = "Dream Launcher"
-identifier = "com.frogdream.launcher"
-version = "1.0.0"
-copyright = "© 2024 Frogdream Studios"
-category = "Game"
-short_description = "A powerful and lightweight Minecraft launcher"
-long_description = "A powerful and lightweight Minecraft launcher that will be perfect for every player."
-
-[package.metadata.bundle.windows]
-webview2_install_mode = "embedbootstrapper"
-webview2_user_data_folder = ".dream-launcher"
-console_subsystem = false

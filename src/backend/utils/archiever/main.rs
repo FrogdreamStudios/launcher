@@ -1,7 +1,4 @@
-//! Archive extraction utilities.
-//!
-//! Extract different types of archives like ZIP and TAR.GZ files.
-//! It can detect archive types by extension or by reading file headers.
+//! Archive extraction.
 
 use std::path::Path;
 
@@ -12,9 +9,6 @@ use tokio::fs as async_fs;
 use crate::backend::utils::system::files::ensure_directory;
 
 /// Extracts an archive based on its file extension.
-///
-/// Supports ZIP and TAR.GZ formats. If extension detection fails,
-/// it tries to detect the format by reading file headers.
 pub async fn extract_archive<P: AsRef<Path>>(archive_path: P, extract_path: P) -> Result<()> {
     let archive_path = archive_path.as_ref();
     let extract_path = extract_path.as_ref();
@@ -29,9 +23,9 @@ pub async fn extract_archive<P: AsRef<Path>>(archive_path: P, extract_path: P) -
 
     // Check for compound extensions first, then single extensions
     if filename.ends_with(".tar.gz") || filename.ends_with(".tgz") {
-        extract_tar_gz(archive_path, extract_path).await?;
+        crate::utils::archive::main::extract_tar_gz(archive_path, extract_path).await?;
     } else if filename.ends_with(".zip") {
-        extract_zip(archive_path, extract_path).await?;
+        crate::utils::archive::main::extract_zip(archive_path, extract_path).await?;
     } else {
         // Try to detect a format by reading file headers
         extract_archive_by_content(archive_path, extract_path).await?;
@@ -41,34 +35,8 @@ pub async fn extract_archive<P: AsRef<Path>>(archive_path: P, extract_path: P) -
     Ok(())
 }
 
-/// Extracts a ZIP archive to the specified directory.
-pub async fn extract_zip<P: AsRef<Path>>(archive_path: P, extract_path: P) -> Result<()> {
-    let archive_path = archive_path.as_ref();
-    let extract_path = extract_path.as_ref();
-
-    // Use our custom archive extraction utility
-    crate::utils::extract_zip(archive_path, extract_path).await?;
-    log_info!("Successfully extracted ZIP archive: {:?}", archive_path);
-
-    Ok(())
-}
-
-/// Extracts a TAR.GZ (compressed tar) archive.
-pub async fn extract_tar_gz<P: AsRef<Path>>(archive_path: P, extract_path: P) -> Result<()> {
-    let archive_path = archive_path.as_ref();
-    let extract_path = extract_path.as_ref();
-
-    // Use our custom archive extraction utility
-    crate::utils::extract_tar_gz(archive_path, extract_path).await?;
-    log_info!("Successfully extracted TAR.GZ archive: {:?}", archive_path);
-
-    Ok(())
-}
-
-/// Attempts to detect archive formats by reading file header.
-///
-/// This function reads the first few bytes of a file to identify
-/// whether it's a ZIP or GZIP file based on magic numbers.
+/// Read the first few bytes of a file to identify whether it's a ZIP or GZIP file
+/// based on magic numbers.
 pub async fn extract_archive_by_content<P: AsRef<Path>>(
     archive_path: P,
     extract_path: P,
@@ -88,10 +56,10 @@ pub async fn extract_archive_by_content<P: AsRef<Path>>(
     // Check magic numbers (file signatures)
     if header[0] == 0x50 && header[1] == 0x4B && header[2] == 0x03 && header[3] == 0x04 {
         // ZIP file magic number: PK...
-        extract_zip(archive_path, extract_path).await?;
+        crate::utils::archive::main::extract_zip(archive_path, extract_path).await?;
     } else if header[0] == 0x1F && header[1] == 0x8B {
         // GZIP magic number (probably tar.gz)
-        extract_tar_gz(archive_path, extract_path).await?;
+        crate::utils::archive::main::extract_tar_gz(archive_path, extract_path).await?;
     } else {
         return Err(simple_error!("Unrecognized archive format"));
     }

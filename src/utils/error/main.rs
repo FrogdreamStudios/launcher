@@ -35,21 +35,17 @@ impl From<serde_json::Error> for Error {
     }
 }
 
-impl From<crate::backend::utils::net::http::Error> for Error {
-    fn from(err: crate::backend::utils::net::http::Error) -> Self {
-        Self::new(format!("HTTP error: {err}"))
-    }
-}
+
 
 impl From<tokio::task::JoinError> for Error {
     fn from(err: tokio::task::JoinError) -> Self {
-        Self::new(format!("Task error: {err}"))
+        Self::new(format!("Task main: {err}"))
     }
 }
 
 impl From<std::num::ParseIntError> for Error {
     fn from(err: std::num::ParseIntError) -> Self {
-        Self::new(format!("Parse error: {err}"))
+        Self::new(format!("Parse main: {err}"))
     }
 }
 
@@ -70,9 +66,9 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[macro_export]
 macro_rules! simple_error {
     ($msg:literal) => {
-        $crate::utils::error::Error::new($msg)
+        $crate::utils::error::main::Error::new($msg)
     };
     ($fmt:expr, $($arg:tt)*) => {
-        $crate::utils::error::Error::new(format!($fmt, $($arg)*))
+        $crate::utils::error::main::Error::new(format!($fmt, $($arg)*))
     };
 }

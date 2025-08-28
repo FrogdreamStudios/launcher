@@ -35,9 +35,7 @@ pub fn launch_minecraft(
                     .build()
                     .map_err(|e| format!("Failed to create runtime: {e}"))?;
 
-                println!(
-                    "Calling starter::launch_minecraft with version: {version_owned}"
-                );
+                println!("Calling starter::launch_minecraft with version: {version_owned}");
                 rt.block_on(async {
                     starter::launch_minecraft(version_owned, instance_id, username_owned).await
                 })

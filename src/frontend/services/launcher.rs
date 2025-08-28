@@ -1,7 +1,7 @@
-use std::sync::{Arc, OnceLock};
 use crate::backend::launcher::models::VersionManifest;
 use crate::utils::Result;
-use crate::{log_info, log_error};
+use crate::{log_error, log_info};
+use std::sync::{Arc, OnceLock};
 
 static VERSION_MANIFEST: OnceLock<Arc<VersionManifest>> = OnceLock::new();
 

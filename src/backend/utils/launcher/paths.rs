@@ -2,40 +2,20 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::{log_info, simple_error};
+use crate::backend::utils::system::files::ensure_directory;
+use crate::simple_error;
 use crate::utils::Result;
 
-/// Name of the main launcher directory.
 const LAUNCHER_DIR: &str = "DreamLauncher";
-
-/// Subdirectory for Minecraft versions.
 const VERSIONS: &str = "versions";
-
-/// Subdirectory for library files.
 const LIBRARIES: &str = "libraries";
-
-/// Subdirectory for game assets.
 const ASSETS: &str = "assets";
-
-/// Subdirectory for Java installations.
 const JAVA: &str = "java";
-
-/// Subdirectory for cached files.
 const CACHE: &str = "cache";
-
-/// Subdirectory for log files.
 const LOGS: &str = "logs";
-
-/// Subdirectory for asset objects.
 const OBJECTS: &str = "objects";
-
-/// Subdirectory for asset indexes.
 const INDEXES: &str = "indexes";
-
-/// Subdirectory for native libraries.
 const NATIVES: &str = "natives";
-
-/// Subdirectory for instances.
 const INSTANCES: &str = "instances";
 
 /// Get the base launcher directory (`DreamLauncher`).
@@ -176,8 +156,7 @@ pub async fn ensure_launcher_directories() -> Result<()> {
     ];
 
     for dir in dirs {
-        log_info!("Ensuring directory exists: {}", dir.display());
-        tokio::fs::create_dir_all(&dir).await?;
+        ensure_directory(&dir).await?;
     }
 
     Ok(())
@@ -203,7 +182,7 @@ pub async fn ensure_instance_directories(instance_id: u32) -> Result<()> {
     ];
 
     for dir in dirs {
-        tokio::fs::create_dir_all(&dir).await?;
+        ensure_directory(&dir).await?;
     }
 
     Ok(())

@@ -1,18 +1,11 @@
-//! Creeper. Core Minecraft launcher functionality.
+//! All the logic for the Minecraft launcher.
 
-/// Common utilities and platform information.
-pub mod common;
-/// Core launcher functionality.
 pub mod core;
-/// HTTP downloading and progress tracking.
 pub mod downloader;
-/// Java runtime management and detection.
+pub mod file_validator;
 pub mod java;
-/// Data models and structures.
 pub mod models;
-/// Progress tracking and callbacks.
+pub mod platform;
 pub mod progress;
-/// Version management functionality.
+pub mod system_info;
 pub mod versions;
-
-// Re-export the main launcher types

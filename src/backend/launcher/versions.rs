@@ -73,7 +73,10 @@ impl VersionManager {
         if let Some(parent) = manifest_path.parent() {
             tokio::fs::create_dir_all(parent).await?;
         }
-        log_info!("Attempting to write manifest to: {}", manifest_path.display());
+        log_info!(
+            "Attempting to write manifest to: {}",
+            manifest_path.display()
+        );
         let manifest_json = serde_json::to_string_pretty(&manifest)?;
         tokio::fs::write(&manifest_path, manifest_json).await?;
 

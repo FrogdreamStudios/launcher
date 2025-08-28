@@ -5,11 +5,11 @@ use std::{path::Path, time::Duration};
 use tokio::{fs::File, io::AsyncWriteExt};
 
 use crate::backend::launcher::downloader::models::DownloadTask;
-use crate::backend::utils::net::http::{Client, StatusCode};
 use crate::backend::utils::net::stream::ResponseChunkExt;
 use crate::backend::utils::system::files::{
     batch_ensure_parent_directories, ensure_parent_directory, verify_file,
 };
+use crate::utils::net::main::{Client, StatusCode};
 
 /// HTTP downloader with progress tracking and file verification.
 pub struct HttpDownloader {

@@ -1,4 +1,4 @@
-use crate::backend::utils::css::main::ResourceLoader;
+use crate::frontend::assets::main::ResourceLoader;
 use crate::frontend::{components::layout::AuthLayout, pages::auth::AuthState};
 use dioxus::{events::KeyboardEvent, prelude::*};
 use dioxus_router::use_navigator;

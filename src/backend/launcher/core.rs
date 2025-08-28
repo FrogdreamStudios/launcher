@@ -1,10 +1,11 @@
 //! Core Minecraft launcher implementation.
 
 use super::{
-    downloader::{HttpDownloader, models::DownloadTask},
+    downloader::HttpDownloader,
     java::JavaManager,
-    models::{AssetManifest, AssetObject, VersionDetails, VersionInfo, VersionManifest},
+    models::{AssetManifest, AssetObject, VersionDetails, VersionManifest},
 };
+use crate::backend::launcher::downloader::context::DownloadContext;
 use crate::backend::utils::launcher::paths::{
     ensure_directories, get_asset_indexes_dir, get_asset_path, get_assets_dir, get_cache_dir,
     get_game_dir, get_library_path, get_natives_dir, get_version_jar_path,
@@ -16,91 +17,11 @@ use crate::{log_error, log_info, log_warn, simple_error};
 use std::{path::PathBuf, process::Stdio, sync::Arc};
 
 // Import our modular components
-use super::common::{DownloadHelper, FileValidator, PlatformInfo, SystemInfo};
 use super::versions::VersionManager;
-
-/// Download context for managing file downloads with verification.
-struct DownloadContext<'a> {
-    downloader: &'a HttpDownloader,
-}
-
-impl<'a> DownloadContext<'a> {
-    const fn new(downloader: &'a HttpDownloader) -> Self {
-        Self { downloader }
-    }
-
-    /// Download the file if needed (with verification).
-    async fn download_if_needed(
-        &self,
-        url: &str,
-        path: &PathBuf,
-        expected_size: Option<u64>,
-        expected_sha1: Option<&str>,
-    ) -> Result<bool> {
-        if DownloadHelper::needs_download(path, expected_size, expected_sha1).await? {
-            self.downloader
-                .download_file(url, path, expected_sha1)
-                .await?;
-            Ok(true)
-        } else {
-            Ok(false)
-        }
-    }
-
-    /// Execute download tasks with optimized concurrent processing and progress tracking.
-    async fn execute_downloads(&self, tasks: Vec<DownloadTask>, item_type: &str) -> Result<()> {
-        use crate::backend::utils::progress_bridge::update_global_progress;
-
-        if tasks.is_empty() {
-            return Ok(());
-        }
-
-        let total = tasks.len();
-        let batch_size = DownloadHelper::calculate_batch_size(total, 128);
-
-        let max_concurrent = match total {
-            0..=50 => 24,
-            51..=200 => 48,
-            201..=500 => 64,
-            _ => 96,
-        };
-
-        log_info!(
-            "Downloading {total} {item_type} with {max_concurrent} concurrent connections..."
-        );
-
-        // Process batches sequentially with high concurrency within each batch
-        for (i, chunk) in tasks.chunks(batch_size).enumerate() {
-            let completed = i * batch_size;
-            let progress_percent = completed as f32 / total as f32;
-
-            // Calculate base progress based on the item type
-            let base_progress = match item_type {
-                "libraries" => 0.4,
-                "natives" => 0.5,
-                "assets" => 0.55,
-                _ => 0.3,
-            };
-            let stage_range = 0.05; // Each download stage gets 5% of total progress
-            let current_progress = base_progress + (progress_percent * stage_range);
-
-            update_global_progress(
-                current_progress,
-                format!("Downloading {} ({}/{})", item_type, completed + 1, total),
-            );
-
-            // Download batch with high concurrency
-            self.downloader
-                .download_multiple(chunk.to_vec(), max_concurrent)
-                .await?;
-
-            let batch_completed = (i + 1) * chunk.len().min(total - i * batch_size);
-            DownloadHelper::log_progress(batch_completed, total, item_type);
-        }
-
-        Ok(())
-    }
-}
+use crate::backend::launcher::downloader::helper::DownloadHelper;
+use crate::backend::launcher::file_validator::FileValidator;
+use crate::backend::launcher::platform::PlatformInfo;
+use crate::backend::launcher::system_info::{check_existing_processes, log_system_info};
 
 /// Main Minecraft launcher that handles downloading and launching game instances.
 pub struct MinecraftLauncher {
@@ -109,6 +30,14 @@ pub struct MinecraftLauncher {
     game_dir: PathBuf,
     cache_dir: PathBuf,
     version_manager: VersionManager,
+}
+
+fn get_major_version_from_id(id: &str) -> i32 {
+    id.split('.')
+        .next()
+        .unwrap_or("1")
+        .parse::<i32>()
+        .unwrap_or(1)
 }
 
 impl MinecraftLauncher {
@@ -143,11 +72,6 @@ impl MinecraftLauncher {
             cache_dir,
             version_manager,
         })
-    }
-
-    /// Gets available versions from the version manager.
-    pub fn get_available_versions(&self) -> Result<&[VersionInfo]> {
-        self.version_manager.get_available_versions()
     }
 
     /// Updates the version manifest.
@@ -205,29 +129,25 @@ impl MinecraftLauncher {
         };
 
         // Download all required components
-        update_global_progress(0.3, format!("Downloading {} game files...", version_id));
-        log_info!("Downloading client jar...");
-        if let Err(e) = self.download_client_jar(&version_details).await {
-            log_warn!("Failed to download client jar: {e}");
-        }
+        self.download_and_log(0.3, "Downloading client jar...", || async {
+            self.download_client_jar(&version_details).await
+        })
+        .await;
 
-        update_global_progress(0.4, "Downloading game libraries...".to_string());
-        log_info!("Downloading libraries...");
-        if let Err(e) = self.download_libraries(&version_details).await {
-            log_warn!("Failed to download libraries: {e}");
-        }
+        self.download_and_log(0.4, "Downloading game libraries...", || async {
+            self.download_libraries(&version_details).await
+        })
+        .await;
 
-        update_global_progress(0.5, "Downloading native libraries...".to_string());
-        log_info!("Downloading and extracting native libraries...");
-        if let Err(e) = self.download_natives(&version_details).await {
-            log_warn!("Failed to download natives: {e}");
-        }
+        self.download_and_log(0.5, "Downloading native libraries...", || async {
+            self.download_natives(&version_details).await
+        })
+        .await;
 
-        update_global_progress(0.55, "Downloading game assets...".to_string());
-        log_info!("Downloading assets...");
-        if let Err(e) = self.download_assets(&version_details).await {
-            log_warn!("Failed to download assets: {e}");
-        }
+        self.download_and_log(0.55, "Downloading game assets...", || async {
+            self.download_assets(&version_details).await
+        })
+        .await;
 
         update_global_progress(0.65, "Verifying installation...".to_string());
         // Try to verify installation, but don't fail if some files are missing
@@ -247,8 +167,8 @@ impl MinecraftLauncher {
         log_info!("Launching Minecraft version: {version_id}");
 
         // System diagnostics
-        SystemInfo::log_system_info(&self.game_dir, &self.cache_dir);
-        SystemInfo::check_existing_processes();
+        log_system_info(&self.game_dir, &self.cache_dir);
+        check_existing_processes();
 
         let version_info = self.version_manager.get_version_info(version_id)?;
         let version_type = version_info.version_type.clone();
@@ -272,20 +192,16 @@ impl MinecraftLauncher {
             return Err(simple_error!("Java executable not found at: {java_path:?}"));
         }
 
-        // Test Java version
-        Self::test_java_version(&java_path)?;
-        let java_major_version = Self::get_java_major_version(&java_path)?;
-        log_info!(
-            "Java version verification complete: Java {}",
-            java_major_version
-        );
+        // Test the Java version and get a major version
+        let java_major_version = Self::get_java_version_info(&java_path)?;
+        log_info!("Java version verification complete: Java {java_major_version}");
 
         // Log detailed Java info on Windows for debugging
         if cfg!(windows) {
             log_info!("Windows Java debugging info:");
             log_info!("  Java executable: {}", java_path.display());
-            log_info!("  Java major version: {}", java_major_version);
-            log_info!("  Use Rosetta: {}", use_rosetta);
+            log_info!("  Java major version: {java_major_version}");
+            log_info!("  Use Rosetta: {use_rosetta}");
         }
 
         // Build library paths
@@ -439,85 +355,74 @@ impl MinecraftLauncher {
     }
 
     async fn download_libraries(&self, version_details: &VersionDetails) -> Result<()> {
-        let platform_info = PlatformInfo::new();
-        let download_ctx = DownloadContext::new(&self.downloader);
-
-        // Collect all potential downloads for batch validation
-        let mut potential_downloads = Vec::new();
-
-        for library in &version_details.libraries {
-            if !library.should_use(
-                platform_info.os_name,
-                platform_info.os_arch,
-                &platform_info.os_features,
-            ) {
-                continue;
-            }
-
-            if let Some(artifact) = &library.downloads.artifact
-                && let Some(path) = &artifact.path
-            {
-                let lib_path = get_library_path(&self.game_dir, path);
-                potential_downloads.push((
-                    artifact.url.clone(),
-                    lib_path,
-                    artifact.size,
-                    artifact.sha1.clone(),
-                ));
-            }
-        }
-
-        // Batch validate files and create download tasks
-        let download_tasks =
-            DownloadHelper::batch_validate_and_create_tasks(potential_downloads).await?;
-
-        download_ctx
-            .execute_downloads(download_tasks, "libraries")
-            .await
-    }
-
-    async fn download_natives(&self, version_details: &VersionDetails) -> Result<()> {
-        let platform_info = PlatformInfo::new();
-        let download_ctx = DownloadContext::new(&self.downloader);
-        let natives_dir = get_natives_dir(&self.game_dir, &version_details.id);
-        ensure_directory(&natives_dir).await?;
-
-        // Collect all potential native downloads for batch validation
-        let mut potential_downloads = Vec::new();
-
-        for library in &version_details.libraries {
-            if !library.should_use(
-                platform_info.os_name,
-                platform_info.os_arch,
-                &platform_info.os_features,
-            ) {
-                continue;
-            }
-
-            if let Some(classifiers) = &library.downloads.classifiers {
-                for classifier in &platform_info.native_classifiers {
-                    if let Some(native_artifact) = classifiers.get(classifier)
-                        && let Some(path) = &native_artifact.path
+        self.process_component_downloads(
+            version_details,
+            "libraries",
+            |platform_info, version_details, game_dir| {
+                let mut potential_downloads = Vec::new();
+                for library in &version_details.libraries {
+                    if !library.should_use(
+                        platform_info.os_name,
+                        platform_info.os_arch,
+                        &platform_info.os_features,
+                    ) {
+                        continue;
+                    }
+                    if let Some(artifact) = &library.downloads.artifact
+                        && let Some(path) = &artifact.path
                     {
-                        let native_path = get_library_path(&self.game_dir, path);
+                        let lib_path = get_library_path(game_dir, path);
                         potential_downloads.push((
-                            native_artifact.url.clone(),
-                            native_path,
-                            native_artifact.size,
-                            native_artifact.sha1.clone(),
+                            artifact.url.clone(),
+                            lib_path,
+                            artifact.size,
+                            artifact.sha1.clone(),
                         ));
                     }
                 }
-            }
-        }
+                Ok(potential_downloads)
+            },
+        )
+        .await
+    }
 
-        // Batch validate natives and create download tasks
-        let download_tasks =
-            DownloadHelper::batch_validate_and_create_tasks(potential_downloads).await?;
+    async fn download_natives(&self, version_details: &VersionDetails) -> Result<()> {
+        let natives_dir = get_natives_dir(&self.game_dir, &version_details.id);
+        ensure_directory(&natives_dir).await?;
 
-        download_ctx
-            .execute_downloads(download_tasks, "natives")
-            .await?;
+        self.process_component_downloads(
+            version_details,
+            "natives",
+            |platform_info, version_details, game_dir| {
+                let mut potential_downloads = Vec::new();
+                for library in &version_details.libraries {
+                    if !library.should_use(
+                        platform_info.os_name,
+                        platform_info.os_arch,
+                        &platform_info.os_features,
+                    ) {
+                        continue;
+                    }
+                    if let Some(classifiers) = &library.downloads.classifiers {
+                        for classifier in &platform_info.native_classifiers {
+                            if let Some(native_artifact) = classifiers.get(classifier)
+                                && let Some(path) = &native_artifact.path
+                            {
+                                let native_path = get_library_path(game_dir, path);
+                                potential_downloads.push((
+                                    native_artifact.url.clone(),
+                                    native_path,
+                                    native_artifact.size,
+                                    native_artifact.sha1.clone(),
+                                ));
+                            }
+                        }
+                    }
+                }
+                Ok(potential_downloads)
+            },
+        )
+        .await?;
         self.extract_natives(version_details).await
     }
 
@@ -558,7 +463,7 @@ impl MinecraftLauncher {
             assets_for_virtual.push((name, asset));
         }
 
-        // Batch validate assets and create download tasks
+        // Batch validates assets and creates download tasks
         let download_tasks =
             DownloadHelper::batch_validate_and_create_tasks(potential_downloads).await?;
 
@@ -677,14 +582,7 @@ impl MinecraftLauncher {
     ) -> Result<()> {
         // Check if we need virtual assets
         let needs_virtual = matches!(version_details.assets.as_str(), "legacy" | "pre-1.6")
-            || version_details
-                .id
-                .split('.')
-                .next()
-                .unwrap_or("1")
-                .parse::<i32>()
-                .unwrap_or(1)
-                >= 1;
+            || get_major_version_from_id(&version_details.id) >= 1;
 
         if !needs_virtual {
             return Ok(());
@@ -741,7 +639,7 @@ impl MinecraftLauncher {
         Err(simple_error!("Version {version_id} not available offline"))
     }
 
-    fn test_java_version(java_path: &PathBuf) -> Result<()> {
+    fn get_java_version_info(java_path: &PathBuf) -> Result<u8> {
         let output = std::process::Command::new(java_path)
             .args(["-version"])
             .output()
@@ -749,16 +647,6 @@ impl MinecraftLauncher {
 
         let version_info = String::from_utf8_lossy(&output.stderr);
         log_info!("Java version info: {}", version_info);
-        Ok(())
-    }
-
-    fn get_java_major_version(java_path: &PathBuf) -> Result<u8> {
-        let output = std::process::Command::new(java_path)
-            .args(["-version"])
-            .output()
-            .map_err(|_e| simple_error!("Failed to run Java"))?;
-
-        let version_info = String::from_utf8_lossy(&output.stderr);
 
         for line in version_info.lines() {
             if line.contains("version")
@@ -800,5 +688,44 @@ impl MinecraftLauncher {
         }
 
         Ok(library_paths)
+    }
+
+    async fn download_and_log<F, Fut>(&self, progress: f32, message: &str, download_fn: F)
+    where
+        F: FnOnce() -> Fut,
+        Fut: Future<Output = Result<()>>,
+    {
+        use crate::backend::utils::progress_bridge::update_global_progress;
+        update_global_progress(progress, message.to_string());
+        log_info!("{}", message);
+        if let Err(e) = download_fn().await {
+            log_warn!("Failed to {}: {}", message.to_lowercase(), e);
+        }
+    }
+
+    async fn process_component_downloads(
+        &self,
+        version_details: &VersionDetails,
+        item_type: &str,
+        get_potential_downloads: impl Fn(
+            &PlatformInfo,
+            &VersionDetails,
+            &PathBuf,
+        ) -> Result<Vec<(String, PathBuf, u64, String)>>,
+    ) -> Result<()> {
+        let platform_info = PlatformInfo::new();
+        let download_ctx = DownloadContext::new(&self.downloader);
+
+        let potential_downloads =
+            get_potential_downloads(&platform_info, version_details, &self.game_dir)?;
+
+        let download_tasks =
+            DownloadHelper::batch_validate_and_create_tasks(potential_downloads).await?;
+
+        download_ctx
+            .execute_downloads(download_tasks, item_type)
+            .await?;
+
+        Ok(())
     }
 }
