@@ -29,7 +29,12 @@ tokio-native-tls = "0.3.1"
 base64 = "0.22.1"
 webbrowser = "1.0.5"
 once_cell = "1.21.3"
-autoupdater = "0.3.0"
+self_update = { version = "0.42.0", features = [
+    "archive-zip",
+    "archive-tar",
+    "compression-flate2",
+] }
+reqwest = { version = "0.12.23", features = ["json"] }
 
 [features]
 default = ["desktop"]
