@@ -199,9 +199,6 @@ fn main() {
         println!(
             "cargo:warning=For macOS releases, use the generated .dmg file instead of the raw executable"
         );
-        println!(
-            "cargo:warning=Run: create-dmg --volname \"Dream Launcher\" --app-drop-link 600 185 \"Dream Launcher.dmg\" \"target/release/Dream Launcher.app\""
-        );
 
         let executable_name = env!("CARGO_PKG_NAME");
         let executable_path = format!("target/{profile}/{executable_name}");
@@ -218,9 +215,6 @@ fn main() {
 
     #[cfg(target_os = "windows")]
     {
-        #[path = "utils/winres.rs"]
-        mod winres;
-
         let mut res = winres::WindowsResource::new();
         res.set_icon("assets/images/other/icon.ico");
         res.set("ProductName", "Dream Launcher");
@@ -230,9 +224,6 @@ fn main() {
         );
         res.set("CompanyName", "Frogdream Studios");
         res.set("ProductVersion", env!("CARGO_PKG_VERSION"));
-
-        if let Err(e) = res.compile() {
-            println!("cargo:warning=Failed to compile Windows resources: {}", e);
-        }
+        let _ = res.compile();
     }
 }
