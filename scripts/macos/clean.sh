@@ -50,7 +50,7 @@ echo "Clearing security cache..."
 sudo -n spctl --master-disable 2>/dev/null || echo "Cannot disable spctl (no sudo)"
 
 # Add to allowed applications if possible
-echo "Attempting to whitelist application..."
-spctl --add --label "DreamLauncher-Safe" "$APP_PATH" 2>/dev/null || echo "Cannot add to spctl whitelist"
+# echo "Attempting to whitelist application..."
+# spctl --add --label "DreamLauncher-Safe" "$APP_PATH" 2>/dev/null || echo "Cannot add to spctl whitelist"
 
 echo "macOS security bypass completed for: $APP_PATH"
