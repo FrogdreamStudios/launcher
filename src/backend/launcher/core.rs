@@ -16,12 +16,10 @@ use crate::utils::Result;
 use crate::{log_debug, log_error, log_info, log_warn, simple_error};
 use std::{path::PathBuf, process::Stdio, sync::Arc};
 
-// Import our modular components
 use super::versions::VersionManager;
 use crate::backend::launcher::downloader::helper::DownloadHelper;
 use crate::backend::launcher::file_validator::FileValidator;
 use crate::backend::launcher::platform::PlatformInfo;
-use crate::backend::launcher::system_info::{check_existing_processes, log_system_info};
 
 /// Main Minecraft launcher that handles downloading and launching game instances.
 pub struct MinecraftLauncher {
@@ -165,10 +163,6 @@ impl MinecraftLauncher {
     /// Launches Minecraft with the specified version.
     pub async fn launch(&mut self, version_id: &str, username: &str) -> Result<()> {
         log_info!("Launching Minecraft version: {version_id}");
-
-        // System diagnostics
-        log_system_info(&self.game_dir, &self.cache_dir);
-        check_existing_processes();
 
         let version_info = self.version_manager.get_version_info(version_id)?;
         let version_type = version_info.version_type.clone();

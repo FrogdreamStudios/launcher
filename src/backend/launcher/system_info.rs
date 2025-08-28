@@ -34,25 +34,3 @@ pub fn log_system_info(game_dir: &PathBuf, cache_dir: &PathBuf) {
     log_info!("Game directory: {game_dir:?}");
     log_info!("Cache directory: {cache_dir:?}");
 }
-
-#[cfg(debug_assertions)]
-pub fn check_existing_processes() {
-    #[cfg(not(target_os = "windows"))]
-    {
-        if let Ok(output) = std::process::Command::new("ps").args(["aux"]).output()
-            && let Ok(ps_output) = String::from_utf8(output.stdout)
-        {
-            let java_processes: Vec<&str> = ps_output
-                .lines()
-                .filter(|line| line.contains("java") || line.contains("minecraft"))
-                .collect();
-
-            if !java_processes.is_empty() {
-                log_info!("Existing Java/Minecraft processes found:");
-                for process in java_processes {
-                    log_info!("  {process}");
-                }
-            }
-        }
-    }
-}

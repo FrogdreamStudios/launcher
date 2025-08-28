@@ -35,7 +35,7 @@ impl FileValidator {
         if !missing_libs.is_empty() {
             log_error!("Missing critical libraries:");
             for lib in &missing_libs {
-                log_error!("  - {:?}", lib);
+                log_error!("  - {lib:?}");
             }
             return Err(simple_error!(
                 "Missing {} critical libraries. Please re-download the version",
