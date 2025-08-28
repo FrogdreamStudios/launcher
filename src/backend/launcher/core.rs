@@ -13,7 +13,7 @@ use crate::backend::utils::launcher::paths::{
 use crate::backend::utils::launcher::starter::CommandBuilder;
 use crate::backend::utils::system::files::{ensure_directory, ensure_parent_directory};
 use crate::utils::Result;
-use crate::{log_error, log_info, log_warn, simple_error};
+use crate::{log_debug, log_error, log_info, log_warn, simple_error};
 use std::{path::PathBuf, process::Stdio, sync::Arc};
 
 // Import our modular components
@@ -88,7 +88,7 @@ impl MinecraftLauncher {
     pub async fn install_java(&mut self, version: &str) -> Result<()> {
         match self.java_manager.get_java_for_version(version).await {
             Ok(_) => {
-                log_info!("Java installed successfully for Minecraft version {version}");
+                log_debug!("Java installed successfully for Minecraft version {version}");
                 Ok(())
             }
             Err(e) => {
@@ -177,15 +177,15 @@ impl MinecraftLauncher {
             .get_version_details(version_info)
             .await?;
 
-        log_info!(
+        log_debug!(
             "Version details loaded: main_class = {}",
             version_details.main_class
         );
-        log_info!("Assets index: {}", version_details.assets);
+        log_debug!("Assets index: {}", version_details.assets);
 
         // Get Java runtime
         let (java_path, use_rosetta) = self.java_manager.get_java_for_version(version_id).await?;
-        log_info!("Using Java: {java_path:?} (Rosetta: {use_rosetta})");
+        log_debug!("Using Java: {java_path:?} (Rosetta: {use_rosetta})");
 
         // Verify Java executable exists
         if !java_path.exists() {
@@ -194,19 +194,19 @@ impl MinecraftLauncher {
 
         // Test the Java version and get a major version
         let java_major_version = Self::get_java_version_info(&java_path)?;
-        log_info!("Java version verification complete: Java {java_major_version}");
+        log_debug!("Java version verification complete: Java {java_major_version}");
 
         // Log detailed Java info on Windows for debugging
         if cfg!(windows) {
-            log_info!("Windows Java debugging info:");
-            log_info!("  Java executable: {}", java_path.display());
-            log_info!("  Java major version: {java_major_version}");
-            log_info!("  Use Rosetta: {use_rosetta}");
+            log_debug!("Windows Java debugging info:");
+            log_debug!("  Java executable: {}", java_path.display());
+            log_debug!("  Java major version: {java_major_version}");
+            log_debug!("  Use Rosetta: {use_rosetta}");
         }
 
         // Build library paths
         let libraries = self.get_library_paths(&version_details)?;
-        log_info!("Loaded {} libraries", libraries.len());
+        log_debug!("Loaded {} libraries", libraries.len());
 
         // Verify critical files exist
         FileValidator::verify_critical_files(&self.game_dir, version_id, &libraries)?;
@@ -231,29 +231,29 @@ impl MinecraftLauncher {
         let mut cmd = minecraft_cmd.build()?;
 
         println!("Starting Minecraft...");
-        log_info!("Full command: {:?}", cmd);
+        log_debug!("Full command: {:?}", cmd);
 
         // Extra debugging for Windows
         if cfg!(windows) {
-            log_info!("Windows launch debugging:");
-            log_info!("  Working directory: {:?}", cmd.get_current_dir());
-            log_info!("  Environment variables:");
+            log_debug!("Windows launch debugging:");
+            log_debug!("  Working directory: {:?}", cmd.get_current_dir());
+            log_debug!("  Environment variables:");
             for (key, value) in cmd.get_envs() {
                 if let (Some(k), Some(v)) = (key.to_str(), value.and_then(|v| v.to_str()))
                     && (k.contains("JAVA") || k.contains("PATH") || k.contains("LWJGL"))
                 {
-                    log_info!("    {}: {}", k, v);
+                    log_debug!("    {}: {}", k, v);
                 }
             }
         }
 
         // Launch the game
         let mut child = cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
-        log_info!("Minecraft process started with PID: {}", child.id());
+        log_debug!("Minecraft process started with PID: {}", child.id());
 
         // Log success on Windows
         if cfg!(windows) {
-            log_info!("Windows process launch successful - PID: {}", child.id());
+            log_debug!("Windows process launch successful - PID: {}", child.id());
         }
 
         // Hide progress bar immediately after successful process start
@@ -337,7 +337,7 @@ impl MinecraftLauncher {
                 )
                 .await?
             {
-                log_info!("Downloaded client jar for {}", version_details.id);
+                log_debug!("Downloaded client jar for {}", version_details.id);
             }
         }
 
@@ -349,7 +349,7 @@ impl MinecraftLauncher {
 
         let version_json = serde_json::to_string_pretty(version_details)?;
         tokio::fs::write(&json_path, version_json).await?;
-        log_info!("Saved version JSON for {}", version_details.id);
+        log_debug!("Saved version JSON for {}", version_details.id);
 
         Ok(())
     }
@@ -441,7 +441,7 @@ impl MinecraftLauncher {
             )
             .await?
         {
-            log_info!("Downloaded asset index: {}", version_details.asset_index.id);
+            log_debug!("Downloaded asset index: {}", version_details.asset_index.id);
         }
 
         // Load asset manifest
@@ -479,8 +479,8 @@ impl MinecraftLauncher {
         let platform_info = PlatformInfo::new();
         let natives_dir = get_natives_dir(&self.game_dir, &version_details.id);
 
-        log_info!("Extracting natives to: {}", natives_dir.display());
-        log_info!(
+        log_debug!("Extracting natives to: {}", natives_dir.display());
+        log_debug!(
             "Platform info: OS={}, Arch={}, Classifiers={:?}",
             platform_info.os_name,
             platform_info.os_arch,
@@ -516,7 +516,7 @@ impl MinecraftLauncher {
                             match crate::utils::extract_zip(&native_path, &natives_dir).await {
                                 Ok(()) => {
                                     extracted_count += 1;
-                                    log_info!(
+                                    log_debug!(
                                         "✓ Successfully extracted native: {}",
                                         native_path
                                             .file_name()
@@ -541,7 +541,7 @@ impl MinecraftLauncher {
             }
         }
 
-        log_info!(
+        log_debug!(
             "Native extraction complete: {}/{} libraries extracted",
             extracted_count,
             total_natives
@@ -553,13 +553,13 @@ impl MinecraftLauncher {
                 let files: Vec<_> = entries
                     .filter_map(|entry| entry.ok().and_then(|e| e.file_name().into_string().ok()))
                     .collect();
-                log_info!("Natives directory contents: {:?}", files);
+                log_debug!("Natives directory contents: {:?}", files);
 
                 // Look for essential LWJGL libraries
                 let essential_libs = ["lwjgl.dll", "lwjgl_opengl.dll", "lwjgl_glfw.dll"];
                 for lib in &essential_libs {
                     if files.iter().any(|f| f.contains(lib)) {
-                        log_info!("✓ Found essential library: {}", lib);
+                        log_debug!("✓ Found essential library: {}", lib);
                     } else {
                         log_warn!("✗ Missing essential library: {}", lib);
                     }
@@ -646,7 +646,7 @@ impl MinecraftLauncher {
             .map_err(|e| simple_error!("Failed to run Java: {}", e))?;
 
         let version_info = String::from_utf8_lossy(&output.stderr);
-        log_info!("Java version info: {}", version_info);
+        log_debug!("Java version info: {}", version_info);
 
         for line in version_info.lines() {
             if line.contains("version")

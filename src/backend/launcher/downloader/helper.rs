@@ -1,7 +1,7 @@
 //! Helper for managing downloads and file caching.
 
 use crate::backend::utils::system::files::verify_file;
-use crate::log_info;
+use crate::{log_debug, log_info};
 use crate::utils::Result;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -134,21 +134,21 @@ impl DownloadHelper {
                 Ok(Ok(Some(task))) => download_tasks.push(task),
                 Ok(Ok(None)) => (), // File already exists and valid
                 Ok(Err(e)) => {
-                    log_info!("Validation main (will re-download): {}", e);
+                    log_debug!("Validation error (will re-download): {}", e);
                     // On validation main, we'll assume download is needed
                 }
                 Err(e) => {
-                    log_info!("Join main during validation: {}", e);
+                    log_debug!("Join error during validation: {}", e);
                 }
             }
 
             validated += 1;
             if validated % 100 == 0 {
-                log_info!("Validated {}/{} files for download", validated, total);
+                log_debug!("Validated {}/{} files for download", validated, total);
             }
         }
 
-        log_info!(
+        log_debug!(
             "Batch validation complete: {}/{} files need downloading",
             download_tasks.len(),
             total

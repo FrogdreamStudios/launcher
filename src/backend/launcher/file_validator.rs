@@ -2,7 +2,7 @@
 
 use crate::backend::utils::launcher::paths::get_version_jar_path;
 use crate::utils::Result;
-use crate::{log_error, log_info, simple_error};
+use crate::{log_debug, log_error, simple_error};
 use std::path::{Path, PathBuf};
 
 pub struct FileValidator;
@@ -14,7 +14,7 @@ impl FileValidator {
         version_id: &str,
         library_paths: &[PathBuf],
     ) -> Result<()> {
-        log_info!("Verifying game files for version {version_id}");
+        log_debug!("Verifying game files for version {version_id}");
 
         // Check main jar
         let main_jar = get_version_jar_path(game_dir, version_id);
@@ -43,7 +43,7 @@ impl FileValidator {
             ));
         }
 
-        log_info!("Game files verification passed");
+        log_debug!("Game files verification passed");
         Ok(())
     }
 }

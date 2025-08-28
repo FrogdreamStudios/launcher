@@ -47,7 +47,7 @@ impl JavaManager {
         let required_java = JavaRuntime::get_required_java_version(minecraft_version);
         let needs_x86_64 = Self::needs_x86_64_java(minecraft_version);
 
-        log_info!(
+        log_debug!(
             "Minecraft version {minecraft_version} requires Java {required_java} (x86_64: {needs_x86_64})"
         );
 
@@ -63,7 +63,7 @@ impl JavaManager {
             if exe_path.exists() {
                 return Ok((exe_path, needs_x86_64));
             }
-            log_info!("Installed Java runtime not found at {exe_path:?}, removing from cache");
+            log_debug!("Installed Java runtime not found at {exe_path:?}, removing from cache");
             let major_version = runtime.major_version;
             if needs_x86_64 {
                 self.x86_64_runtimes.remove(&major_version);
@@ -74,15 +74,15 @@ impl JavaManager {
 
         // Check system Java (skip for x86_64 requirement as system Java might be ARM64)
         if !needs_x86_64 {
-            log_info!("Checking system Java for compatibility...");
+            log_debug!("Checking system Java for compatibility...");
             if let Ok(Some(mut system_java)) = JavaRuntime::detect_system_java() {
-                log_info!(
+                log_debug!(
                     "Found system Java {} ({})",
                     system_java.major_version,
                     system_java.version
                 );
                 let is_compatible = system_java.is_compatible_with_minecraft(required_java);
-                log_info!(
+                log_debug!(
                     "System Java {} compatibility with required Java {}: {}",
                     system_java.major_version,
                     required_java,
@@ -98,7 +98,7 @@ impl JavaManager {
                     };
 
                     if should_use_system {
-                        log_info!("Using system Java {} runtime", system_java.major_version);
+                        log_debug!("Using system Java {} runtime", system_java.major_version);
                         if system_java.path.as_os_str().is_empty() {
                             system_java.path =
                                 crate::utils::which("java").unwrap_or_else(|_| "java".into());
