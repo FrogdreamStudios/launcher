@@ -15,7 +15,6 @@ create-dmg \
   --window-size 800 400 \
   --icon-size 128 \
   --background "$BACKGROUND_IMG" \
-  --background-color "#141414" \
   --icon "Dream Launcher.app" 158 278 \
   --app-drop-link 578 278 \
   "$DMG_NAME" \
