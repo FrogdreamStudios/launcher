@@ -111,9 +111,7 @@ fn replace_executable_unix(current_exe: &PathBuf, new_content: &[u8]) -> Result<
     // On macOS, bypass security restrictions
     if std::env::consts::OS == "macos" {
         if let Err(e) = bypass_macos_security(current_exe) {
-            log_info!(
-                "Warning: Could not bypass macOS security restrictions: {e}"
-            );
+            log_info!("Warning: Could not bypass macOS security restrictions: {e}");
         }
     }
 
@@ -507,9 +505,7 @@ pub async fn check_for_updates() {
         return;
     }
 
-    log_info!(
-        "New version available: {latest_version} (current: {current_version})"
-    );
+    log_info!("New version available: {latest_version} (current: {current_version})");
 
     // Find the asset for our platform
     let asset = match release
@@ -519,9 +515,7 @@ pub async fn check_for_updates() {
     {
         Some(asset) => asset,
         None => {
-            log_error!(
-                "No compatible binary found for platform: {platform_asset_name}"
-            );
+            log_error!("No compatible binary found for platform: {platform_asset_name}");
             return;
         }
     };
@@ -546,9 +540,7 @@ pub async fn check_for_updates() {
         match install_dmg(&new_content, &release.tag_name).await {
             Ok(_) => {
                 log_info!("DMG installation completed successfully!");
-                log_info!(
-                    "The application has been updated to version {latest_version}"
-                );
+                log_info!("The application has been updated to version {latest_version}");
                 return;
             }
             Err(e) => {
@@ -566,9 +558,7 @@ pub async fn check_for_updates() {
     match replace_executable(&new_content) {
         Ok(_) => {
             log_info!("Update installed successfully!");
-            log_info!(
-                "The application will now restart with version {latest_version}"
-            );
+            log_info!("The application will now restart with version {latest_version}");
             std::process::exit(0);
         }
         Err(e) => {
