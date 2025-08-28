@@ -101,18 +101,10 @@ jobs:
             codesign --force --deep --sign - --entitlements entitlements.plist --options runtime "target/release/Dream Launcher.app" || true
 
             echo "Creating DMG..."
-            create-dmg \
-              --volname "Dream Launcher" \
-              --window-pos 200 120 \
-              --window-size 800 400 \
-              --icon-size 100 \
-              --icon "Dream Launcher.app" 200 190 \
-              --hide-extension "Dream Launcher.app" \
-              --app-drop-link 600 185 \
-              --no-internet-enable \
-              "DreamLauncher-macOS.dmg" \
-              "target/release/Dream Launcher.app" 2>/dev/null || \
-            hdiutil create -volname "Dream Launcher" -srcfolder "target/release/Dream Launcher.app" -ov -format UDZO "DreamLauncher-macOS.dmg"
+            if ! create-dmg --volname "Dream Launcher" --window-pos 200 120 --window-size 800 400 --icon-size 100 --icon "Dream Launcher.app" 200 190 --hide-extension "Dream Launcher.app" --app-drop-link 600 185 --no-internet-enable "DreamLauncher-macOS.dmg" "target/release/Dream Launcher.app" 2>/dev/null; then
+              echo "create-dmg failed, using hdiutil as fallback..."
+              hdiutil create -volname "Dream Launcher" -srcfolder "target/release/Dream Launcher.app" -ov -format UDZO "DreamLauncher-macOS.dmg"
+            fi
 
             echo "Processing DMG file..."
             xattr -c "DreamLauncher-macOS.dmg" 2>/dev/null || true
