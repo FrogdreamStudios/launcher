@@ -55,8 +55,8 @@ jobs:
           elif [[ "${{ runner.os }}" == "Linux" ]]; then
             upx --best --lzma target/release/DreamLauncher
           elif [[ "${{ runner.os }}" == "macOS" ]]; then
-            chmod +x scripts/compress-macos.sh
-            ./scripts/compress-macos.sh target/release/DreamLauncher
+            chmod +x scripts/macos/compress.sh
+            ./scripts/macos/compress.sh target/release/DreamLauncher
           fi
 
       - name: Package
@@ -68,37 +68,18 @@ jobs:
             cp target/release/DreamLauncher.exe dist/
             powershell -Command "Compress-Archive -Path dist/DreamLauncher.exe -DestinationPath DreamLauncher-Windows.zip"
           elif [[ "${{ runner.os }}" == "macOS" ]]; then
-            chmod +x scripts/create_app_bundle.sh
-            ./scripts/create_app_bundle.sh
+            chmod +x scripts/macos/bundle.sh
+            ./scripts/macos/bundle.sh
 
-            echo "Removing extended attributes and quarantine flags from app bundle..."
-            find "target/release/Dream Launcher.app" -type f -exec xattr -c {} \; 2>/dev/null || true
-            find "target/release/Dream Launcher.app" -type f -exec xattr -d com.apple.quarantine {} \; 2>/dev/null || true
+            chmod +x scripts/macos/clean.sh
+            ./scripts/macos/clean.sh "target/release/Dream Launcher.app"
 
-            chmod -R 755 "target/release/Dream Launcher.app"
-            chmod +x "target/release/Dream Launcher.app/Contents/MacOS/DreamLauncher"
-            echo "Creating entitlements file..."
+            chmod +x scripts/macos/sign.sh
+            ./scripts/macos/sign.sh "target/release/Dream Launcher.app"
 
-            echo '<?xml version="1.0" encoding="UTF-8"?>' > entitlements.plist
-            echo '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' >> entitlements.plist
-            echo '<plist version="1.0">' >> entitlements.plist
-            echo '<dict>' >> entitlements.plist
-            echo '    <key>com.apple.security.cs.allow-jit</key>' >> entitlements.plist
-            echo '    <true/>' >> entitlements.plist
-            echo '    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>' >> entitlements.plist
-            echo '    <true/>' >> entitlements.plist
-            echo '    <key>com.apple.security.cs.disable-library-validation</key>' >> entitlements.plist
-            echo '    <true/>' >> entitlements.plist
-            echo '</dict>' >> entitlements.plist
-            echo '</plist>' >> entitlements.plist
+            chmod +x scripts/macos/dmg.sh
+            ./scripts/macos/dmg.sh
 
-            echo "Signing application bundle..."
-            codesign --force --deep --sign - --entitlements entitlements.plist --options runtime "target/release/Dream Launcher.app" || echo "codesign failed, continuing..."
-
-            echo "Creating DMG with simple hdiutil..."
-            hdiutil create -volname "Dream Launcher" -srcfolder "target/release/Dream Launcher.app" -ov -format UDZO "DreamLauncher-macOS.dmg" || echo "DMG creation failed, continuing without DMG"
-
-            echo "Processing DMG file (basic)..."
             if [[ -f "DreamLauncher-macOS.dmg" ]]; then
               echo "DMG created successfully"
             else
