@@ -17,5 +17,6 @@ create-dmg \
   --background "$BACKGROUND_IMG" \
   --icon "Dream Launcher.app" 190 278 \
   --app-drop-link 610 278 \
+  --text-size 0 \
   "$DMG_NAME" \
   "$APP_BUNDLE"
