@@ -13,9 +13,10 @@ create-dmg \
   --volname "Dream Launcher" \
   --window-pos 200 200 \
   --window-size 800 400 \
-  --icon-size 128 \
+  --icon-size 64 \
   --background "$BACKGROUND_IMG" \
-  --icon "Dream Launcher.app" 158 278 \
-  --app-drop-link 578 278 \
+  --icon "Dream Launcher.app" 190 278 \
+  --app-drop-link 610 278 \
+  --disable-window-resize \
   "$DMG_NAME" \
   "$APP_BUNDLE"
