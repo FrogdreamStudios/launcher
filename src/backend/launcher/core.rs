@@ -3,7 +3,7 @@
 use super::{
     downloader::{HttpDownloader, models::DownloadTask},
     java::JavaManager,
-    models::{AssetManifest, AssetObject, VersionDetails, VersionInfo},
+    models::{AssetManifest, AssetObject, VersionDetails, VersionInfo, VersionManifest},
 };
 use crate::backend::utils::launcher::paths::{
     ensure_directories, get_asset_indexes_dir, get_asset_path, get_assets_dir, get_cache_dir,
@@ -118,7 +118,11 @@ impl MinecraftLauncher {
     }
 
     /// Creates a new `MinecraftLauncher` instance.
-    pub async fn new(custom_game_dir: Option<PathBuf>, instance_id: Option<u32>) -> Result<Self> {
+    pub async fn new(
+        custom_game_dir: Option<PathBuf>,
+        instance_id: Option<u32>,
+        manifest: Option<Arc<VersionManifest>>,
+    ) -> Result<Self> {
         let game_dir = get_game_dir(custom_game_dir, instance_id)?;
         let cache_dir = get_cache_dir()?;
 
@@ -126,16 +130,11 @@ impl MinecraftLauncher {
         ensure_directories(instance_id).await?;
 
         let downloader = Arc::new(HttpDownloader::new()?);
-        let mut version_manager = VersionManager::new(downloader.clone(), cache_dir.clone());
+        let mut version_manager =
+            VersionManager::new(downloader.clone(), cache_dir.clone(), manifest);
 
         // Load a cached manifest or fetch a new one
-        if let Err(e) = version_manager.load_cached_manifest().await {
-            log_warn!("Failed to load cached manifest: {e}");
-            version_manager.update_manifest().await?;
-        } else if version_manager.get_manifest().is_none() {
-            log_info!("No cached manifest found, fetching from Mojang...");
-            version_manager.update_manifest().await?;
-        }
+        version_manager.load_or_update_manifest().await?;
 
         Ok(Self {
             downloader,

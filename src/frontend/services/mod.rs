@@ -2,3 +2,4 @@
 
 pub mod chats;
 pub mod instances;
+pub mod launcher;

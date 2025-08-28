@@ -42,6 +42,11 @@ fn main() {
         backend::services::updater::check_for_updates().await;
     });
 
+    // Initialize the launcher in a separate thread
+    runtime.spawn(async {
+        frontend::services::launcher::init_launcher().await;
+    });
+
     // Dioxus
     // Original size of the application is 1280x832, but we will change it in the future
     // to 1280x832

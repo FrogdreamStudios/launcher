@@ -6,8 +6,10 @@
 //! Minecraft versions.
 
 use crate::utils::Result;
-use crate::{log_error, log_info, log_warn, simple_error};
+use crate::{log_error, log_info, simple_error};
 use std::{path::PathBuf, process::Command};
+
+use crate::frontend::services::launcher;
 
 use crate::backend::launcher::core::MinecraftLauncher;
 use crate::backend::launcher::models::{ArgumentValue, ArgumentValueInner, VersionDetails};
@@ -657,7 +659,8 @@ pub async fn launch_minecraft(version: String, instance_id: u32, username: Strin
     // Initialize progress
     update_global_progress(0.0, "Initializing launcher...".to_string());
 
-    let mut launcher = MinecraftLauncher::new(None, Some(instance_id)).await?;
+    let manifest = launcher::get_version_manifest()?; // Get the pre-loaded manifest
+    let mut launcher = MinecraftLauncher::new(None, Some(instance_id), Some(manifest)).await?; // Pass the manifest
     log_info!("Launcher created successfully");
 
     // Check if a version exists locally
@@ -670,15 +673,6 @@ pub async fn launch_minecraft(version: String, instance_id: u32, username: Strin
 
     if !version_exists {
         log_info!("Version {version} not found locally, attempting to install...");
-
-        // Update manifest first
-        update_global_progress(0.1, format!("Updating manifest for {}...", version));
-        match launcher.update_manifest().await {
-            Ok(()) => log_info!("Manifest updated successfully"),
-            Err(e) => {
-                log_warn!("Failed to update manifest: {e}, continuing anyway...");
-            }
-        }
 
         // Install/prepare the version
         update_global_progress(0.2, format!("Downloading Minecraft {}...", version));

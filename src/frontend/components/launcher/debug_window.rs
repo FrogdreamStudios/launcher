@@ -2,7 +2,7 @@ use crate::backend::utils::launcher::paths::get_launcher_dir;
 use crate::{
     backend::launcher::core::MinecraftLauncher,
     backend::utils::css::main::ResourceLoader,
-    frontend::{services::instances::main::INSTANCES, states::GameStatus},
+    frontend::{services::{instances::main::INSTANCES, launcher}, states::GameStatus},
 };
 use crate::{log_error, log_info, simple_error};
 use dioxus::prelude::*;
@@ -187,7 +187,8 @@ pub fn DebugWindow(
 }
 
 async fn update_manifest() -> crate::utils::Result<()> {
-    let mut launcher = MinecraftLauncher::new(None, None).await?;
+    let manifest = launcher::get_version_manifest()?; // Get the preloaded manifest
+    let mut launcher = MinecraftLauncher::new(None, None, Some(manifest)).await?; // Pass the manifest
     launcher.update_manifest().await?;
     Ok(())
 }
@@ -195,7 +196,8 @@ async fn update_manifest() -> crate::utils::Result<()> {
 async fn delete_launcher_files() -> crate::utils::Result<()> {
     log_info!("Starting launcher files deletion...");
 
-    let launcher = MinecraftLauncher::new(None, None).await?;
+    let manifest = launcher::get_version_manifest()?; // Get the preloaded manifest
+    let launcher = MinecraftLauncher::new(None, None, Some(manifest)).await?; // Pass the manifest
     let game_dir = launcher.get_game_dir();
 
     log_info!("Game directory: {game_dir:?}");
@@ -220,7 +222,7 @@ async fn delete_launcher_files() -> crate::utils::Result<()> {
 
     if total_found == 0 {
         log_info!("No launcher files found to delete");
-        return Ok(());
+        return Ok(())
     }
 
     log_info!("Found {total_found} directories to delete");
@@ -253,7 +255,8 @@ async fn delete_launcher_files() -> crate::utils::Result<()> {
 }
 
 async fn get_system_info() -> crate::utils::Result<String> {
-    let launcher = MinecraftLauncher::new(None, None).await?;
+    let manifest = launcher::get_version_manifest()?; // Get the preloaded manifest
+    let launcher = MinecraftLauncher::new(None, None, Some(manifest)).await?; // Pass the manifest
     let game_dir = launcher.get_game_dir();
 
     let mut info = String::new();
@@ -280,6 +283,7 @@ async fn get_system_info() -> crate::utils::Result<String> {
 
     Ok(info)
 }
+
 
 fn get_instance_info(instance_id: u32) -> String {
     use crate::frontend::services::instances::main::get_instance_directory;

@@ -1,7 +1,6 @@
-use crate::{
-    backend::launcher::{core::MinecraftLauncher, models::VersionInfo},
+use crate::{backend::launcher::models::VersionInfo,
     backend::utils::css::main::ResourceLoader,
-    frontend::services::instances::main::InstanceManager,
+    frontend::services::{instances::main::InstanceManager, launcher},
 };
 use crate::{log_error, log_info};
 use dioxus::prelude::*;
@@ -46,7 +45,7 @@ pub struct VersionSelectorProps {
 pub fn VersionSelector(props: VersionSelectorProps) -> Element {
     let mut show = props.show;
     let selected_version = use_signal(|| "1.21.8".to_string());
-    let mut available_versions = use_signal(Vec::<VersionInfo>::new);
+    let available_versions = use_signal(Vec::<VersionInfo>::new);
     let filtered_versions = use_signal(Vec::<VersionInfo>::new);
     let mut is_loading = use_signal(|| false);
     let current_filter = use_signal(|| VersionFilter::Release);
@@ -74,9 +73,13 @@ pub fn VersionSelector(props: VersionSelectorProps) -> Element {
     use_effect(move || {
         if show() && available_versions.read().is_empty() && !*is_loading.read() {
             is_loading.set(true);
+            let mut available_versions = available_versions.clone();
+            let current_filter = current_filter.clone();
+            let filtered_versions = filtered_versions.clone();
             spawn(async move {
-                match load_available_versions().await {
-                    Ok(versions) => {
+                match launcher::get_version_manifest() {
+                    Ok(manifest) => {
+                        let versions = manifest.versions.clone();
                         available_versions.set(versions);
                         apply_filter(
                             &available_versions.read(),
@@ -84,7 +87,7 @@ pub fn VersionSelector(props: VersionSelectorProps) -> Element {
                             filtered_versions,
                         );
                     }
-                    Err(e) => log_error!("Failed to load versions: {e}"),
+                    Err(e) => log_error!("Failed to get version manifest: {e}"),
                 }
                 is_loading.set(false);
             });
@@ -236,11 +239,6 @@ pub fn VersionSelector(props: VersionSelectorProps) -> Element {
             }
         }
     }
-}
-
-async fn load_available_versions() -> crate::utils::Result<Vec<VersionInfo>> {
-    let launcher = MinecraftLauncher::new(None, None).await?;
-    Ok(launcher.get_available_versions()?.to_vec())
 }
 
 fn apply_filter(

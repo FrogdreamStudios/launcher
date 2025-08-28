@@ -5,7 +5,7 @@ use super::{
     models::{VersionDetails, VersionInfo, VersionManifest},
 };
 use crate::utils::Result;
-use crate::{log_info, simple_error};
+use crate::{log_info, log_warn, simple_error};
 use std::path::Path;
 use std::{path::PathBuf, sync::Arc};
 
@@ -18,12 +18,32 @@ pub struct VersionManager {
 
 impl VersionManager {
     /// Creates a new version manager.
-    pub const fn new(downloader: Arc<HttpDownloader>, cache_dir: PathBuf) -> Self {
+    pub fn new(
+        downloader: Arc<HttpDownloader>,
+        cache_dir: PathBuf,
+        manifest: Option<Arc<VersionManifest>>,
+    ) -> Self {
         Self {
             downloader,
             cache_dir,
-            manifest: None,
+            manifest,
         }
+    }
+
+    /// Loads the manifest from the cache or updates it from the network if the cache is stale or missing.
+    pub async fn load_or_update_manifest(&mut self) -> Result<()> {
+        if self.manifest.is_some() {
+            return Ok(());
+        }
+
+        if let Err(e) = self.load_cached_manifest().await {
+            log_warn!("Failed to load cached manifest: {e}, attempting to update from network.");
+            self.update_manifest().await?;
+        } else if self.manifest.is_none() {
+            log_info!("No cached manifest, fetching from Mojang...");
+            self.update_manifest().await?;
+        }
+        Ok(())
     }
 
     /// Gets available versions from the manifest.
