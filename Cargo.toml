@@ -1,12 +1,12 @@
 [package]
 name = "DreamLauncher"
 authors = ["Frogdream Studios"]
-description = "A powerful and lightweight Minecraft launcher that will be perfect for every player."
+description = "A powerful and lightweight Minecraft launcher that will be perfect for every player"
 repository = "https://github.com/FrogdreamStudios/launcher"
 keywords = ["minecraft", "launcher", "java", "gaming", "cross-platform"]
 categories = ["games"]
 license = "LGPL-3.0-only"
-version = "0.0.1"
+version = "0.1.0"
 edition = "2024"
 
 [dependencies]
@@ -86,11 +86,11 @@ dioxus-desktop = { version = "0.7.0-rc.0", default-features = false, features = 
 [package.metadata.bundle]
 name = "Dream Launcher"
 identifier = "com.frogdream.launcher"
-version = "1.0.0"
-copyright = "© 2024 Frogdream Studios"
+version = "0.1.0"
+copyright = "© 2025 Frogdream Studios"
 category = "Game"
 short_description = "A powerful and lightweight Minecraft launcher"
-long_description = "A powerful and lightweight Minecraft launcher that will be perfect for every player."
+long_description = "A powerful and lightweight Minecraft launcher that will be perfect for every player"
 
 [package.metadata.bundle.windows]
 webview2_install_mode = "embedbootstrapper"
