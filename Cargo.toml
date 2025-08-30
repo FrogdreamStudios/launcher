@@ -6,7 +6,7 @@ repository = "https://github.com/FrogdreamStudios/launcher"
 keywords = ["minecraft", "launcher", "java", "gaming", "cross-platform"]
 categories = ["games"]
 license = "LGPL-3.0-only"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 
 [dependencies]
@@ -26,7 +26,6 @@ tokio = { version = "1.47.1", features = [
 ], default-features = false }
 base64 = "0.22.1"
 webbrowser = "1.0.5"
-once_cell = "1.21.3"
 self_update = { version = "0.42.0", features = [
     "archive-zip",
     "archive-tar",
