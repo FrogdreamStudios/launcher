@@ -18,7 +18,9 @@ pub fn Selector(props: SelectorProps) -> Element {
     let mut show = props.show;
     let selected_version = use_signal(|| "1.21.8".to_string());
     let available_versions = use_signal(Vec::<VersionInfo>::new);
+    let mut filtered_versions = use_signal(Vec::<VersionInfo>::new);
     let mut is_loading = use_signal(|| false);
+    let mut version_filter = use_signal(|| "all".to_string()); // all, release, snapshot, beta, alpha
 
     // Load versions when the component shows
     use_effect(move || {
@@ -28,13 +30,8 @@ pub fn Selector(props: SelectorProps) -> Element {
             spawn(async move {
                 match launcher::get_version_manifest().await {
                     Ok(manifest) => {
-                        // Only show release versions to simplify
-                        let versions: Vec<VersionInfo> =
-                            <Vec<VersionInfo> as Clone>::clone(&manifest.versions)
-                                .into_iter()
-                                .filter(|v| v.version_type == "release")
-                                .take(20) // Limit to 20 most recent
-                                .collect();
+                        // Load all versions without filtering
+                        let versions: Vec<VersionInfo> = manifest.versions;
                         available_versions.set(versions);
                     }
                     Err(e) => log::error!("Failed to get version manifest: {e}"),
@@ -42,6 +39,22 @@ pub fn Selector(props: SelectorProps) -> Element {
                 is_loading.set(false);
             });
         }
+    });
+
+    // Filter versions based on selected filter
+    use_effect(move || {
+        let filter = version_filter.read().clone();
+        let all_versions = available_versions.read().clone();
+
+        let filtered: Vec<VersionInfo> = match filter.as_str() {
+            "release" => all_versions.into_iter().filter(|v| v.version_type == "release").collect(),
+            "snapshot" => all_versions.into_iter().filter(|v| v.version_type == "snapshot").collect(),
+            "beta" => all_versions.into_iter().filter(|v| v.version_type == "old_beta").collect(),
+            "alpha" => all_versions.into_iter().filter(|v| v.version_type == "old_alpha").collect(),
+            _ => all_versions, // "all" or any other value
+        };
+
+        filtered_versions.set(filtered);
     });
 
     let handle_select_click = move |_| {
@@ -77,6 +90,36 @@ pub fn Selector(props: SelectorProps) -> Element {
                     }
                 }
 
+                // Filter buttons
+                div {
+                    class: "version-selector-filters",
+                    button {
+                        class: format!("version-filter-btn{}", if version_filter() == "all" { " active" } else { "" }),
+                        onclick: move |_| version_filter.set("all".to_string()),
+                        "All"
+                    }
+                    button {
+                        class: format!("version-filter-btn{}", if version_filter() == "release" { " active" } else { "" }),
+                        onclick: move |_| version_filter.set("release".to_string()),
+                        "Releases"
+                    }
+                    button {
+                        class: format!("version-filter-btn{}", if version_filter() == "snapshot" { " active" } else { "" }),
+                        onclick: move |_| version_filter.set("snapshot".to_string()),
+                        "Snapshots"
+                    }
+                    button {
+                        class: format!("version-filter-btn{}", if version_filter() == "beta" { " active" } else { "" }),
+                        onclick: move |_| version_filter.set("beta".to_string()),
+                        "Betas"
+                    }
+                    button {
+                        class: format!("version-filter-btn{}", if version_filter() == "alpha" { " active" } else { "" }),
+                        onclick: move |_| version_filter.set("alpha".to_string()),
+                        "Alphas"
+                    }
+                }
+
                 // Selected version display
                 div {
                     class: "version-selector-selected",
@@ -95,7 +138,7 @@ pub fn Selector(props: SelectorProps) -> Element {
                     } else {
                         div {
                             class: "version-list",
-                            for version in available_versions.read().iter() {
+                            for version in filtered_versions.read().iter() {
                                 div {
                                     key: "{version.id}",
                                     class: format!("version-item{}",
@@ -111,8 +154,8 @@ pub fn Selector(props: SelectorProps) -> Element {
                                     div { class: "version-meta", "{format_date(&version.release_time)}" }
                                 }
                             }
-                            if available_versions.read().is_empty() && !*is_loading.read() {
-                                div { class: "version-list-empty", "No versions available" }
+                            if filtered_versions.read().is_empty() && !*is_loading.read() {
+                                div { class: "version-list-empty", "No versions available for selected filter" }
                             }
                         }
                     }
