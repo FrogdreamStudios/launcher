@@ -50,8 +50,8 @@ fn build_with_npx_fallback() {
         return;
     }
 
-    let tailwind_input = "assets/styles/main.css";
-    let tailwind_output = "assets/styles/output.css";
+    let tailwind_input = "assets/styles/pages/main.css";
+    let tailwind_output = "assets/styles/other/output.css";
 
     let fallback_status = run_npx_command(&[
         "tailwindcss",

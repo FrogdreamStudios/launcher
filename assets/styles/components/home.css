@@ -27,6 +27,43 @@
     --button-secondary-border-hover: #505050;
 }
 
+/* Dynamic instance card colors */
+.instance-card-dynamic {
+    background-color: var(--instance-color, #1b1b1b);
+}
+
+/* New page dynamic positioning */
+.new-panel-dynamic {
+    position: absolute;
+    top: var(--panel-top, 137px);
+}
+
+.new-server-icon-dynamic {
+    position: absolute;
+    top: var(--icon-top, 145px);
+}
+
+.new-server-name-dynamic {
+    position: absolute;
+    top: var(--name-top, 149px);
+}
+
+.server-icon-img-fixed {
+    width: 49px;
+    height: 49px;
+    border-radius: 4px;
+}
+
+/* New page fixed positioning overrides */
+.new-title-fixed {
+    top: 84px !important;
+}
+
+.new-divider-fixed {
+    top: 100px !important;
+    left: 369px;
+}
+
 .center-block {
     position: absolute;
     top: 0px;

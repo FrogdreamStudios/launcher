@@ -1,23 +1,21 @@
 use crate::backend::services::VisitTracker;
-use crate::backend::utils::app::main::Route;
-use crate::backend::utils::css::main::ResourceLoader;
+use crate::backend::utils::application::Route;
+use crate::backend::utils::css::ResourceLoader;
 use crate::frontend::components::common::titlebar::TitleBar;
-use crate::frontend::pages::auth::AuthState;
+use crate::frontend::services::launcher;
 use crate::frontend::{
     components::{
-        common::{News, StandaloneLogo, VersionSelector},
-        launcher::{
-            ContextMenu, DebugWindow, RenameDialog, debug_window::use_version_selection,
-            launch_minecraft,
-        },
+        common::{News, Logo, Selector},
+        launcher::{ContextMenu, RenameDialog},
         layout::Navigation,
     },
-    services::instances::main::InstanceManager,
-    states::{GameStatus, use_game_state},
+    services::instances::InstanceManager,
+    services::states::{GameStatus, use_game_state},
 };
 use dioxus::prelude::{Key, *};
 use dioxus_router::{components::Outlet, navigator, use_route};
 use webbrowser;
+use crate::frontend::services::context::AuthState;
 
 #[component]
 pub fn Layout() -> Element {
@@ -57,7 +55,6 @@ pub fn Layout() -> Element {
 
     // Debug window and version selection state
     let show_debug_window = use_signal(|| false);
-    let version_selection = use_version_selection();
 
     // Version selector state
     let mut show_version_selector = use_signal(|| false);
@@ -122,7 +119,7 @@ pub fn Layout() -> Element {
                 }
             },
 
-            StandaloneLogo { animations_played: animations_played() }
+            Logo { animations_played: animations_played() }
 
             Navigation { animations_played: animations_played() }
 
@@ -191,24 +188,26 @@ pub fn Layout() -> Element {
                                 div {
                                     key: "{instance.id}",
                                     class: {
-                                        let mut classes = vec!["instance-card"];
-                                        if game_status().is_active() && active_instance_id() == Some(instance.id) {
+                                        let mut classes = vec!["instance-card", "instance-card-dynamic"];
+                                        if active_instance_id() == Some(instance.id) {
                                             classes.push("instance-card-pulsing");
                                         }
                                         classes.join(" ")
                                     },
-                                    style: "background-color: #{instance.color};",
+                                    style: format!("--instance-color: #{}", instance.color),
                                     onclick: {
                                         let instance_version = instance.version.clone();
                                         let instance_id = instance.id;
                                         let auth = auth.clone();
                                         move |_| {
-                                            // Don't launch if the game is running
-                                            if !game_status().is_active() {
                                                 active_instance_id.set(Some(instance_id));
                                                 let username = auth.get_username();
-                                                launch_minecraft(game_status, &instance_version, instance_id, &username);
-                                            }
+
+                                                // Start installation and launch process
+                                                spawn(install_and_launch_instance(
+                                                    instance_version.clone(),
+                                                    username
+                                                ));
                                         }
                                     },
                                     oncontextmenu: {
@@ -338,14 +337,12 @@ pub fn Layout() -> Element {
 
             if is_new {
                 div {
-                    class: "new-title",
-                    style: "top: 84px !important;",
+                    class: "new-title new-title-fixed",
                     "What will you jump into?"
                 }
 
                 div {
-                    class: "new-divider",
-                    style: "top: 100px !important; left: 369px",
+                    class: "new-divider new-divider-fixed",
                 }
 
                 {
@@ -365,23 +362,22 @@ pub fn Layout() -> Element {
                         rsx! {
                             div {
                                 key: "{site.url}",
-                                class: "new-panel",
-                                style: format!("top: {}px;", 137 + (i * 81)),
+                                class: "new-panel new-panel-dynamic",
+                                style: format!("--panel-top: {}px;", 137 + (i * 81)),
                             }
 
                             div {
-                                class: "new-server-icon",
-                                style: format!("top: {}px;", 145 + (i * 81)),
+                                class: "new-server-icon new-server-icon-dynamic",
+                                style: format!("--icon-top: {}px;", 145 + (i * 81)),
                                 img {
                                     src: ResourceLoader::get_asset(&site.icon_key),
-                                    class: "server-icon-img",
-                                    style: "width: 49px; height: 49px; border-radius: 4px;"
+                                    class: "server-icon-img server-icon-img-fixed"
                                 }
                             }
 
                             div {
-                                class: "new-server-name",
-                                style: format!("top: {}px;", 149 + (i * 81)),
+                                class: "new-server-name new-server-name-dynamic",
+                                style: format!("--name-top: {}px;", 149 + (i * 81)),
                                 "{site.name}"
                             }
 
@@ -420,7 +416,7 @@ pub fn Layout() -> Element {
                                         let url_clone = url.clone();
                                         spawn(async move {
                                             if let Err(e) = webbrowser::open(&url_clone) {
-                                                eprintln!("Failed to open browser: {e}");
+                                                log::error!("Failed to open browser: {e}");
                                             }
                                         });
                                     }
@@ -458,34 +454,45 @@ pub fn Layout() -> Element {
                 current_name: rename_current_name
             }
 
-            // Debug window
-            DebugWindow {
-                show: show_debug_window,
-                version_selection: version_selection,
-                game_status: game_status,
-                instance_id: context_menu_instance_id
-            }
-
             // Version selector
-            VersionSelector {
+            Selector {
                 show: show_version_selector
             }
+        }
+    }
+}
 
-            // Progress bar at bottom when game is launching
-            if game_status().is_active() {
-                div {
-                    class: "launch-progress-container",
-                    div {
-                        class: "launch-progress-text",
-                        "{game_status().get_message()}"
+async fn install_and_launch_instance(version: String, username: String) {
+    // Get Python bridge
+    let bridge = match launcher::get_python_bridge() {
+        Ok(bridge) => bridge,
+        Err(e) => {
+            log::error!("Failed to get Python bridge: {e}");
+            return;
+        }
+    };
+
+    match bridge.install_version(&version).await {
+        Ok(_) => {
+            let config = crate::backend::bridge::LaunchConfig {
+                username,
+                version: version.clone(),
+            };
+
+            match bridge.launch_minecraft(config).await {
+                Ok(result) => {
+                    if result.success {
+                    } else {
+                        log::error!("Failed to launch Minecraft: {}", result.message);
                     }
-                    div {
-                        class: "launch-progress-bar",
-                        style: "--progress-width: {game_status().get_progress() * 100.0}%",
-                    }
+                }
+                Err(e) => {
+                    log::error!("Error launching Minecraft: {e}");
                 }
             }
         }
-
+        Err(e) => {
+            log::error!("Failed to install version: {e}");
+        }
     }
 }

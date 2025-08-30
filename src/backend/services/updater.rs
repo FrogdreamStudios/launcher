@@ -1,4 +1,3 @@
-use crate::{log_error, log_info};
 use self_update::cargo_crate_version;
 use serde::Deserialize;
 use std::path::PathBuf;
@@ -111,7 +110,7 @@ fn replace_executable_unix(current_exe: &PathBuf, new_content: &[u8]) -> Result<
     // On macOS, bypass security restrictions
     if std::env::consts::OS == "macos" {
         if let Err(e) = bypass_macos_security(current_exe) {
-            log_info!("Warning: Could not bypass macOS security restrictions: {e}");
+            log::info!("Warning: Could not bypass macOS security restrictions: {e}");
         }
     }
 
@@ -121,7 +120,7 @@ fn replace_executable_unix(current_exe: &PathBuf, new_content: &[u8]) -> Result<
 fn bypass_macos_security(executable_path: &PathBuf) -> Result<(), String> {
     use std::process::Command;
 
-    log_info!("Removing macOS security restrictions for executable...");
+    log::info!("Removing macOS security restrictions for executable...");
 
     // Remove quarantine attributes
     let xattr_output = Command::new("xattr")
@@ -132,15 +131,15 @@ fn bypass_macos_security(executable_path: &PathBuf) -> Result<(), String> {
     match xattr_output {
         Ok(output) => {
             if output.status.success() {
-                log_info!("Successfully removed quarantine attributes");
+                log::info!("Successfully removed quarantine attributes");
             } else {
-                log_info!(
+                log::info!(
                     "Note: Could not remove quarantine attributes (normal if not quarantined)"
                 );
             }
         }
         Err(e) => {
-            log_info!("Warning: Failed to run xattr command: {}", e);
+            log::info!("Warning: Failed to run xattr command: {}", e);
         }
     }
 
@@ -151,9 +150,9 @@ fn bypass_macos_security(executable_path: &PathBuf) -> Result<(), String> {
         if let Ok(mut perms) = std::fs::metadata(executable_path).map(|m| m.permissions()) {
             perms.set_mode(0o755);
             if let Err(e) = std::fs::set_permissions(executable_path, perms) {
-                log_info!("Warning: Could not set executable permissions: {e}");
+                log::info!("Warning: Could not set executable permissions: {e}");
             } else {
-                log_info!("Successfully set executable permissions");
+                log::info!("Successfully set executable permissions");
             }
         }
     }
@@ -196,8 +195,8 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
 
     let stdout_output = String::from_utf8_lossy(&mount_output.stdout);
     let stderr_output = String::from_utf8_lossy(&mount_output.stderr);
-    log_info!("hdiutil attach stdout: {}", stdout_output);
-    log_info!("hdiutil attach stderr: {}", stderr_output);
+    log::info!("hdiutil attach stdout: {}", stdout_output);
+    log::info!("hdiutil attach stderr: {}", stderr_output);
 
     // Try to parse mount point from either stdout or stderr, or use fallback
     let mount_point = parse_mount_point(&stdout_output)
@@ -210,11 +209,11 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
             )
         })?;
 
-    log_info!("Parsed mount point: {mount_point}");
+    log::info!("Parsed mount point: {mount_point}");
 
     // Find the app bundle in the mounted DMG
     let mount_path = std::path::Path::new(&mount_point);
-    log_info!("Looking for .app bundle in: {}", mount_path.display());
+    log::info!("Looking for .app bundle in: {}", mount_path.display());
 
     let app_entries = std::fs::read_dir(mount_path).map_err(|e| {
         format!(
@@ -225,10 +224,10 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
     })?;
 
     let entries: Vec<_> = app_entries.flatten().collect();
-    log_info!("Found {} entries in DMG", entries.len());
+    log::info!("Found {} entries in DMG", entries.len());
 
     for entry in &entries {
-        log_info!("DMG entry: {}", entry.path().display());
+        log::info!("DMG entry: {}", entry.path().display());
     }
 
     let app_bundle = entries
@@ -240,7 +239,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
                 .and_then(|ext| ext.to_str())
                 .map(|ext| ext == "app")
                 .unwrap_or(false);
-            log_info!("Checking {}: is_app = {}", entry.path().display(), is_app);
+            log::info!("Checking {}: is_app = {}", entry.path().display(), is_app);
             is_app
         })
         .ok_or("No .app bundle found in DMG")?;
@@ -249,7 +248,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
     let app_source = app_bundle.path();
     let app_destination = std::path::Path::new("/Applications").join(&app_name);
 
-    log_info!(
+    log::info!(
         "Installing app from {} to {}",
         app_source.display(),
         app_destination.display()
@@ -257,7 +256,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
 
     // Remove existing app if it exists
     if app_destination.exists() {
-        log_info!("Removing existing app at {}", app_destination.display());
+        log::info!("Removing existing app at {}", app_destination.display());
         let remove_output = Command::new("rm")
             .args(["-rf"])
             .arg(&app_destination)
@@ -266,14 +265,14 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
 
         if !remove_output.status.success() {
             let error_msg = String::from_utf8_lossy(&remove_output.stderr);
-            log_info!("Warning: Could not remove existing app: {error_msg}");
+            log::info!("Warning: Could not remove existing app: {error_msg}");
         } else {
-            log_info!("Successfully removed existing app");
+            log::info!("Successfully removed existing app");
         }
     }
 
     // Copy the app to Applications
-    log_info!("Copying app to Applications folder...");
+    log::info!("Copying app to Applications folder...");
     let cp_output = Command::new("cp")
         .args(["-R"])
         .arg(&app_source)
@@ -283,7 +282,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
 
     if !cp_output.status.success() {
         let error_msg = String::from_utf8_lossy(&cp_output.stderr);
-        log_error!("cp command failed: {}", error_msg);
+        log::error!("cp command failed: {}", error_msg);
         // Unmount before returning error
         let _ = Command::new("hdiutil")
             .args(["detach", "-quiet"])
@@ -293,10 +292,10 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
         return Err(format!("Failed to copy app to Applications: {error_msg}"));
     }
 
-    log_info!("Successfully copied app to Applications");
+    log::info!("Successfully copied app to Applications");
 
     // Remove macOS security restrictions
-    log_info!("Removing macOS security restrictions...");
+    log::info!("Removing macOS security restrictions...");
 
     // Remove quarantine attributes
     let xattr_output = Command::new("xattr")
@@ -307,15 +306,15 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
     match xattr_output {
         Ok(output) => {
             if output.status.success() {
-                log_info!("Successfully removed quarantine attributes");
+                log::info!("Successfully removed quarantine attributes");
             } else {
-                log_info!(
+                log::info!(
                     "Warning: Could not remove quarantine attributes (this is normal if app wasn't quarantined)"
                 );
             }
         }
         Err(e) => {
-            log_info!("Warning: Failed to run xattr command: {}", e);
+            log::info!("Warning: Failed to run xattr command: {}", e);
         }
     }
 
@@ -328,15 +327,15 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
     match spctl_output {
         Ok(output) => {
             if output.status.success() {
-                log_info!("Successfully added app to Gatekeeper exceptions");
+                log::info!("Successfully added app to Gatekeeper exceptions");
             } else {
-                log_info!(
+                log::info!(
                     "Warning: Could not add to Gatekeeper exceptions (may require admin privileges)"
                 );
             }
         }
         Err(e) => {
-            log_info!("Warning: Failed to run spctl command: {}", e);
+            log::info!("Warning: Failed to run spctl command: {}", e);
         }
     }
 
@@ -348,7 +347,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
     match spctl_enable_output {
         Ok(output) => {
             if output.status.success() {
-                log_info!("Successfully enabled app in Gatekeeper");
+                log::info!("Successfully enabled app in Gatekeeper");
             }
         }
         Err(_) => {
@@ -364,7 +363,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
         .map_err(|e| format!("Failed to unmount DMG: {}", e))?;
 
     if !detach_output.status.success() {
-        log_info!("Warning: Failed to unmount DMG, but installation completed");
+        log::info!("Warning: Failed to unmount DMG, but installation completed");
     }
 
     // Clean up temp directory
@@ -462,13 +461,13 @@ fn find_mount_point_fallback() -> Option<String> {
 }
 
 pub async fn check_for_updates() {
-    log_info!("Checking for updates...");
+    log::info!("Checking for updates...");
 
     // Get the platform-specific asset name
     let platform_asset_name = match get_platform_asset_name() {
         Some(name) => name,
         None => {
-            log_error!("Unsupported platform for auto-updates");
+            log::error!("Unsupported platform for auto-updates");
             return;
         }
     };
@@ -483,7 +482,7 @@ pub async fn check_for_updates() {
     {
         Ok(res) => res,
         Err(e) => {
-            log_error!("Failed to fetch release info from GitHub: {e}");
+            log::error!("Failed to fetch release info from GitHub: {e}");
             return;
         }
     };
@@ -491,7 +490,7 @@ pub async fn check_for_updates() {
     let release = match response.json::<Release>().await {
         Ok(release) => release,
         Err(e) => {
-            log_error!("Failed to parse GitHub release info: {e}");
+            log::error!("Failed to parse GitHub release info: {e}");
             return;
         }
     };
@@ -501,11 +500,11 @@ pub async fn check_for_updates() {
     let latest_version = release.tag_name.trim_start_matches('v');
 
     if latest_version == current_version {
-        log_info!("Already running the latest version: {current_version}");
+        log::info!("Already running the latest version: {current_version}");
         return;
     }
 
-    log_info!("New version available: {latest_version} (current: {current_version})");
+    log::info!("New version available: {latest_version} (current: {current_version})");
 
     // Find the asset for our platform
     let asset = match release
@@ -515,37 +514,37 @@ pub async fn check_for_updates() {
     {
         Some(asset) => asset,
         None => {
-            log_error!("No compatible binary found for platform: {platform_asset_name}");
+            log::error!("No compatible binary found for platform: {platform_asset_name}");
             return;
         }
     };
 
-    log_info!("Downloading update from: {}", asset.browser_download_url);
+    log::info!("Downloading update from: {}", asset.browser_download_url);
 
     // Download the new version
     let new_content = match download_file(&asset.browser_download_url).await {
         Ok(content) => content,
         Err(e) => {
-            log_error!("Failed to download update: {e}");
+            log::error!("Failed to download update: {e}");
             return;
         }
     };
 
-    log_info!("Download completed. Installing update...");
+    log::info!("Download completed. Installing update...");
 
     // Handle DMG files on macOS (automatic installation)
     if platform_asset_name.ends_with(".dmg") {
-        log_info!("DMG file detected. Installing automatically...");
+        log::info!("DMG file detected. Installing automatically...");
 
         match install_dmg(&new_content, &release.tag_name).await {
             Ok(_) => {
-                log_info!("DMG installation completed successfully!");
-                log_info!("The application has been updated to version {latest_version}");
+                log::info!("DMG installation completed successfully!");
+                log::info!("The application has been updated to version {latest_version}");
                 return;
             }
             Err(e) => {
-                log_error!("Failed to install DMG automatically: {e}");
-                log_info!(
+                log::error!("Failed to install DMG automatically: {e}");
+                log::info!(
                     "Please download and install manually from: {}",
                     asset.browser_download_url
                 );
@@ -557,12 +556,12 @@ pub async fn check_for_updates() {
     // Replace the current executable (for non-DMG files)
     match replace_executable(&new_content) {
         Ok(_) => {
-            log_info!("Update installed successfully!");
-            log_info!("The application will now restart with version {latest_version}");
+            log::info!("Update installed successfully!");
+            log::info!("The application will now restart with version {latest_version}");
             std::process::exit(0);
         }
         Err(e) => {
-            log_error!("Failed to install update: {e}");
+            log::error!("Failed to install update: {e}");
         }
     }
 }

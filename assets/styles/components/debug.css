@@ -224,3 +224,62 @@
     font-weight: 700;
     font-size: 14px;
 }
+
+.debug-launcher-console {
+    background: #1b1b1b;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-top: 16px;
+}
+
+.console-container {
+    background: #0d1117;
+    border: 1px solid #252525;
+    border-radius: 6px;
+    padding: 12px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.console-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.console-container::-webkit-scrollbar-track {
+    background: #1b1b1b;
+    border-radius: 3px;
+}
+
+.console-container::-webkit-scrollbar-thumb {
+    background: #252525;
+    border-radius: 3px;
+}
+
+.console-container::-webkit-scrollbar-thumb:hover {
+    background: #2a2a2a;
+}
+
+.console-output {
+    font-family: "Courier New", monospace;
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+.console-line {
+    color: #c9d1d9;
+    margin-bottom: 2px;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+.console-line:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 2px;
+}
+
+.console-empty {
+    text-align: center;
+    color: #6f6f6f;
+    font-style: italic;
+    padding: 20px;
+}

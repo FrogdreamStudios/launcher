@@ -1,4 +1,4 @@
-//! Application pages for the frontend.
+//! Application pages.
 
 pub mod auth;
 pub mod main;

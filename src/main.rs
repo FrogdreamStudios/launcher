@@ -4,7 +4,6 @@
 
 mod backend;
 mod frontend;
-mod utils;
 
 use std::sync::OnceLock;
 
@@ -12,7 +11,7 @@ use dioxus::{LaunchBuilder, prelude::*};
 use dioxus_desktop::{Config, LogicalSize, WindowBuilder};
 use dioxus_router::Router;
 
-use crate::backend::utils::app::main::Route;
+use crate::backend::utils::application::Route;
 use tokio::runtime::Runtime;
 
 static RUNTIME: OnceLock<Runtime> = OnceLock::new();
@@ -20,7 +19,7 @@ static RUNTIME: OnceLock<Runtime> = OnceLock::new();
 /// Main function for starting the application.
 fn main() {
     // Logging
-    utils::logging::init_from_env();
+    env_logger::init();
 
     // Set icon on macOS
     #[cfg(target_os = "macos")]
@@ -32,7 +31,7 @@ fn main() {
             .enable_all()
             .build()
             .unwrap_or_else(|_| {
-                eprintln!("Failed to create tokio runtime, exiting");
+                log::error!("Failed to create tokio runtime, exiting");
                 std::process::exit(1);
             })
     });
@@ -116,7 +115,7 @@ fn set_macos_icon() {
 fn AppRoot() -> Element {
     let is_authenticated = use_signal(|| false);
     let current_user = use_signal(|| None);
-    let auth_state = frontend::pages::auth::AuthState {
+    let auth_state = frontend::services::context::AuthState {
         is_authenticated,
         current_user,
     };
