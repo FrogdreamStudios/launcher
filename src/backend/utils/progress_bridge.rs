@@ -32,3 +32,27 @@ pub fn update_global_progress(progress: f32, message: String) {
         let _ = sender.send(info);
     }
 }
+
+/// Send progress update with specific stage.
+pub fn send_progress_stage(stage: crate::backend::launcher::progress::ProgressStage, version: &str) {
+    if let Some(sender) = get_progress_sender() {
+        let info = ProgressInfo {
+            progress: stage.default_progress(),
+            message: stage.default_message(version),
+            stage,
+        };
+        let _ = sender.send(info);
+    }
+}
+
+/// Send progress update with custom progress and message for a stage.
+pub fn send_progress_custom(stage: crate::backend::launcher::progress::ProgressStage, progress: f32, message: String) {
+    if let Some(sender) = get_progress_sender() {
+        let info = ProgressInfo {
+            progress,
+            message,
+            stage,
+        };
+        let _ = sender.send(info);
+    }
+}

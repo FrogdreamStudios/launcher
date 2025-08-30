@@ -110,26 +110,17 @@ pub fn VersionSelector(props: VersionSelectorProps) -> Element {
         let version = selected_version.read().clone();
         println!("Selected version in handle_select_click: {version}");
         log_info!("Creating instance with version: {version}");
-
-        // Create the instance
-        if let Some(instance_id) = InstanceManager::create_instance_with_version(version.clone()) {
-            log_info!("Created instance {instance_id} with version {version}");
-
-            // Verify the instance was created with a correct version
-            use crate::frontend::services::instances::main::INSTANCES;
-            let instances = INSTANCES.read();
-            if let Some(instance) = instances.get(&instance_id) {
-                println!(
-                    "VERIFICATION: Instance {} created with version: {}",
-                    instance_id, instance.version
-                );
-            } else {
-                println!("ERROR: Cannot find newly created instance {instance_id}");
+        
+        // Create instance with selected version
+        match InstanceManager::create_instance_with_version(version) {
+            Some(instance_id) => {
+                log_info!("Instance created successfully with ID: {instance_id}");
             }
-        } else {
-            log_error!("Failed to create instance with version {version}");
+            None => {
+                log_error!("Failed to create instance: maximum instances reached or other error");
+            }
         }
-
+        
         show.set(false);
     };
 
@@ -232,8 +223,9 @@ pub fn VersionSelector(props: VersionSelectorProps) -> Element {
                     }
                     button {
                         class: "version-action-btn select",
+                        disabled: *is_loading.read(),
                         onclick: handle_select_click,
-                        "Select"
+                        "Create Instance"
                     }
                 }
             }

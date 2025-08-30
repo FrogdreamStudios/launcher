@@ -4,27 +4,21 @@ use dioxus::prelude::*;
 
 /// Launch Minecraft.
 pub fn launch_minecraft(
-    game_status: Signal<GameStatus>,
+    _game_status: Signal<GameStatus>,
     version: &str,
     instance_id: u32,
     username: &str,
 ) {
     let version_owned = version.to_string();
     let username_owned = username.to_string();
-    let mut game_status_signal = game_status;
 
     spawn(async move {
         println!("Received version: {version_owned}");
         println!("Received instance_id: {instance_id}");
         log_info!("Starting Minecraft launch for version: {version_owned}");
 
-        // Set the initial launching state
-        game_status_signal.set(GameStatus::Launching {
-            progress: 0.0,
-            message: "Initializing launch...".to_string(),
-        });
-
         // Use the simplified launch function from starter.rs
+        // Progress is now handled entirely through progress_bridge
         let launch_result = tokio::task::spawn_blocking({
             let version_owned = version_owned.clone();
             let username_owned = username_owned.clone();
@@ -45,18 +39,18 @@ pub fn launch_minecraft(
         })
         .await;
 
-        // Handle the result
+        // Handle the result - errors are now sent through progress_bridge
         match launch_result {
             Ok(Ok(())) => {
                 log_info!("Minecraft {version_owned} launched and completed successfully");
             }
             Ok(Err(e)) => {
                 log_error!("Failed to launch Minecraft {version_owned}: {e}");
-                game_status_signal.set(GameStatus::Idle);
+                // Error handling is now done in starter.rs through progress_bridge
             }
             Err(e) => {
                 log_error!("Minecraft launch task failed: {e}");
-                game_status_signal.set(GameStatus::Idle);
+                // Error handling is now done in starter.rs through progress_bridge
             }
         }
         log_info!("Minecraft launch process completed");

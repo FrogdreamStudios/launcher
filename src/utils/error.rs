@@ -35,12 +35,6 @@ impl From<serde_json::Error> for Error {
     }
 }
 
-impl From<crate::backend::utils::net::http::Error> for Error {
-    fn from(err: crate::backend::utils::net::http::Error) -> Self {
-        Self::new(format!("HTTP error: {err}"))
-    }
-}
-
 impl From<tokio::task::JoinError> for Error {
     fn from(err: tokio::task::JoinError) -> Self {
         Self::new(format!("Task error: {err}"))

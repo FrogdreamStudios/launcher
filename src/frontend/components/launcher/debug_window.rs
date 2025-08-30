@@ -1,6 +1,5 @@
 use crate::backend::utils::launcher::paths::get_launcher_dir;
 use crate::{
-    backend::launcher::core::MinecraftLauncher,
     backend::utils::css::main::ResourceLoader,
     frontend::{services::{instances::main::INSTANCES, launcher}, states::GameStatus},
 };
@@ -187,18 +186,16 @@ pub fn DebugWindow(
 }
 
 async fn update_manifest() -> crate::utils::Result<()> {
-    let manifest = launcher::get_version_manifest()?; // Get the preloaded manifest
-    let mut launcher = MinecraftLauncher::new(None, None, Some(manifest)).await?; // Pass the manifest
-    launcher.update_manifest().await?;
+    log_info!("Update manifest functionality moved to Python bridge");
+    // TODO: Implement manifest update through Python bridge if needed
     Ok(())
 }
 
 async fn delete_launcher_files() -> crate::utils::Result<()> {
     log_info!("Starting launcher files deletion...");
 
-    let manifest = launcher::get_version_manifest()?; // Get the preloaded manifest
-    let launcher = MinecraftLauncher::new(None, None, Some(manifest)).await?; // Pass the manifest
-    let game_dir = launcher.get_game_dir();
+    // Use standard Minecraft directory instead of launcher.get_game_dir()
+    let game_dir = crate::backend::utils::launcher::paths::get_game_dir(None, None)?;
 
     log_info!("Game directory: {game_dir:?}");
 
@@ -255,9 +252,8 @@ async fn delete_launcher_files() -> crate::utils::Result<()> {
 }
 
 async fn get_system_info() -> crate::utils::Result<String> {
-    let manifest = launcher::get_version_manifest()?; // Get the preloaded manifest
-    let launcher = MinecraftLauncher::new(None, None, Some(manifest)).await?; // Pass the manifest
-    let game_dir = launcher.get_game_dir();
+    // Use standard Minecraft directory instead of launcher.get_game_dir()
+    let game_dir = crate::backend::utils::launcher::paths::get_game_dir(None, None)?;
 
     let mut info = String::new();
     info.push_str(&format!("Game Directory: {game_dir:?}\n"));

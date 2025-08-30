@@ -9,9 +9,9 @@ use crate::utils::Result;
 use crate::{log_error, log_info, simple_error};
 use std::{path::PathBuf, process::Command};
 
-use crate::frontend::services::launcher;
+// Removed unused import: use crate::frontend::services::launcher;
 
-use crate::backend::launcher::core::MinecraftLauncher;
+// MinecraftLauncher removed - using Python bridge instead
 use crate::backend::launcher::models::{ArgumentValue, ArgumentValueInner, VersionDetails};
 
 use crate::backend::utils::launcher::paths::{get_classpath_separator, get_natives_dir};
@@ -650,68 +650,59 @@ impl Default for CommandBuilder {
     }
 }
 
-/// Launch Minecraft with the specified version and instance
-pub async fn launch_minecraft(version: String, instance_id: u32, username: String) -> Result<()> {
-    use crate::backend::utils::progress_bridge::update_global_progress;
+/// Launch Minecraft with the specified version and instance using Python bridge.
+pub async fn launch_minecraft(version: String, _instance_id: u32, username: String) -> Result<()> {
+    use crate::backend::utils::progress_bridge::{send_progress_stage, send_progress_custom};
+    use crate::backend::launcher::progress::ProgressStage;
+    use crate::backend::bridge::{PythonMinecraftBridge, LaunchConfig};
 
-    log_info!("Starting Minecraft launch for version: {version}");
+    log_info!("Starting Minecraft launch for version: {version} using Python bridge");
 
-    // Initialize progress
-    update_global_progress(0.0, "Initializing launcher...".to_string());
+    // Step 1: Preparing
+    send_progress_stage(ProgressStage::Preparing, &version);
 
-    let manifest = launcher::get_version_manifest()?; // Get the pre-loaded manifest
-    let mut launcher = MinecraftLauncher::new(None, Some(instance_id), Some(manifest)).await?; // Pass the manifest
-    log_info!("Launcher created successfully");
-
-    // Check if a version exists locally
-    let game_dir = launcher.get_game_dir();
-    let version_dir = game_dir.join("versions").join(&version);
-    let jar_file = version_dir.join(format!("{version}.jar"));
-    let json_file = version_dir.join(format!("{version}.json"));
-
-    let version_exists = jar_file.exists() && json_file.exists();
-
-    if !version_exists {
-        log_info!("Version {version} not found locally, attempting to install...");
-
-        // Install/prepare the version
-        update_global_progress(0.2, format!("Downloading Minecraft {}...", version));
-        launcher.prepare_version(&version).await.map_err(|e| {
-            log_error!("Failed to install version {version}: {e}");
-            e
-        })?;
-
-        log_info!("Version {version} installed successfully");
-    }
-
-    // Check Java availability
-    update_global_progress(0.7, format!("Checking Java for {}...", version));
-    let java_available = launcher.is_java_available(&version);
-
-    if !java_available {
-        log_info!("Java not available for version {version}, installing...");
-        update_global_progress(0.75, "Installing Java runtime...".to_string());
-
-        launcher.install_java(&version).await.map_err(|e| {
-            log_error!("Failed to install Java for version {version}: {e}");
-            e
-        })?;
-
-        log_info!("Java installed successfully for version {version}");
-    }
-
-    log_info!("Starting Minecraft {version}...");
-    update_global_progress(0.9, format!("Starting Minecraft {}...", version));
-
-    // Launch Minecraft
-    launcher.launch(&version, &username).await.map_err(|e| {
-        log_error!("Failed to launch Minecraft {version}: {e}");
-        e
+    // Create Python bridge
+    let bridge = PythonMinecraftBridge::new().map_err(|e| {
+        log_error!("Failed to create Python bridge: {e}");
+        send_progress_custom(ProgressStage::Failed, 0.0, format!("Error: {}", e));
+        simple_error!("Failed to create Python bridge: {e}")
     })?;
 
-    // Launch was successful - progress bar is automatically hidden in launcher.rs
-    // when the Minecraft process starts
+    log_info!("Python bridge created successfully");
+    
+    // Step 2: Launching
+    send_progress_stage(ProgressStage::Launching, &version);
 
-    log_info!("Minecraft {version} launched successfully");
-    Ok(())
+    // Create launch configuration
+    let config = LaunchConfig {
+        username: username.clone(),
+        version: version.clone(),
+    };
+
+    // Launch Minecraft through Python
+    let result = bridge.launch_minecraft(config).await.map_err(|e| {
+        log_error!("Failed to launch Minecraft through Python bridge: {e}");
+        send_progress_custom(ProgressStage::Failed, 0.0, format!("Error: {}", e));
+        simple_error!("Failed to launch Minecraft: {e}")
+    })?;
+
+    if result.success {
+        log_info!("Minecraft {version} launched successfully: {}", result.message);
+        if let Some(pid) = result.pid {
+            log_info!("Minecraft process PID: {pid}");
+        }
+        
+        // Step 3: Running
+        send_progress_stage(ProgressStage::Running, &version);
+        
+        // Wait a bit to show "running" status, then complete
+        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+        send_progress_stage(ProgressStage::Completed, &version);
+        
+        Ok(())
+    } else {
+        log_error!("Failed to launch Minecraft {version}: {}", result.message);
+        send_progress_custom(ProgressStage::Failed, 0.0, format!("Error: {}", result.message));
+        Err(simple_error!("Failed to launch Minecraft: {}", result.message))
+    }
 }

@@ -44,12 +44,12 @@ pub fn use_game_state() -> Signal<GameStatus> {
 
         spawn(async move {
             while let Some(progress_info) = rx.recv().await {
-                // Check if this is a completion signal
-                if progress_info.stage == ProgressStage::Completed {
+                // Check if this is a completion or failure signal
+                if progress_info.stage == ProgressStage::Completed || progress_info.stage == ProgressStage::Failed {
                     // Reset to Idle state to hide progress bar
                     status.set(GameStatus::Idle);
                 } else {
-                    // Normal progress update
+                    // Normal progress update for all other stages
                     status.set(GameStatus::Launching {
                         progress: progress_info.progress,
                         message: progress_info.message,
