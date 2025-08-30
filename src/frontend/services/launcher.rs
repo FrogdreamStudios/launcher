@@ -6,6 +6,14 @@ use anyhow::Result;
 use std::sync::{Arc, OnceLock};
 use tokio::sync::RwLock as AsyncRwLock;
 
+/// Fetch version manifest directly from Mojang API.
+async fn fetch_version_manifest_from_mojang() -> Result<serde_json::Value> {
+    let url = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
+    let response = reqwest::get(url).await?;
+    let manifest = response.json::<serde_json::Value>().await?;
+    Ok(manifest)
+}
+
 static VERSION_MANIFEST: OnceLock<Arc<AsyncRwLock<VersionManifest>>> = OnceLock::new();
 static PYTHON_BRIDGE: OnceLock<PythonMinecraftBridge> = OnceLock::new();
 
@@ -20,8 +28,8 @@ pub async fn init_launcher() {
         Ok(bridge) => {
             log::info!("Python Minecraft Bridge initialized successfully!");
 
-            // Load real manifest from Mojang
-            match bridge.get_version_manifest().await {
+            // Load real manifest from Mojang directly
+            match fetch_version_manifest_from_mojang().await {
                 Ok(manifest_json) => {
                     // Parse the manifest JSON into our VersionManifest struct
                     if let (Some(latest_obj), Some(versions_array)) = (
@@ -122,7 +130,7 @@ pub async fn refresh_version_manifest() -> Result<()> {
     
     let bridge = get_python_bridge()?;
     
-    match bridge.get_version_manifest().await {
+    match fetch_version_manifest_from_mojang().await {
         Ok(manifest_json) => {
             // Parse the manifest JSON into our VersionManifest struct
             if let (Some(latest_obj), Some(versions_array)) = (

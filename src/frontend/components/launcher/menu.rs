@@ -3,25 +3,14 @@
 use crate::{
     backend::utils::css::ResourceLoader,
     frontend::{
-        components::launcher::launcher::launch_minecraft,
+        components::layout::main::install_and_launch_instance,
         services::instances::{INSTANCES, InstanceManager, open_instance_folder},
+        services::states::{is_instance_running, set_instance_running},
     },
 };
 use dioxus::prelude::*;
 use crate::frontend::services::context::AuthState;
 use crate::frontend::services::states::GameStatus;
-
-// Define async logic outside the component (because of closure issues)
-async fn spawn_launch_minecraft(
-    game_status: Signal<GameStatus>,
-    version: String,
-    id: u32,
-    username: String,
-) {
-    tokio::time::sleep(std::time::Duration::from_millis(160)).await;
-    log::info!("About to call launch_minecraft with version: {version}");
-    launch_minecraft(game_status, &version, id, &username);
-}
 
 #[derive(Props, Clone, PartialEq, Eq)]
 pub struct ContextMenuProps {
@@ -41,7 +30,6 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
     let mut show = props.show;
     let x = props.x;
     let y = props.y;
-    let game_status = props.game_status;
     let instance_id = props.instance_id;
     let mut show_debug_window = props.show_debug_window;
     let mut show_rename_dialog = props.show_rename_dialog;
@@ -110,11 +98,14 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
                     "1.21.8".to_string() // Fallback
                 }
             };
-
+            
+            // Immediately mark as running to prevent race conditions
+            set_instance_running(id, true);
+            
             let username = auth.get_username();
             show.set(false);
             // Start Minecraft launch after menu closes
-            spawn(spawn_launch_minecraft(game_status, version, id, username));
+            spawn(install_and_launch_instance(version, username, id));
         }
     };
 
@@ -165,7 +156,6 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
             show_debug_window.set(true);
         }
     };
-
     if !should_render() {
         return rsx! {};
     }

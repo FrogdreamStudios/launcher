@@ -23,8 +23,8 @@ pub struct LaunchConfig {
 impl Default for LaunchConfig {
     fn default() -> Self {
         Self {
-            username: "TestPlayer".to_string(),
-            version: "1.20.1".to_string(),
+            username: "Player".to_string(),
+            version: "1.21.8".to_string(),
         }
     }
 }
@@ -76,11 +76,9 @@ impl PythonMinecraftBridge {
             move || -> Result<MinecraftLaunchResult, Box<dyn std::error::Error + Send + Sync>> {
                 let output = Command::new("python3")
                     .arg(&script_path)
-                    .arg("--username")
+                    .arg("launch")
                     .arg(&username)
-                    .arg("--version")
                     .arg(&version)
-                    .arg("--install")
                     .output()?;
 
                 if output.status.success() {
@@ -114,37 +112,7 @@ impl PythonMinecraftBridge {
 
         Ok(result)
     }
-
-    /// Get full version manifest from Mojang.
-    pub async fn get_version_manifest(
-        &self,
-    ) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
-        let script_path = self.python_script_path.clone();
-
-        let result = task::spawn_blocking(
-            move || -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
-                let output = std::process::Command::new("python3")
-                    .arg(&script_path)
-                    .arg("--get-manifest")
-                    .output()?;
-
-                if !output.status.success() {
-                    let error = String::from_utf8_lossy(&output.stderr);
-                    return Err(format!("Failed to get manifest: {error}").into());
-                }
-
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                let manifest: serde_json::Value = serde_json::from_str(&stdout)
-                    .map_err(|e| format!("Failed to parse manifest JSON: {e}"))?;
-
-                Ok(manifest)
-            },
-        )
-        .await??;
-
-        Ok(result)
-    }
-
+    
     /// Install a specific Minecraft version.
     pub async fn install_version(
         &self,
@@ -157,8 +125,7 @@ impl PythonMinecraftBridge {
             move || -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
                 let output = std::process::Command::new("python3")
                     .arg(&script_path)
-                    .arg("--install")
-                    .arg("--version")
+                    .arg("install")
                     .arg(&version)
                     .output()?;
 

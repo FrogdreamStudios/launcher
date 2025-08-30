@@ -45,7 +45,7 @@ pub fn Selector(props: SelectorProps) -> Element {
     use_effect(move || {
         let filter = version_filter.read().clone();
         let all_versions = available_versions.read().clone();
-
+        
         let filtered: Vec<VersionInfo> = match filter.as_str() {
             "release" => all_versions.into_iter().filter(|v| v.version_type == "release").collect(),
             "snapshot" => all_versions.into_iter().filter(|v| v.version_type == "snapshot").collect(),
@@ -53,7 +53,7 @@ pub fn Selector(props: SelectorProps) -> Element {
             "alpha" => all_versions.into_iter().filter(|v| v.version_type == "old_alpha").collect(),
             _ => all_versions, // "all" or any other value
         };
-
+        
         filtered_versions.set(filtered);
     });
 

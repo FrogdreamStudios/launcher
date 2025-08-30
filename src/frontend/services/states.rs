@@ -70,3 +70,86 @@ pub fn set_update_state(show: bool, progress: f32, status: String) {
         state.status = status;
     }
 }
+
+// Game progress state for installation and launch
+#[derive(Clone, PartialEq, Debug)]
+pub struct GameProgressState {
+    pub show: bool,
+    pub progress: f32,
+    pub status: String,
+    pub instance_id: Option<u32>,
+}
+
+impl Default for GameProgressState {
+    fn default() -> Self {
+        Self {
+            show: false,
+            progress: 0.0,
+            status: String::new(),
+            instance_id: None,
+        }
+    }
+}
+
+// Global game progress state
+static GAME_PROGRESS_STATE: Lazy<Arc<Mutex<GameProgressState>>> = Lazy::new(|| {
+    Arc::new(Mutex::new(GameProgressState::default()))
+});
+
+pub fn use_game_progress_state() -> (Signal<bool>, Signal<f32>, Signal<String>, Signal<Option<u32>>) {
+    let mut show = use_signal(|| false);
+    let mut progress = use_signal(|| 0.0);
+    let mut status = use_signal(|| String::new());
+    let mut instance_id = use_signal(|| None::<u32>);
+    
+    // Sync with global state
+    use_effect(move || {
+        spawn(async move {
+            loop {
+                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                if let Ok(state) = GAME_PROGRESS_STATE.lock() {
+                    show.set(state.show);
+                    progress.set(state.progress);
+                    status.set(state.status.clone());
+                    instance_id.set(state.instance_id);
+                }
+            }
+        });
+    });
+    
+    (show, progress, status, instance_id)
+}
+
+pub fn set_game_progress_state(show: bool, progress: f32, status: String, instance_id: Option<u32>) {
+    if let Ok(mut state) = GAME_PROGRESS_STATE.lock() {
+        state.show = show;
+        state.progress = progress;
+        state.status = status;
+        state.instance_id = instance_id;
+    }
+}
+
+// Running instances tracking
+use std::collections::HashSet;
+
+static RUNNING_INSTANCES: Lazy<Arc<Mutex<HashSet<u32>>>> = Lazy::new(|| {
+    Arc::new(Mutex::new(HashSet::new()))
+});
+
+pub fn is_instance_running(instance_id: u32) -> bool {
+    if let Ok(running) = RUNNING_INSTANCES.lock() {
+        running.contains(&instance_id)
+    } else {
+        false
+    }
+}
+
+pub fn set_instance_running(instance_id: u32, running: bool) {
+    if let Ok(mut instances) = RUNNING_INSTANCES.lock() {
+        if running {
+            instances.insert(instance_id);
+        } else {
+            instances.remove(&instance_id);
+        }
+    }
+}

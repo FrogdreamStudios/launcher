@@ -44,6 +44,11 @@ fn main() {
     // Initialize the launcher in a separate thread
     runtime.spawn(async {
         frontend::services::launcher::init_launcher().await;
+        
+        // Refresh version manifest after initialization
+        if let Err(e) = frontend::services::launcher::refresh_version_manifest().await {
+            log::error!("Failed to refresh version manifest: {e}");
+        }
     });
 
     // Dioxus

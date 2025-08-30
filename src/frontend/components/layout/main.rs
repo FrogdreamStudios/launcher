@@ -7,12 +7,12 @@ use crate::frontend::components::common::titlebar::TitleBar;
 use crate::frontend::services::launcher;
 use crate::frontend::{
     components::{
-        common::{News, Logo, Selector, UpdateProgress},
+        common::{News, Logo, Selector, UpdateProgress, GameProgress},
         launcher::{ContextMenu, RenameDialog},
         layout::Navigation,
     },
     services::instances::InstanceManager,
-    services::states::{GameStatus, use_game_state, use_update_state},
+    services::states::{GameStatus, use_game_state, use_update_state, use_game_progress_state, set_game_progress_state, is_instance_running, set_instance_running},
 };
 use dioxus::prelude::{Key, *};
 use dioxus_router::{components::Outlet, navigator, use_route};
@@ -31,6 +31,9 @@ pub fn Layout() -> Element {
 
     // Update progress state
     let (show_update, progress, status) = use_update_state();
+    
+    // Game progress state
+    let (show_game_progress, game_progress, game_status_text, game_instance_id) = use_game_progress_state();
 
     // Visit the tracker with reactive signals
     let visit_tracker = use_signal(VisitTracker::new);
@@ -118,6 +121,12 @@ pub fn Layout() -> Element {
             show: show_update(),
             progress: progress(),
             status: status()
+        }
+        
+        GameProgress {
+            show: show_game_progress(),
+            progress: game_progress(),
+            status: game_status_text()
         }
 
         div {
@@ -211,14 +220,18 @@ pub fn Layout() -> Element {
                                         let instance_id = instance.id;
                                         let auth = auth.clone();
                                         move |_| {
-                                                active_instance_id.set(Some(instance_id));
-                                                let username = auth.get_username();
+                                            // Immediately mark as running to prevent race conditions
+                                            set_instance_running(instance_id, true);
 
-                                                // Start installation and launch process
-                                                spawn(install_and_launch_instance(
-                                                    instance_version.clone(),
-                                                    username
-                                                ));
+                                            active_instance_id.set(Some(instance_id));
+                                            let username = auth.get_username();
+
+                                            // Start installation and launch process
+                                            spawn(install_and_launch_instance(
+                                                instance_version.clone(),
+                                                username,
+                                                instance_id
+                                            ));
                                         }
                                     },
                                     oncontextmenu: {
@@ -473,18 +486,28 @@ pub fn Layout() -> Element {
     }
 }
 
-async fn install_and_launch_instance(version: String, username: String) {
+pub async fn install_and_launch_instance(version: String, username: String, instance_id: u32) {
+    set_game_progress_state(true, 10.0, format!("Preparing {}", version), Some(instance_id));
+
     // Get Python bridge
     let bridge = match launcher::get_python_bridge() {
         Ok(bridge) => bridge,
         Err(e) => {
             log::error!("Failed to get Python bridge: {e}");
+            set_game_progress_state(false, 0.0, String::new(), None);
+            set_instance_running(instance_id, false);
             return;
         }
     };
 
+    // Install version (will skip if already installed)
+    set_game_progress_state(true, 30.0, format!("Preparing {}", version), Some(instance_id));
+
     match bridge.install_version(&version).await {
         Ok(_) => {
+            // Update progress for launch preparation
+            set_game_progress_state(true, 70.0, format!("Starting {}", version), Some(instance_id));
+
             let config = crate::backend::launcher::bridge::LaunchConfig {
                 username,
                 version: version.clone(),
@@ -493,17 +516,33 @@ async fn install_and_launch_instance(version: String, username: String) {
             match bridge.launch_minecraft(config).await {
                 Ok(result) => {
                     if result.success {
+                        // Update progress for successful launch
+                        set_game_progress_state(true, 100.0, "Minecraft has started".to_string(), Some(instance_id));
+                        
+                        // Hide progress after a short delay
+                        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+                        set_game_progress_state(false, 0.0, String::new(), None);
+                        
+                        // Keep instance marked as running, it will be unmarked when game closes
+                        // TODO: Add process monitoring to detect when game closes
+                        return; // Don't mark as not running
                     } else {
                         log::error!("Failed to launch Minecraft: {}", result.message);
+                        set_game_progress_state(false, 0.0, String::new(), None);
                     }
                 }
                 Err(e) => {
                     log::error!("Error launching Minecraft: {e}");
+                    set_game_progress_state(false, 0.0, String::new(), None);
                 }
             }
         }
         Err(e) => {
-            log::error!("Failed to install version: {e}");
+            log::error!("Failed to verify/install version: {e}");
+            set_game_progress_state(false, 0.0, String::new(), None);
         }
     }
+    
+    // Mark the instance as no longer running
+    set_instance_running(instance_id, false);
 }
