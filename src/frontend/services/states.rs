@@ -1,3 +1,5 @@
+//! Minecraft states.
+
 use dioxus::prelude::*;
 
 #[derive(Clone, PartialEq, Debug)]

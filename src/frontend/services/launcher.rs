@@ -1,4 +1,6 @@
-use crate::backend::bridge::PythonMinecraftBridge;
+//! Launcher services.
+
+use crate::backend::launcher::bridge::PythonMinecraftBridge;
 use crate::backend::launcher::models::VersionManifest;
 use anyhow::Result;
 use std::sync::{Arc, OnceLock};

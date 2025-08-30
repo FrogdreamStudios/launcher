@@ -1,3 +1,5 @@
+//! Custom titlebar with window controls.
+
 use crate::backend::utils::css::ResourceLoader;
 use dioxus::prelude::*;
 

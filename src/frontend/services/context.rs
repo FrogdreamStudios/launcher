@@ -1,4 +1,4 @@
-//! Context for authentication.
+//! Authentication context and state management.
 
 use dioxus::prelude::*;
 use crate::frontend::services::user::UserConfig;

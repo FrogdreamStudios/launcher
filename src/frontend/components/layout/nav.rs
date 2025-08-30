@@ -1,3 +1,5 @@
+//! Navigation component.
+
 use crate::backend::utils::application::Route;
 use crate::backend::utils::css::ResourceLoader;
 use dioxus::prelude::*;

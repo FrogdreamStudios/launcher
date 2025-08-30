@@ -1,3 +1,5 @@
+//! User configuration.
+
 use crate::backend::utils::paths::get_launcher_dir;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;

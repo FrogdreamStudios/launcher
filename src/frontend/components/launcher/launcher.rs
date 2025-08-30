@@ -1,10 +1,11 @@
+//! Communicator between frontend and backend.
+
 use dioxus::prelude::*;
 use crate::backend::services::starter;
 use crate::frontend::services::states::GameStatus;
 
-/// Launching Minecraft.
-///
-/// Note that the process of launching Minecraft is in the backend, in `starter.rs`.
+/// Launching Minecraft. Note that the process of launching Minecraft is in the
+/// backend, in `starter.rs`.
     pub fn launch_minecraft(
     _game_status: Signal<GameStatus>,
     version: &str,

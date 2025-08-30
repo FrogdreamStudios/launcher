@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Minecraft launcher (temporary for beta versions)
+# Minecraft launcher (temporary for beta versions).
 
 import minecraft_launcher_lib
 import subprocess
@@ -15,15 +15,15 @@ import shutil
 import logging
 from pathlib import Path
 
-# Configure logging
+# Configure logging.
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 from packaging import version as pkg_version
 
-# Minecraft directory
+# Minecraft directory.
 def get_minecraft_directory():
     return minecraft_launcher_lib.utils.get_minecraft_directory()
 
-# Get version manifest from Mojang
+# Get version manifest from Mojang.
 def get_version_manifest():
     try:
         response = requests.get("https://launchermeta.mojang.com/mc/game/version_manifest.json")
@@ -33,14 +33,14 @@ def get_version_manifest():
         logging.error(f"Error fetching version manifest: {e}")
         return None
 
-# Get available versions
+# Get available versions.
 def get_available_versions():
     manifest = get_version_manifest()
     if manifest:
         return [version["id"] for version in manifest["versions"]]
     return []
 
-# Get full version manifest in JSON format
+# Get full version manifest in JSON format.
 def get_full_manifest():
     manifest = get_version_manifest()
     if manifest:
@@ -161,7 +161,7 @@ def patch_version_json_for_arm64(minecraft_directory, minecraft_version):
         logging.error(f"Error patching version JSON: {e}")
         return False
 
-# Install Minecraft version
+# Install Minecraft version.
 def install_minecraft_version(version="1.20.1"):
     try:
         minecraft_directory = get_minecraft_directory()
@@ -268,7 +268,7 @@ def check_and_apply_lwjgl_fix(minecraft_directory, minecraft_version):
     
     return True
 
-# Launch Minecraft
+# Launch Minecraft.
 def launch_minecraft(username="TestPlayer", version="1.20.1"):
     try:
         minecraft_directory = get_minecraft_directory()

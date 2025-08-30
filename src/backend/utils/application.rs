@@ -1,4 +1,4 @@
-//! Application routing system.
+//! Application routing and page components.
 
 use crate::frontend::pages::auth::Auth;
 use crate::frontend::pages::main::Main;

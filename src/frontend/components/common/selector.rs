@@ -1,3 +1,5 @@
+//! Minecraft version selector component.
+
 use crate::{
     backend::launcher::models::VersionInfo,
     backend::utils::css::ResourceLoader,

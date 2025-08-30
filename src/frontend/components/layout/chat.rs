@@ -1,3 +1,5 @@
+//! Chat sidebar.
+
 use dioxus::prelude::*;
 // use dioxus_router::{navigator, use_route};
 

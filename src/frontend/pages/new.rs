@@ -1,3 +1,5 @@
+//! New page.
+
 use dioxus::prelude::*;
 
 #[component]

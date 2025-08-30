@@ -1,4 +1,4 @@
-//! Utility modules for the launcher backend.
+//! Utility modules.
 
 pub mod application;
 pub mod css;

@@ -1,3 +1,5 @@
+//! Auth layout.
+
 use crate::backend::utils::css::ResourceLoader;
 use crate::frontend::components::common::titlebar::TitleBar;
 use dioxus::prelude::*;

@@ -1,3 +1,5 @@
+//! Logo component.
+
 use crate::backend::utils::css::ResourceLoader;
 use dioxus::prelude::*;
 

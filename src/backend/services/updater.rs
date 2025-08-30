@@ -1,3 +1,5 @@
+//! Service that checks for updates and downloads them automatically.
+
 use self_update::cargo_crate_version;
 use serde::Deserialize;
 use std::path::PathBuf;

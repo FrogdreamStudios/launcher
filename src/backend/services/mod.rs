@@ -1,3 +1,5 @@
+//! Core services.
+
 pub mod updater;
 pub mod visit_tracker;
 pub mod starter;

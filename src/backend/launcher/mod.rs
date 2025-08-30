@@ -1,3 +1,4 @@
-//! Data models and structures.
+//! Launcher with models and Rust-Python bridge.
 
 pub mod models;
+pub mod bridge;

@@ -1,3 +1,5 @@
+//! Instance management service.
+
 use crate::backend::utils::paths::get_launcher_dir;
 
 use dioxus::prelude::*;

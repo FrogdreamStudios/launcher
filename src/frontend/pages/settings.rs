@@ -1,3 +1,5 @@
+//! Settings page.
+
 use dioxus::prelude::*;
 
 #[component]

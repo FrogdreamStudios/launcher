@@ -1,4 +1,4 @@
-//! Python bridge for Minecraft launcher integration.
+//! Rust-Python bridge.
 
 use serde::{Deserialize, Serialize};
 use serde_json;
@@ -36,17 +36,13 @@ pub struct PythonMinecraftBridge {
 
 impl PythonMinecraftBridge {
     pub fn new() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
-        // Try multiple possible paths for the Python script
         let possible_paths = vec![
-            // Current directory + python/launcher.py
             std::env::current_dir()?.join("python").join("launcher.py"),
-            // Relative to executable + python/launcher.py
             std::env::current_exe()?
                 .parent()
                 .unwrap()
                 .join("python")
                 .join("launcher.py"),
-            // Launcher subdirectory + python/launcher.py
             std::env::current_dir()?
                 .join("launcher")
                 .join("python")
@@ -64,7 +60,7 @@ impl PythonMinecraftBridge {
         Err("Python script launcher.py not found in any expected location".into())
     }
 
-    /// Launch Minecraft through Python script with command line arguments.
+    /// Launch Minecraft through the Python script with command line arguments.
     pub async fn launch_minecraft(
         &self,
         config: LaunchConfig,
@@ -75,7 +71,7 @@ impl PythonMinecraftBridge {
         let username = config.username.clone();
         let version = config.version.clone();
 
-        // Execute Python script with command line arguments
+        // Execute the Python script with command line arguments
         let result = task::spawn_blocking(
             move || -> Result<MinecraftLaunchResult, Box<dyn std::error::Error + Send + Sync>> {
                 let output = Command::new("python3")
@@ -84,7 +80,7 @@ impl PythonMinecraftBridge {
                     .arg(&username)
                     .arg("--version")
                     .arg(&version)
-                    .arg("--install") // Auto-install version if needed
+                    .arg("--install")
                     .output()?;
 
                 if output.status.success() {

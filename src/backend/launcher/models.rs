@@ -1,7 +1,4 @@
-//! Core data models for Minecraft launcher functionality.
-//!
-//! This module contains all the data structures used to represent
-//! Minecraft versions, libraries, assets, and other game metadata.
+//! Data models for the launcher.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

@@ -1,3 +1,8 @@
+//! Build script for the `Dream Launcher`.
+//!
+//! This script handles CSS compilation, font embedding, and asset processing
+//! during the build process using Tailwind CSS and npm/npx.
+
 use std::env;
 use std::fs;
 use std::path::Path;

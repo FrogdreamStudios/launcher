@@ -1,3 +1,5 @@
+//! Instance rename dialog component.
+
 use crate::{
     backend::utils::css::ResourceLoader, frontend::services::instances::InstanceManager,
 };

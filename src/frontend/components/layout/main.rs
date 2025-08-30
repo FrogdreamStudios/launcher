@@ -1,3 +1,5 @@
+//! Main layout component.
+
 use crate::backend::services::VisitTracker;
 use crate::backend::utils::application::Route;
 use crate::backend::utils::css::ResourceLoader;
@@ -474,7 +476,7 @@ async fn install_and_launch_instance(version: String, username: String) {
 
     match bridge.install_version(&version).await {
         Ok(_) => {
-            let config = crate::backend::bridge::LaunchConfig {
+            let config = crate::backend::launcher::bridge::LaunchConfig {
                 username,
                 version: version.clone(),
             };

@@ -1,3 +1,5 @@
+//! News component.
+
 use dioxus::prelude::*;
 
 #[derive(Debug, Clone)]

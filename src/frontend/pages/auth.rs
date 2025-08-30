@@ -1,3 +1,5 @@
+//! Authentication page component.
+
 use crate::backend::utils::css::ResourceLoader;
 use crate::frontend::{components::layout::AuthLayout};
 use dioxus::{events::KeyboardEvent, prelude::*};

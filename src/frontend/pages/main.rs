@@ -1,3 +1,5 @@
+//! Main page component with authentication guard.
+
 use crate::frontend::components::layout::Layout;
 use crate::frontend::services::context::AuthState;
 use dioxus::prelude::*;

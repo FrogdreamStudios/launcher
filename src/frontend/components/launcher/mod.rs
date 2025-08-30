@@ -1,4 +1,4 @@
-//! Launcher-specific components.
+//! Components for the application.
 
 pub mod menu;
 pub mod launcher;

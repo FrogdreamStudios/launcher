@@ -1,10 +1,13 @@
-//! Minecraft command building.
+//! Launcher for Minecraft instances using the Python bridge with
+//! specified versions and configurations.
+//! 
+//! The entry point for launching Minecraft is in the frontend in `services/launcher.rs` file.
 
 use anyhow::Result;
 
-/// Launch Minecraft with the specified version and instance using Python bridge.
+/// Launch Minecraft.
 pub async fn launch_minecraft(version: String, _instance_id: u32, username: String) -> Result<()> {
-    use crate::backend::bridge::{LaunchConfig, PythonMinecraftBridge};
+    use crate::backend::launcher::bridge::{LaunchConfig, PythonMinecraftBridge};
 
     log::info!("Starting Minecraft launch for version: {version} using Python bridge");
 

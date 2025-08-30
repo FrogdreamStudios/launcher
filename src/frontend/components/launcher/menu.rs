@@ -1,3 +1,5 @@
+//! Menu component.
+
 use crate::{
     backend::utils::css::ResourceLoader,
     frontend::{

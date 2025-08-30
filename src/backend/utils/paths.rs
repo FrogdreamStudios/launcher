@@ -1,4 +1,4 @@
-//! Path utilities for Minecraft launcher directories.
+//! Path utilities.
 
 use std::path::PathBuf;
 
