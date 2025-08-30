@@ -51,12 +51,12 @@ jobs:
         shell: bash
         run: |
           if [[ "${{ runner.os }}" == "Windows" ]]; then
-            upx --best --lzma "target/release/Dream Launcher.exe"
+            upx --best --lzma "target/release/DreamLauncher.exe"
           elif [[ "${{ runner.os }}" == "Linux" ]]; then
-            upx --best --lzma "target/release/Dream Launcher"
+            upx --best --lzma "target/release/DreamLauncher"
           elif [[ "${{ runner.os }}" == "macOS" ]]; then
             chmod +x scripts/macos/compress.sh
-            ./scripts/macos/compress.sh "target/release/Dream Launcher"
+            ./scripts/macos/compress.sh "target/release/DreamLauncher"
           fi
 
       - name: Package
@@ -65,17 +65,17 @@ jobs:
           set -e
           mkdir -p dist
           if [[ "${{ runner.os }}" == "Windows" ]]; then
-            cp "target/release/Dream Launcher.exe" dist/
+            cp "target/release/DreamLauncher.exe" "dist/Dream Launcher.exe"
             powershell -Command "Compress-Archive -Path "dist/Dream Launcher.exe" -DestinationPath "Dream Launcher-Windows.zip""
           elif [[ "${{ runner.os }}" == "macOS" ]]; then
             chmod +x scripts/macos/bundle.sh
             ./scripts/macos/bundle.sh
 
             chmod +x scripts/macos/clean.sh
-            ./scripts/macos/clean.sh "target/release/Dream Launcher.app"
+            ./scripts/macos/clean.sh "target/release/DreamLauncher.app"
 
             chmod +x scripts/macos/sign.sh
-            ./scripts/macos/sign.sh "target/release/Dream Launcher.app"
+            ./scripts/macos/sign.sh "target/release/DreamLauncher.app"
 
             chmod +x scripts/macos/dmg.sh
             ./scripts/macos/dmg.sh
@@ -88,7 +88,7 @@ jobs:
 
             echo "macOS packaging completed"
           else
-            cp "target/release/Dream Launcher" dist/
+            cp "target/release/DreamLauncher" "dist/Dream Launcher"
             zip -j "Dream Launcher-linux.zip" "dist/Dream Launcher"
           fi
 
