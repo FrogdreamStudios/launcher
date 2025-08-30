@@ -1,8 +1,8 @@
 //! Debug window component.
 
+use crate::frontend::services::states::{clear_debug_logs, get_debug_logs};
 use dioxus::prelude::*;
 use std::collections::VecDeque;
-use crate::frontend::services::states::{get_debug_logs, clear_debug_logs, DebugLogEntry};
 
 #[derive(Props, Clone, PartialEq, Eq)]
 pub struct DebugWindowProps {
@@ -23,7 +23,7 @@ pub fn DebugWindow(props: DebugWindowProps) -> Element {
     let instance_id = props.instance_id;
     let mut is_hiding = use_signal(|| false);
     let mut should_render = use_signal(|| false);
-    let mut console_logs = use_signal(|| VecDeque::<LogEntry>::new());
+    let mut console_logs = use_signal(VecDeque::<LogEntry>::new);
 
     // Handle show/hide animations
     use_effect(move || {
@@ -49,15 +49,17 @@ pub fn DebugWindow(props: DebugWindowProps) -> Element {
                     if !show() {
                         break;
                     }
-                    
+
                     let debug_logs = get_debug_logs();
                     let mut logs = console_logs.write();
                     logs.clear();
-                    
-                    // Filter logs for current instance if specified
-                    for debug_log in debug_logs.iter() {
+
+                    // Filter logs for the current instance if specified
+                    for debug_log in &debug_logs {
                         if let Some(current_instance) = instance_id() {
-                            if debug_log.instance_id == Some(current_instance) || debug_log.instance_id.is_none() {
+                            if debug_log.instance_id == Some(current_instance)
+                                || debug_log.instance_id.is_none()
+                            {
                                 logs.push_back(LogEntry {
                                     timestamp: debug_log.timestamp.clone(),
                                     level: debug_log.level.clone(),
@@ -111,7 +113,7 @@ pub fn DebugWindow(props: DebugWindowProps) -> Element {
             div {
                 class: "debug-window {animation_class}",
                 onclick: |e: Event<MouseData>| e.stop_propagation(),
-                
+
                 // Header
                 div {
                     class: "debug-header",
@@ -125,7 +127,7 @@ pub fn DebugWindow(props: DebugWindowProps) -> Element {
                         "✕"
                     }
                 }
-                
+
                 // Instance info
                 div {
                     class: "debug-selected",
@@ -137,14 +139,14 @@ pub fn DebugWindow(props: DebugWindowProps) -> Element {
                         class: "selected-instance-value",
                         {
                             if let Some(id) = instance_id() {
-                                format!("Instance #{}", id)
+                                format!("Instance #{id}")
                             } else {
                                 "No instance selected".to_string()
                             }
                         }
                     }
                 }
-                
+
                 // Actions
                 div {
                     class: "debug-actions",
@@ -154,7 +156,7 @@ pub fn DebugWindow(props: DebugWindowProps) -> Element {
                         "Clear console"
                     }
                 }
-                
+
                 // Console content
                 div {
                     class: "debug-content",

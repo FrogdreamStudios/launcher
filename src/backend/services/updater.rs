@@ -28,7 +28,7 @@ fn get_platform_asset_name() -> Option<&'static str> {
 async fn download_file(url: &str) -> Result<Vec<u8>, String> {
     use crate::frontend::services::states::set_update_state;
     use futures_util::StreamExt;
-    
+
     let client = reqwest::Client::new();
     let response = client
         .get(url)
@@ -53,7 +53,7 @@ async fn download_file(url: &str) -> Result<Vec<u8>, String> {
         let chunk = chunk.map_err(|e| format!("Failed to read chunk: {e}"))?;
         data.extend_from_slice(&chunk);
         downloaded += chunk.len() as u64;
-        
+
         if total_size > 0 {
             let progress = (downloaded as f32 / total_size as f32) * 100.0;
             let status = format!("Downloading update... {progress:.1}%");
@@ -82,7 +82,7 @@ fn replace_executable_windows(current_exe: &PathBuf, new_content: &[u8]) -> Resu
     let temp_path = current_exe.with_extension("exe.new");
     let backup_path = current_exe.with_extension("exe.bak");
 
-    // Write new executable to temp file
+    // Write a new executable to the temp file
     std::fs::write(&temp_path, new_content)
         .map_err(|e| format!("Failed to write new executable: {e}"))?;
 
@@ -98,15 +98,19 @@ fn replace_executable_windows(current_exe: &PathBuf, new_content: &[u8]) -> Resu
         return Err(format!("Failed to replace executable: {e}"));
     }
 
-    // Clean up backup and temp files with retry mechanism
+    // Clean up backup and temp files with retry mechanisms
     for attempt in 1..=3 {
         match std::fs::remove_file(&backup_path) {
             Ok(_) => break,
             Err(e) => {
                 if attempt == 3 {
-                    log::warn!("Failed to clean up backup file {} after 3 attempts: {}", backup_path.display(), e);
+                    log::warn!(
+                        "Failed to clean up backup file {} after 3 attempts: {}",
+                        backup_path.display(),
+                        e
+                    );
                 } else {
-                    log::debug!("Attempt {} to remove backup file failed: {}", attempt, e);
+                    log::debug!("Attempt {attempt} to remove backup file failed: {e}");
                     std::thread::sleep(std::time::Duration::from_millis(100));
                 }
             }
@@ -117,9 +121,13 @@ fn replace_executable_windows(current_exe: &PathBuf, new_content: &[u8]) -> Resu
             Ok(_) => break,
             Err(e) => {
                 if attempt == 3 {
-                    log::warn!("Failed to clean up temp file {} after 3 attempts: {}", temp_path.display(), e);
+                    log::warn!(
+                        "Failed to clean up temp file {} after 3 attempts: {}",
+                        temp_path.display(),
+                        e
+                    );
                 } else {
-                    log::debug!("Attempt {} to remove temp file failed: {}", attempt, e);
+                    log::debug!("Attempt {attempt} to remove temp file failed: {e}");
                     std::thread::sleep(std::time::Duration::from_millis(100));
                 }
             }
@@ -132,7 +140,7 @@ fn replace_executable_windows(current_exe: &PathBuf, new_content: &[u8]) -> Resu
 fn replace_executable_unix(current_exe: &PathBuf, new_content: &[u8]) -> Result<(), String> {
     let temp_path = current_exe.with_extension("new");
 
-    // Write new executable to temp file
+    // Write a new executable to the temp file
     std::fs::write(&temp_path, new_content)
         .map_err(|e| format!("Failed to write new executable: {e}"))?;
 
@@ -184,11 +192,11 @@ fn bypass_macos_security(executable_path: &PathBuf) -> Result<(), String> {
             }
         }
         Err(e) => {
-            log::info!("Warning: Failed to run xattr command: {}", e);
+            log::info!("Warning: Failed to run xattr command: {e}");
         }
     }
 
-    // Make sure executable has proper permissions
+    // Make sure the executable has proper permissions
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -209,7 +217,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
     use std::process::Command;
     use tokio::fs;
 
-    // Create temp directory for DMG
+    // Create a temp directory for DMG
     let temp_dir = std::env::temp_dir().join(format!("dreamlauncher_update_{version}"));
     fs::create_dir_all(&temp_dir)
         .await
@@ -217,7 +225,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
 
     let dmg_path = temp_dir.join("DreamLauncher.dmg");
 
-    // Write DMG to temp file
+    // Write DMG to a temp file
     fs::write(&dmg_path, dmg_content)
         .await
         .map_err(|e| format!("Failed to write DMG file: {e}"))?;
@@ -240,14 +248,14 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
 
     let stdout_output = String::from_utf8_lossy(&mount_output.stdout);
     let stderr_output = String::from_utf8_lossy(&mount_output.stderr);
-    log::info!("hdiutil attach stdout: {}", stdout_output);
-    log::info!("hdiutil attach stderr: {}", stderr_output);
+    log::info!("hdiutil attach stdout: {stdout_output}");
+    log::info!("hdiutil attach stderr: {stderr_output}");
 
     // Try to parse mount point from either stdout or stderr, or use fallback
     let mount_point = parse_mount_point(&stdout_output)
         .or_else(|| parse_mount_point(&stderr_output))
-        .map(|s| s.to_string())
-        .or_else(|| find_mount_point_fallback())
+        .map(std::string::ToString::to_string)
+        .or_else(find_mount_point_fallback)
         .ok_or_else(|| {
             format!(
                 "Failed to parse mount point - stdout: '{stdout_output}', stderr: '{stderr_output}'"
@@ -299,7 +307,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
         app_destination.display()
     );
 
-    // Remove existing app if it exists
+    // Remove an existing app if it exists
     if app_destination.exists() {
         log::info!("Removing existing app at {}", app_destination.display());
         let remove_output = Command::new("rm")
@@ -308,11 +316,11 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
             .output()
             .map_err(|e| format!("Failed to remove existing app: {e}"))?;
 
-        if !remove_output.status.success() {
+        if remove_output.status.success() {
+            log::info!("Successfully removed existing app");
+        } else {
             let error_msg = String::from_utf8_lossy(&remove_output.stderr);
             log::info!("Warning: Could not remove existing app: {error_msg}");
-        } else {
-            log::info!("Successfully removed existing app");
         }
     }
 
@@ -327,7 +335,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
 
     if !cp_output.status.success() {
         let error_msg = String::from_utf8_lossy(&cp_output.stderr);
-        log::error!("cp command failed: {}", error_msg);
+        log::error!("cp command failed: {error_msg}");
         // Unmount before returning error
         let _ = Command::new("hdiutil")
             .args(["detach", "-quiet"])
@@ -359,7 +367,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
             }
         }
         Err(e) => {
-            log::info!("Warning: Failed to run xattr command: {}", e);
+            log::info!("Warning: Failed to run xattr command: {e}");
         }
     }
 
@@ -380,7 +388,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
             }
         }
         Err(e) => {
-            log::info!("Warning: Failed to run spctl command: {}", e);
+            log::info!("Warning: Failed to run spctl command: {e}");
         }
     }
 
@@ -389,15 +397,12 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
         .args(["--enable", "--label", "DreamLauncher-AutoUpdate"])
         .output();
 
-    match spctl_enable_output {
-        Ok(output) => {
-            if output.status.success() {
-                log::info!("Successfully enabled app in Gatekeeper");
-            }
+    if let Ok(output) = spctl_enable_output {
+        if output.status.success() {
+            log::info!("Successfully enabled app in Gatekeeper");
         }
-        Err(_) => {
-            // Silently ignore this error as it's a fallback
-        }
+    } else {
+        // Silently ignore this error as it's a fallback
     }
 
     // Unmount the DMG
@@ -405,7 +410,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
         .args(["detach", "-quiet"])
         .arg(mount_point)
         .output()
-        .map_err(|e| format!("Failed to unmount DMG: {}", e))?;
+        .map_err(|e| format!("Failed to unmount DMG: {e}"))?;
 
     if !detach_output.status.success() {
         log::info!("Warning: Failed to unmount DMG, but installation completed");
@@ -429,7 +434,6 @@ fn parse_mount_point(hdiutil_output: &str) -> Option<&str> {
     }
 
     // Method 2: Parse hdiutil tabular output format
-    // Format: /dev/diskXsY        Apple_HFS                      /Volumes/Volume Name
     for line in hdiutil_output.lines() {
         if line.contains("/Volumes/") {
             // Split by tabs first, then by multiple spaces
@@ -481,14 +485,14 @@ fn find_mount_point_fallback() -> Option<String> {
         }
     }
 
-    // Fallback: check /Volumes directory for newest entry
+    // Fallback: check /Volumes directory for the newest entry
     if let Ok(entries) = std::fs::read_dir("/Volumes") {
         let mut volumes: Vec<_> = entries
             .flatten()
             .filter(|entry| entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false))
             .collect();
 
-        // Sort by modification time, newest first
+        // Sort by modification time, the newest first
         volumes.sort_by_key(|entry| {
             entry
                 .metadata()
@@ -507,21 +511,20 @@ fn find_mount_point_fallback() -> Option<String> {
 
 pub async fn check_for_updates() {
     use crate::frontend::services::states::set_update_state;
-    
+
     log::info!("Checking for updates...");
     set_update_state(true, 0.0, "Checking for updates...".to_string());
 
     // Get the platform-specific asset name
-    let platform_asset_name = match get_platform_asset_name() {
-        Some(name) => name,
-        None => {
-            log::error!("Unsupported platform for auto-updates");
-            set_update_state(false, 0.0, String::new());
-            return;
-        }
+    let platform_asset_name = if let Some(name) = get_platform_asset_name() {
+        name
+    } else {
+        log::error!("Unsupported platform for auto-updates");
+        set_update_state(false, 0.0, String::new());
+        return;
     };
 
-    // Fetch latest release info from GitHub
+    // Fetch the latest release info from GitHub
     set_update_state(true, 10.0, "Fetching release information...".to_string());
     let client = reqwest::Client::new();
     let response = match client
@@ -559,20 +562,23 @@ pub async fn check_for_updates() {
     }
 
     log::info!("New version available: {latest_version} (current: {current_version})");
-    set_update_state(true, 25.0, format!("New version {} available!", latest_version));
+    set_update_state(
+        true,
+        25.0,
+        format!("New version {latest_version} available!"),
+    );
 
     // Find the asset for our platform
-    let asset = match release
+    let asset = if let Some(asset) = release
         .assets
         .iter()
         .find(|asset| asset.name == platform_asset_name)
     {
-        Some(asset) => asset,
-        None => {
-            log::error!("No compatible binary found for platform: {platform_asset_name}");
-            set_update_state(false, 0.0, String::new());
-            return;
-        }
+        asset
+    } else {
+        log::error!("No compatible binary found for platform: {platform_asset_name}");
+        set_update_state(false, 0.0, String::new());
+        return;
     };
 
     log::info!("Downloading update from: {}", asset.browser_download_url);
@@ -592,17 +598,24 @@ pub async fn check_for_updates() {
     set_update_state(true, 95.0, "Installing update...".to_string());
 
     // Handle DMG files on macOS (automatic installation)
-    if platform_asset_name.ends_with(".dmg") {
+    if std::path::Path::new(platform_asset_name)
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("dmg"))
+    {
         log::info!("DMG file detected. Installing automatically...");
 
         match install_dmg(&new_content, &release.tag_name).await {
             Ok(_) => {
                 log::info!("DMG installation completed successfully!");
                 log::info!("The application has been updated to version {latest_version}");
-                set_update_state(true, 100.0, format!("Update to {} completed!", latest_version));
+                set_update_state(
+                    true,
+                    100.0,
+                    format!("Update to {latest_version} completed!"),
+                );
                 tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
                 set_update_state(false, 0.0, String::new());
-                
+
                 // Restart the launcher
                 log::info!("Restarting launcher...");
                 restart_launcher();
@@ -625,7 +638,7 @@ pub async fn check_for_updates() {
         Ok(_) => {
             log::info!("Update installed successfully!");
             log::info!("The application will now restart with version {latest_version}");
-            set_update_state(true, 100.0, format!("Update to {} completed!", latest_version));
+            set_update_state(true, 100.0, format!("Update to {latest_version} completed"));
             tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
             std::process::exit(0);
         }
@@ -638,7 +651,7 @@ pub async fn check_for_updates() {
 
 fn restart_launcher() {
     use std::process::Command;
-    
+
     // Get the current executable path
     let current_exe = match std::env::current_exe() {
         Ok(exe) => exe,
@@ -647,31 +660,31 @@ fn restart_launcher() {
             return;
         }
     };
-    
-    log::info!("Restarting launcher from: {:?}", current_exe);
-    
+
+    log::info!("Restarting launcher from: {current_exe:?}");
+
     #[cfg(target_os = "macos")]
     {
         // On macOS, if we're running from Applications, launch the .app bundle
-        if let Some(app_path) = current_exe.to_str() {
-            if app_path.contains("/Applications/Dream Launcher.app/") {
-                // Launch the .app bundle
-                match Command::new("open")
-                    .arg("/Applications/Dream Launcher.app")
-                    .spawn()
-                {
-                    Ok(_) => {
-                        log::info!("Successfully launched new instance from Applications");
-                        std::process::exit(0);
-                    }
-                    Err(e) => {
-                        log::error!("Failed to launch from Applications: {e}");
-                    }
+        if let Some(app_path) = current_exe.to_str()
+            && app_path.contains("/Applications/Dream Launcher.app/")
+        {
+            // Launch the .app bundle
+            match Command::new("open")
+                .arg("/Applications/Dream Launcher.app")
+                .spawn()
+            {
+                Ok(_) => {
+                    log::info!("Successfully launched new instance from Applications");
+                    std::process::exit(0);
+                }
+                Err(e) => {
+                    log::error!("Failed to launch from Applications: {e}");
                 }
             }
         }
     }
-    
+
     // Fallback: launch the current executable directly
     match Command::new(&current_exe).spawn() {
         Ok(_) => {

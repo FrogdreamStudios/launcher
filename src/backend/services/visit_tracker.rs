@@ -160,10 +160,10 @@ impl VisitTracker {
             120..=3599 => format!("Visited {} minutes ago", diff / 60),
             3600..=7199 => "Visited 1 hour ago".to_string(),
             7200..=86399 => format!("Visited {} hours ago", diff / 3600),
-            86400..=172799 => "Visited 1 day ago".to_string(),
-            172800..=2591999 => format!("Visited {} days ago", diff / 86400),
-            2592000..=5183999 => "Visited 1 month ago".to_string(),
-            _ => format!("Visited {} months ago", diff / 2592000),
+            86400..=172_799 => "Visited 1 day ago".to_string(),
+            172_800..=2_591_999 => format!("Visited {} days ago", diff / 86400),
+            2_592_000..=5_183_999 => "Visited 1 month ago".to_string(),
+            _ => format!("Visited {} months ago", diff / 2_592_000),
         }
     }
 

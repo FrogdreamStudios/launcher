@@ -1,12 +1,12 @@
 //! Authentication page component.
 
 use crate::backend::utils::css::ResourceLoader;
-use crate::frontend::{components::layout::AuthLayout};
+use crate::frontend::components::layout::AuthLayout;
+use crate::frontend::services::context::AuthState;
 use dioxus::{events::KeyboardEvent, prelude::*};
 use dioxus_router::use_navigator;
 use std::time::Duration;
 use tokio::time::sleep;
-use crate::frontend::services::context::AuthState;
 
 #[component]
 pub fn Auth() -> Element {
@@ -23,32 +23,26 @@ pub fn Auth() -> Element {
 
     // Function to handle keypress events
     let on_keypress = {
-        let auth = auth.clone();
-        let nav = nav.clone();
-        let username = username.clone();
-        let show_error = show_error.clone();
-        let hide_ui = hide_ui.clone();
+        let username = username;
+        let show_error = show_error;
 
         move |e: KeyboardEvent| {
             if e.key() == Key::Enter {
                 let username_value = username.read().clone();
-                let mut auth = auth.clone();
-                let nav = nav.clone();
-                let mut show_error = show_error.clone();
-                let mut hide_ui = hide_ui.clone();
+                let mut auth = auth;
+                let nav = nav;
+                let mut show_error = show_error;
+                let mut hide_ui = hide_ui;
 
                 show_error.set(false);
                 hide_ui.set(true);
                 spawn(async move {
                     sleep(Duration::from_millis(700)).await;
-                    match auth.login(username_value).await {
-                        Ok(()) => {
-                            nav.push("/home");
-                        }
-                        Err(_) => {
-                            show_error.set(true);
-                            hide_ui.set(false);
-                        }
+                    if let Ok(()) = auth.login(username_value).await {
+                        nav.push("/home");
+                    } else {
+                        show_error.set(true);
+                        hide_ui.set(false);
                     }
                 });
             }

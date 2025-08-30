@@ -1,8 +1,6 @@
 //! Instance rename dialog component.
 
-use crate::{
-    backend::utils::css::ResourceLoader, frontend::services::instances::InstanceManager,
-};
+use crate::{backend::utils::css::ResourceLoader, frontend::services::instances::InstanceManager};
 use dioxus::prelude::*;
 
 #[derive(Props, Clone, PartialEq, Eq)]
@@ -58,11 +56,9 @@ pub fn RenameDialog(props: RenameDialogProps) -> Element {
     let handle_rename_click = move |e: Event<MouseData>| {
         e.stop_propagation();
         let can_rename = !new_name().trim().is_empty() && new_name().trim() != current_name();
-        if can_rename {
-            if let Some(id) = instance_id() {
-                InstanceManager::rename_instance(id, new_name().trim());
-                show.set(false);
-            }
+        if can_rename && let Some(id) = instance_id() {
+            InstanceManager::rename_instance(id, new_name().trim());
+            show.set(false);
         }
     };
 
@@ -73,11 +69,12 @@ pub fn RenameDialog(props: RenameDialogProps) -> Element {
 
     let handle_key_press = move |e: Event<KeyboardData>| match e.key() {
         Key::Enter => {
-            if let Some(id) = instance_id() {
-                if !new_name().trim().is_empty() && new_name().trim() != current_name() {
-                    InstanceManager::rename_instance(id, new_name().trim());
-                    show.set(false);
-                }
+            if let Some(id) = instance_id()
+                && !new_name().trim().is_empty()
+                && new_name().trim() != current_name()
+            {
+                InstanceManager::rename_instance(id, new_name().trim());
+                show.set(false);
             }
         }
         Key::Escape => {

@@ -4,20 +4,23 @@ use crate::backend::services::VisitTracker;
 use crate::backend::utils::application::Route;
 use crate::backend::utils::css::ResourceLoader;
 use crate::frontend::components::common::titlebar::TitleBar;
+use crate::frontend::services::context::AuthState;
 use crate::frontend::services::launcher;
 use crate::frontend::{
     components::{
-        common::{News, Logo, Selector, UpdateProgress, GameProgress},
-        launcher::{ContextMenu, RenameDialog, DebugWindow},
+        common::{GameProgress, Logo, News, Selector, UpdateProgress},
+        launcher::{ContextMenu, DebugWindow, RenameDialog},
         layout::Navigation,
     },
     services::instances::InstanceManager,
-    services::states::{GameStatus, use_game_state, use_update_state, use_game_progress_state, set_game_progress_state_simple, set_game_progress_state, ProgressStatus, set_instance_running},
+    services::states::{
+        GameStatus, ProgressStatus, set_game_progress_state, set_game_progress_state_simple,
+        set_instance_running, use_game_progress_state, use_game_state, use_update_state,
+    },
 };
 use dioxus::prelude::{Key, *};
 use dioxus_router::{components::Outlet, navigator, use_route};
 use webbrowser;
-use crate::frontend::services::context::AuthState;
 
 #[component]
 pub fn Layout() -> Element {
@@ -31,9 +34,10 @@ pub fn Layout() -> Element {
 
     // Update progress state
     let (show_update, progress, status) = use_update_state();
-    
+
     // Game progress state
-    let (show_game_progress, game_progress, game_status_text, game_status_type, game_instance_id) = use_game_progress_state();
+    let (show_game_progress, game_progress, game_status_text, game_status_type, _game_instance_id) =
+        use_game_progress_state();
 
     // Visit the tracker with reactive signals
     let visit_tracker = use_signal(VisitTracker::new);
@@ -61,11 +65,11 @@ pub fn Layout() -> Element {
     use_effect(move || {
         use crate::frontend::services::instances::INSTANCES;
         let instances = INSTANCES.read();
-        if let Some(selected_id) = context_menu_instance_id() {
-            if !instances.contains_key(&selected_id) {
-                context_menu_instance_id.set(None);
-                show_context_menu.set(false);
-            }
+        if let Some(selected_id) = context_menu_instance_id()
+            && !instances.contains_key(&selected_id)
+        {
+            context_menu_instance_id.set(None);
+            show_context_menu.set(false);
         }
     });
 
@@ -134,7 +138,7 @@ pub fn Layout() -> Element {
             progress: progress(),
             status: status()
         }
-        
+
         GameProgress {
             show: show_game_progress(),
             progress: game_progress(),
@@ -234,7 +238,6 @@ pub fn Layout() -> Element {
                                     onclick: {
                                         let instance_version = instance.version.clone();
                                         let instance_id = instance.id;
-                                        let auth = auth.clone();
                                         move |_| {
                                             // Immediately mark as running to prevent race conditions
                                             set_instance_running(instance_id, true);
@@ -372,8 +375,7 @@ pub fn Layout() -> Element {
                 div {
                     class: "settings-change-button",
                     onclick: {
-                        let mut auth = auth.clone();
-                        let nav = nav.clone();
+                        let mut auth = auth;
                         move |_| {
                             spawn(async move {
                                 auth.logout().await;
@@ -520,15 +522,31 @@ pub fn Layout() -> Element {
     }
 }
 
-pub async fn install_and_launch_instance(version: String, username: String, instance_id: u32, mut active_instance_id: Signal<Option<u32>>) {
-    set_game_progress_state_simple(true, 10.0, format!("Preparing {}", version), Some(instance_id));
+pub async fn install_and_launch_instance(
+    version: String,
+    username: String,
+    instance_id: u32,
+    mut active_instance_id: Signal<Option<u32>>,
+) {
+    set_game_progress_state_simple(
+        true,
+        10.0,
+        format!("Preparing {version}"),
+        Some(instance_id),
+    );
 
     // Get Python bridge
     let bridge = match launcher::get_python_bridge() {
         Ok(bridge) => bridge,
         Err(e) => {
             log::error!("Failed to get Python bridge: {e}");
-            set_game_progress_state(true, 0.0, "Failed to initialize launcher".to_string(), ProgressStatus::Failed, Some(instance_id));
+            set_game_progress_state(
+                true,
+                0.0,
+                "Failed to initialize launcher".to_string(),
+                ProgressStatus::Failed,
+                Some(instance_id),
+            );
             set_instance_running(instance_id, false);
             // Hide failed status after 5 seconds
             tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
@@ -538,17 +556,22 @@ pub async fn install_and_launch_instance(version: String, username: String, inst
     };
 
     // Install version (will skip if already installed)
-    set_game_progress_state_simple(true, 30.0, format!("Preparing {}", version), Some(instance_id));
+    set_game_progress_state_simple(
+        true,
+        30.0,
+        format!("Preparing {version}"),
+        Some(instance_id),
+    );
 
     match bridge.install_version(&version).await {
         Ok(_) => {
             // Update progress for launch preparation
-            set_game_progress_state_simple(true, 70.0, format!("Starting {}", version), Some(instance_id));
-
-            let config = crate::backend::launcher::bridge::LaunchConfig {
-                username: username.clone(),
-                version: version.clone(),
-            };
+            set_game_progress_state_simple(
+                true,
+                70.0,
+                format!("Starting {version}"),
+                Some(instance_id),
+            );
 
             // Launch Minecraft with log streaming
             let config = crate::backend::launcher::bridge::LaunchConfig {
@@ -560,55 +583,79 @@ pub async fn install_and_launch_instance(version: String, username: String, inst
             let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
             let version_clone = version.clone();
 
-            // Spawn a task to handle log messages
-            let log_handler = spawn(async move {
+            // Handle log messages
+            spawn(async move {
                 let mut game_started = false;
-                
+
                 while let Some(log_message) = rx.recv().await {
                     use crate::backend::launcher::bridge::MinecraftLogMessage;
-                    
+
                     match log_message {
-                        MinecraftLogMessage::LaunchResult { success, pid, message } => {
+                        MinecraftLogMessage::LaunchResult {
+                            success,
+                            pid,
+                            message,
+                        } => {
                             if success {
-                                log::info!("Minecraft launched with PID: {}", pid);
+                                log::info!("Minecraft launched with PID: {pid}");
                                 crate::frontend::services::states::add_debug_log(
                                     "INFO".to_string(),
-                                    format!("Minecraft launched with PID: {}", pid),
-                                    Some(instance_id)
+                                    format!("Minecraft launched with PID: {pid}"),
+                                    Some(instance_id),
                                 );
-                                set_game_progress_state(true, 90.0, "Minecraft is starting...".to_string(), ProgressStatus::InProgress, Some(instance_id));
+                                set_game_progress_state(
+                                    true,
+                                    90.0,
+                                    "Minecraft is starting...".to_string(),
+                                    ProgressStatus::InProgress,
+                                    Some(instance_id),
+                                );
                             } else {
-                                log::error!("Failed to launch Minecraft: {}", message);
+                                log::error!("Failed to launch Minecraft: {message}");
                                 crate::frontend::services::states::add_debug_log(
                                     "ERROR".to_string(),
-                                    format!("Failed to launch Minecraft: {}", message),
-                                    Some(instance_id)
+                                    format!("Failed to launch Minecraft: {message}"),
+                                    Some(instance_id),
                                 );
-                                set_game_progress_state(true, 100.0, format!("Failed to start {}", version_clone), ProgressStatus::Failed, Some(instance_id));
+                                set_game_progress_state(
+                                    true,
+                                    100.0,
+                                    format!("Failed to start {version_clone}"),
+                                    ProgressStatus::Failed,
+                                    Some(instance_id),
+                                );
                             }
                         }
                         MinecraftLogMessage::Log { line, pid: _ } => {
-                            log::info!("Minecraft log: {}", line);
-                            
+                            log::info!("Minecraft log: {line}");
+
                             // Add to debug console
                             crate::frontend::services::states::add_debug_log(
                                 "INFO".to_string(),
                                 line.clone(),
-                                Some(instance_id)
+                                Some(instance_id),
                             );
-                            
+
                             // Check for successful game start indicators
-                            if !game_started && (
-                                line.contains("[main/INFO]: Setting user:") ||
-                                line.contains("[main/INFO]: Environment:") ||
-                                line.contains("[Render thread/INFO]: OpenGL") ||
-                                line.contains("[Render thread/INFO]: Created:") ||
-                                line.contains("[main/INFO]: Loaded") && line.contains("recipes") ||
-                                line.contains("[Render thread/INFO]: Stopping worker threads")
-                            ) {
+                            if !game_started
+                                && (line.contains("[main/INFO]: Setting user:")
+                                    || line.contains("[main/INFO]: Environment:")
+                                    || line.contains("[Render thread/INFO]: OpenGL")
+                                    || line.contains("[Render thread/INFO]: Created:")
+                                    || line.contains("[main/INFO]: Loaded")
+                                        && line.contains("recipes")
+                                    || line
+                                        .contains("[Render thread/INFO]: Stopping worker threads"))
+                            {
                                 game_started = true;
-                                set_game_progress_state(true, 100.0, "Minecraft has started successfully".to_string(), ProgressStatus::Success, Some(instance_id));
-                                
+                                set_game_progress_state(
+                                    true,
+                                    100.0,
+                                    "Minecraft has started successfully".to_string(),
+                                    ProgressStatus::Success,
+                                    Some(instance_id),
+                                );
+
                                 // Hide success status after 3 seconds
                                 spawn(async move {
                                     tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
@@ -616,45 +663,68 @@ pub async fn install_and_launch_instance(version: String, username: String, inst
                                 });
                             }
                         }
-                        MinecraftLogMessage::Exit { pid, exit_code, message } => {
-                            log::info!("Minecraft process {} exited with code {}: {}", pid, exit_code, message);
+                        MinecraftLogMessage::Exit {
+                            pid,
+                            exit_code,
+                            message,
+                        } => {
+                            log::info!(
+                                "Minecraft process {pid} exited with code {exit_code}: {message}"
+                            );
                             crate::frontend::services::states::add_debug_log(
                                 "INFO".to_string(),
-                                format!("Minecraft process {} exited with code {}: {}", pid, exit_code, message),
-                                Some(instance_id)
+                                format!(
+                                    "Minecraft process {pid} exited with code {exit_code}: {message}"
+                                ),
+                                Some(instance_id),
                             );
-                            
+
                             if !game_started {
                                 // Game failed to start properly
-                                set_game_progress_state(true, 100.0, "Minecraft failed to start".to_string(), ProgressStatus::Failed, Some(instance_id));
-                                
+                                set_game_progress_state(
+                                    true,
+                                    100.0,
+                                    "Minecraft failed to start".to_string(),
+                                    ProgressStatus::Failed,
+                                    Some(instance_id),
+                                );
+
                                 // Hide failed status after 5 seconds
                                 spawn(async move {
                                     tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
                                     set_game_progress_state_simple(false, 0.0, String::new(), None);
                                 });
                             }
-                            
+
                             // Mark instance as not running
                             set_instance_running(instance_id, false);
                             active_instance_id.set(None);
                             break; // Exit the loop when process exits
                         }
-                        MinecraftLogMessage::Error { success: _, message } => {
-                            log::error!("Minecraft error: {}", message);
+                        MinecraftLogMessage::Error {
+                            success: _,
+                            message,
+                        } => {
+                            log::error!("Minecraft error: {message}");
                             crate::frontend::services::states::add_debug_log(
                                 "ERROR".to_string(),
-                                format!("Minecraft error: {}", message),
-                                Some(instance_id)
+                                format!("Minecraft error: {message}"),
+                                Some(instance_id),
                             );
-                            set_game_progress_state(true, 100.0, format!("Failed to start {}", version_clone), ProgressStatus::Failed, Some(instance_id));
-                            
+                            set_game_progress_state(
+                                true,
+                                100.0,
+                                format!("Failed to start {version_clone}"),
+                                ProgressStatus::Failed,
+                                Some(instance_id),
+                            );
+
                             // Hide failed status after 5 seconds
                             spawn(async move {
                                 tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
                                 set_game_progress_state_simple(false, 0.0, String::new(), None);
                             });
-                            
+
                             set_instance_running(instance_id, false);
                             active_instance_id.set(None);
                             break; // Exit the loop on error
@@ -663,65 +733,52 @@ pub async fn install_and_launch_instance(version: String, username: String, inst
                 }
             });
 
-            match bridge.launch_minecraft_with_logs(config, move |log_message| {
-                let _ = tx.send(log_message);
-            }).await {
+            match bridge
+                .launch_minecraft_with_logs(config, move |log_message| {
+                    let _ = tx.send(log_message);
+                })
+                .await
+            {
                 Ok(exit_code) => {
-                     log::info!("Minecraft process completed with exit code: {}", exit_code);
-                 }
-                 Err(e) => {
-                     log::error!("Error launching Minecraft with logs: {}", e);
-                     set_game_progress_state(true, 100.0, format!("Failed to start {}", version), ProgressStatus::Failed, Some(instance_id));
-                     // Hide failed status after 5 seconds
-                     tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-                     set_game_progress_state_simple(false, 0.0, String::new(), None);
-                     set_instance_running(instance_id, false);
-                     active_instance_id.set(None);
-                 }
-             }
-             
-             // Log handler task will be cleaned up automatically
-             
-             return; // Don't mark as not running immediately
+                    log::info!("Minecraft process completed with exit code: {exit_code}");
+                }
+                Err(e) => {
+                    log::error!("Error launching Minecraft with logs: {e}");
+                    set_game_progress_state(
+                        true,
+                        100.0,
+                        format!("Failed to start {version}"),
+                        ProgressStatus::Failed,
+                        Some(instance_id),
+                    );
+                    // Hide the failed status after 5 seconds
+                    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                    set_game_progress_state_simple(false, 0.0, String::new(), None);
+                    set_instance_running(instance_id, false);
+                    active_instance_id.set(None);
+                }
+            }
+
+            // Log handler task will be cleaned up automatically
+
+            return; // Don't mark as not running immediately
         }
         Err(e) => {
             log::error!("Failed to verify/install version: {e}");
-            set_game_progress_state(true, 0.0, format!("Failed to install {}", version), ProgressStatus::Failed, Some(instance_id));
+            set_game_progress_state(
+                true,
+                0.0,
+                format!("Failed to install {version}"),
+                ProgressStatus::Failed,
+                Some(instance_id),
+            );
             set_instance_running(instance_id, false);
             // Hide failed status after 5 seconds
             tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
             set_game_progress_state_simple(false, 0.0, String::new(), None);
         }
     }
-    
+
     // Mark the instance as no longer running
     set_instance_running(instance_id, false);
-}
-
-/// Check if a process with given PID is still running
-fn check_process_running(pid: u32) -> bool {
-    #[cfg(target_os = "macos")]
-    {
-        use std::process::Command;
-        
-        // Use ps command to check if process exists
-        let output = Command::new("ps")
-            .arg("-p")
-            .arg(pid.to_string())
-            .output();
-            
-        match output {
-            Ok(output) => output.status.success(),
-            Err(_) => false,
-        }
-    }
-    
-    #[cfg(not(target_os = "macos"))]
-    {
-        // For other platforms, use a different approach
-        use std::fs;
-        
-        // Check if /proc/PID exists (Linux)
-        fs::metadata(format!("/proc/{}", pid)).is_ok()
-    }
 }

@@ -1,16 +1,16 @@
 //! Menu component.
 
+use crate::frontend::services::context::AuthState;
+use crate::frontend::services::states::GameStatus;
 use crate::{
     backend::utils::css::ResourceLoader,
     frontend::{
         components::layout::main::install_and_launch_instance,
         services::instances::{INSTANCES, InstanceManager, open_instance_folder},
-        services::states::{is_instance_running, set_instance_running},
+        services::states::set_instance_running,
     },
 };
 use dioxus::prelude::*;
-use crate::frontend::services::context::AuthState;
-use crate::frontend::services::states::GameStatus;
 
 #[derive(Props, Clone, PartialEq, Eq)]
 pub struct ContextMenuProps {
@@ -65,7 +65,7 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
     let handle_run_click = move |e: Event<MouseData>| {
         e.stop_propagation();
         if let Some(id) = instance_id() {
-            log::info!("Instance ID: {}", id);
+            log::info!("Instance ID: {id}");
 
             // Get the instance version
             let version = {
@@ -91,7 +91,7 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
                     );
                     instance.version.clone()
                 } else {
-                    log::error!("Instance {} not found in loaded instances!", id);
+                    log::error!("Instance {id} not found in loaded instances");
                     log::error!(
                         "Available instance IDs: {:?}",
                         instances.keys().collect::<Vec<_>>()
@@ -99,14 +99,19 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
                     "1.21.8".to_string() // Fallback
                 }
             };
-            
+
             // Immediately mark as running to prevent race conditions
             set_instance_running(id, true);
-            
+
             let username = auth.get_username();
             show.set(false);
             // Start Minecraft launch after menu closes
-            spawn(install_and_launch_instance(version, username, id, props.active_instance_id));
+            spawn(install_and_launch_instance(
+                version,
+                username,
+                id,
+                props.active_instance_id,
+            ));
         }
     };
 

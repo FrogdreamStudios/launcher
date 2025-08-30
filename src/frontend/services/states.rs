@@ -2,7 +2,6 @@
 
 use dioxus::prelude::*;
 use std::sync::{Arc, Mutex};
-use once_cell::sync::Lazy;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum GameStatus {
@@ -37,15 +36,14 @@ impl Default for UpdateState {
 }
 
 // Global update state
-static UPDATE_STATE: Lazy<Arc<Mutex<UpdateState>>> = Lazy::new(|| {
-    Arc::new(Mutex::new(UpdateState::default()))
-});
+static UPDATE_STATE: std::sync::LazyLock<Arc<Mutex<UpdateState>>> =
+    std::sync::LazyLock::new(|| Arc::new(Mutex::new(UpdateState::default())));
 
 pub fn use_update_state() -> (Signal<bool>, Signal<f32>, Signal<String>) {
     let mut show = use_signal(|| false);
     let mut progress = use_signal(|| 0.0);
-    let mut status = use_signal(|| String::new());
-    
+    let mut status = use_signal(String::new);
+
     // Sync with global state
     use_effect(move || {
         spawn(async move {
@@ -59,7 +57,7 @@ pub fn use_update_state() -> (Signal<bool>, Signal<f32>, Signal<String>) {
             }
         });
     });
-    
+
     (show, progress, status)
 }
 
@@ -94,17 +92,22 @@ impl Default for GameProgressState {
 }
 
 // Global game progress state
-static GAME_PROGRESS_STATE: Lazy<Arc<Mutex<GameProgressState>>> = Lazy::new(|| {
-    Arc::new(Mutex::new(GameProgressState::default()))
-});
+static GAME_PROGRESS_STATE: std::sync::LazyLock<Arc<Mutex<GameProgressState>>> =
+    std::sync::LazyLock::new(|| Arc::new(Mutex::new(GameProgressState::default())));
 
-pub fn use_game_progress_state() -> (Signal<bool>, Signal<f32>, Signal<String>, Signal<ProgressStatus>, Signal<Option<u32>>) {
+pub fn use_game_progress_state() -> (
+    Signal<bool>,
+    Signal<f32>,
+    Signal<String>,
+    Signal<ProgressStatus>,
+    Signal<Option<u32>>,
+) {
     let mut show = use_signal(|| false);
     let mut progress = use_signal(|| 0.0);
-    let mut status = use_signal(|| String::new());
-    let mut status_type = use_signal(|| ProgressStatus::default());
+    let mut status = use_signal(String::new);
+    let mut status_type = use_signal(ProgressStatus::default);
     let mut instance_id = use_signal(|| None::<u32>);
-    
+
     // Sync with global state
     use_effect(move || {
         spawn(async move {
@@ -120,11 +123,17 @@ pub fn use_game_progress_state() -> (Signal<bool>, Signal<f32>, Signal<String>, 
             }
         });
     });
-    
+
     (show, progress, status, status_type, instance_id)
 }
 
-pub fn set_game_progress_state(show: bool, progress: f32, status: String, status_type: ProgressStatus, instance_id: Option<u32>) {
+pub fn set_game_progress_state(
+    show: bool,
+    progress: f32,
+    status: String,
+    status_type: ProgressStatus,
+    instance_id: Option<u32>,
+) {
     if let Ok(mut state) = GAME_PROGRESS_STATE.lock() {
         state.show = show;
         state.progress = progress;
@@ -135,13 +144,24 @@ pub fn set_game_progress_state(show: bool, progress: f32, status: String, status
 }
 
 // Convenience function for backward compatibility
-pub fn set_game_progress_state_simple(show: bool, progress: f32, status: String, instance_id: Option<u32>) {
-    set_game_progress_state(show, progress, status, ProgressStatus::InProgress, instance_id);
+pub fn set_game_progress_state_simple(
+    show: bool,
+    progress: f32,
+    status: String,
+    instance_id: Option<u32>,
+) {
+    set_game_progress_state(
+        show,
+        progress,
+        status,
+        ProgressStatus::InProgress,
+        instance_id,
+    );
 }
 
 // Running instances tracking
-use std::collections::{HashSet, VecDeque};
 use chrono::{DateTime, Local};
+use std::collections::{HashSet, VecDeque};
 
 // Debug console logs
 #[derive(Clone, PartialEq, Debug)]
@@ -152,9 +172,8 @@ pub struct DebugLogEntry {
     pub instance_id: Option<u32>,
 }
 
-static DEBUG_LOGS: Lazy<Arc<Mutex<VecDeque<DebugLogEntry>>>> = Lazy::new(|| {
-    Arc::new(Mutex::new(VecDeque::new()))
-});
+static DEBUG_LOGS: std::sync::LazyLock<Arc<Mutex<VecDeque<DebugLogEntry>>>> =
+    std::sync::LazyLock::new(|| Arc::new(Mutex::new(VecDeque::new())));
 
 pub fn add_debug_log(level: String, message: String, instance_id: Option<u32>) {
     if let Ok(mut logs) = DEBUG_LOGS.lock() {
@@ -165,7 +184,7 @@ pub fn add_debug_log(level: String, message: String, instance_id: Option<u32>) {
             message,
             instance_id,
         });
-        
+
         // Keep only last 500 entries
         while logs.len() > 500 {
             logs.pop_front();
@@ -200,17 +219,8 @@ impl Default for ProgressStatus {
     }
 }
 
-static RUNNING_INSTANCES: Lazy<Arc<Mutex<HashSet<u32>>>> = Lazy::new(|| {
-    Arc::new(Mutex::new(HashSet::new()))
-});
-
-pub fn is_instance_running(instance_id: u32) -> bool {
-    if let Ok(running) = RUNNING_INSTANCES.lock() {
-        running.contains(&instance_id)
-    } else {
-        false
-    }
-}
+static RUNNING_INSTANCES: std::sync::LazyLock<Arc<Mutex<HashSet<u32>>>> =
+    std::sync::LazyLock::new(|| Arc::new(Mutex::new(HashSet::new())));
 
 pub fn set_instance_running(instance_id: u32, running: bool) {
     if let Ok(mut instances) = RUNNING_INSTANCES.lock() {

@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command as TokioCommand;
 use tokio::task;
@@ -27,10 +27,7 @@ pub enum MinecraftLogMessage {
         message: String,
     },
     #[serde(rename = "log")]
-    Log {
-        line: String,
-        pid: u32,
-    },
+    Log { line: String, pid: u32 },
     #[serde(rename = "exit")]
     Exit {
         pid: u32,
@@ -38,10 +35,7 @@ pub enum MinecraftLogMessage {
         message: String,
     },
     #[serde(rename = "error")]
-    Error {
-        success: bool,
-        message: String,
-    },
+    Error { success: bool, message: String },
 }
 
 /// Configuration for Minecraft launch.
@@ -91,59 +85,6 @@ impl PythonMinecraftBridge {
         Err("Python script launcher.py not found in any expected location".into())
     }
 
-    /// Launch Minecraft through the Python script with command line arguments.
-    pub async fn launch_minecraft(
-        &self,
-        config: LaunchConfig,
-    ) -> Result<MinecraftLaunchResult, Box<dyn std::error::Error + Send + Sync>> {
-        use std::process::Command;
-
-        let script_path = self.python_script_path.clone();
-        let username = config.username.clone();
-        let version = config.version.clone();
-
-        // Execute the Python script with command line arguments
-        let result = task::spawn_blocking(
-            move || -> Result<MinecraftLaunchResult, Box<dyn std::error::Error + Send + Sync>> {
-                let output = Command::new("python3")
-                    .arg(&script_path)
-                    .arg("launch")
-                    .arg(&username)
-                    .arg(&version)
-                    .output()?;
-
-                if output.status.success() {
-                    let stdout = String::from_utf8_lossy(&output.stdout);
-
-                    // Try to parse JSON output from the last line
-                    if let Some(last_line) = stdout.lines().last() {
-                        if let Ok(result) = serde_json::from_str::<MinecraftLaunchResult>(last_line)
-                        {
-                            return Ok(result);
-                        }
-                    }
-
-                    // Fallback if JSON parsing fails
-                    Ok(MinecraftLaunchResult {
-                        success: true,
-                        pid: None,
-                        message: format!("Minecraft {version} launched successfully"),
-                    })
-                } else {
-                    let stderr = String::from_utf8_lossy(&output.stderr);
-                    Ok(MinecraftLaunchResult {
-                        success: false,
-                        pid: None,
-                        message: format!("Failed to launch Minecraft: {stderr}"),
-                    })
-                }
-            },
-        )
-        .await??;
-
-        Ok(result)
-    }
-    
     /// Install a specific Minecraft version.
     pub async fn install_version(
         &self,
@@ -182,7 +123,6 @@ impl PythonMinecraftBridge {
     where
         F: Fn(MinecraftLogMessage) + Send + 'static,
     {
-
         let script_path = self.python_script_path.clone();
         let username = config.username.clone();
         let version = config.version.clone();
@@ -211,7 +151,9 @@ impl PythonMinecraftBridge {
         });
 
         // Wait for the process to complete
-        let exit_status = command.wait().await
+        let exit_status = command
+            .wait()
+            .await
             .map_err(|e| format!("Failed to wait for Python process: {e}"))?;
 
         // Wait for the log reading task to complete

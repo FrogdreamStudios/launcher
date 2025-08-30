@@ -1,8 +1,8 @@
 //! Game progress component for installation and launch progress.
 
-use dioxus::prelude::*;
 use crate::backend::utils::css::ResourceLoader;
 use crate::frontend::services::states::ProgressStatus;
+use dioxus::prelude::*;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct GameProgressProps {
@@ -14,8 +14,13 @@ pub struct GameProgressProps {
 
 #[component]
 pub fn GameProgress(props: GameProgressProps) -> Element {
-    let GameProgressProps { show, progress, status, status_type } = props;
-    
+    let GameProgressProps {
+        show,
+        progress,
+        status,
+        status_type,
+    } = props;
+
     if !show {
         return rsx! { div {} };
     }
@@ -24,16 +29,16 @@ pub fn GameProgress(props: GameProgressProps) -> Element {
         style {
             dangerous_inner_html: ResourceLoader::get_css("progress")
         }
-        
+
         div {
             class: "launch-progress-container",
             style: "--progress-width: {progress}%",
-            
+
             div {
                 class: "launch-progress-text",
                 "{status}"
             }
-            
+
             div {
                 class: match status_type {
                     ProgressStatus::InProgress => "launch-progress-bar",

@@ -13,7 +13,7 @@ pub fn TitleBar() -> Element {
                     #[cfg(not(target_arch = "wasm32"))]
                     {
                         let window = dioxus_desktop::window();
-                        let _ = window.drag();
+                        let() = window.drag();
                     }
                 });
             },
@@ -32,7 +32,7 @@ pub fn TitleBar() -> Element {
                         #[cfg(not(target_arch = "wasm32"))]
                         {
                             let window = dioxus_desktop::window();
-                            let _ = window.set_minimized(true);
+                            let() = window.set_minimized(true);
                         }
                     });
                 },

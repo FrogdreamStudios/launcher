@@ -1,7 +1,7 @@
 //! Authentication context and state management.
 
-use dioxus::prelude::*;
 use crate::frontend::services::user::UserConfig;
+use dioxus::prelude::*;
 
 #[derive(Clone, Copy)]
 pub struct AuthState {
@@ -48,7 +48,6 @@ impl AuthState {
         self.current_user
             .read()
             .as_ref()
-            .map(|user| user.username.clone())
-            .unwrap_or_else(|| "Player".to_string())
+            .map_or_else(|| "Player".to_string(), |user| user.username.clone())
     }
 }

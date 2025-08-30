@@ -1,7 +1,7 @@
 //! Progressbar component.
 
-use dioxus::prelude::*;
 use crate::backend::utils::css::ResourceLoader;
+use dioxus::prelude::*;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct UpdateProgressProps {
@@ -12,7 +12,11 @@ pub struct UpdateProgressProps {
 
 #[component]
 pub fn UpdateProgress(props: UpdateProgressProps) -> Element {
-    let UpdateProgressProps { show, progress, status } = props;
+    let UpdateProgressProps {
+        show,
+        progress,
+        status,
+    } = props;
 
     if !show {
         return rsx! { div {} };
@@ -22,16 +26,16 @@ pub fn UpdateProgress(props: UpdateProgressProps) -> Element {
         style {
             dangerous_inner_html: ResourceLoader::get_css("progress")
         }
-        
+
         div {
             class: "launch-progress-container",
             style: "--progress-width: {progress}%",
-            
+
             div {
                 class: "launch-progress-text",
                 "{status}"
             }
-            
+
             div {
                 class: "launch-progress-bar"
             }

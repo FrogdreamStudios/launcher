@@ -7,9 +7,6 @@ use anyhow::Result;
 /// Name of the main launcher directory.
 const LAUNCHER_DIR: &str = "DreamLauncher";
 
-/// Subdirectory for instances.
-const INSTANCES: &str = "instances";
-
 /// Get the base launcher directory (`DreamLauncher`).
 #[inline]
 pub fn get_launcher_dir() -> Result<PathBuf> {
@@ -28,16 +25,4 @@ pub fn get_launcher_dir() -> Result<PathBuf> {
             .ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?,
     };
     Ok(base_dir.join(LAUNCHER_DIR))
-}
-
-/// Get the Minecraft game directory for a specific instance.
-pub fn get_game_dir(custom_path: Option<PathBuf>, instance_id: Option<u32>) -> Result<PathBuf> {
-    if let Some(path) = custom_path {
-        return Ok(path);
-    }
-    let launcher_dir = get_launcher_dir()?;
-    match instance_id {
-        Some(id) => Ok(launcher_dir.join(INSTANCES).join(format!("instance_{id}"))),
-        None => Ok(launcher_dir),
-    }
 }

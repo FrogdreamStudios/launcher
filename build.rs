@@ -123,7 +123,7 @@ fn base64_encode(data: &[u8]) -> String {
             buf[i] = byte;
         }
 
-        let b = ((buf[0] as u32) << 16) | ((buf[1] as u32) << 8) | (buf[2] as u32);
+        let b = (u32::from(buf[0]) << 16) | (u32::from(buf[1]) << 8) | u32::from(buf[2]);
 
         result.push(CHARS[((b >> 18) & 63) as usize] as char);
         result.push(CHARS[((b >> 12) & 63) as usize] as char);

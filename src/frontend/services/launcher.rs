@@ -6,8 +6,8 @@ use crate::backend::utils::paths::get_launcher_dir;
 use anyhow::Result;
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
-use tokio::sync::RwLock as AsyncRwLock;
 use tokio::fs;
+use tokio::sync::RwLock as AsyncRwLock;
 
 /// Get the path to the cached version manifest file.
 fn get_manifest_cache_path() -> PathBuf {
@@ -27,29 +27,29 @@ async fn fetch_version_manifest_from_mojang() -> Result<serde_json::Value> {
 /// Save version manifest to cache file.
 async fn save_manifest_to_cache(manifest: &serde_json::Value) -> Result<()> {
     let cache_path = get_manifest_cache_path();
-    
+
     // Create parent directory if it doesn't exist
     if let Some(parent) = cache_path.parent() {
         fs::create_dir_all(parent).await?;
     }
-    
+
     let manifest_json = serde_json::to_string_pretty(manifest)?;
     fs::write(&cache_path, manifest_json).await?;
-    log::info!("Version manifest cached to: {:?}", cache_path);
+    log::info!("Version manifest cached to: {cache_path:?}");
     Ok(())
 }
 
-/// Load version manifest from cache file.
+/// Load version manifest from the cache file.
 async fn load_manifest_from_cache() -> Result<serde_json::Value> {
     let cache_path = get_manifest_cache_path();
-    
+
     if !cache_path.exists() {
         return Err(anyhow::anyhow!("Cache file does not exist"));
     }
-    
+
     let manifest_json = fs::read_to_string(&cache_path).await?;
     let manifest: serde_json::Value = serde_json::from_str(&manifest_json)?;
-    log::info!("Version manifest loaded from cache: {:?}", cache_path);
+    log::info!("Version manifest loaded from cache: {cache_path:?}");
     Ok(manifest)
 }
 
@@ -73,12 +73,12 @@ pub async fn init_launcher() {
                     log::info!("Version manifest loaded from Mojang servers");
                     // Save to cache for offline use
                     if let Err(e) = save_manifest_to_cache(&manifest).await {
-                        log::warn!("Failed to cache version manifest: {}", e);
+                        log::warn!("Failed to cache version manifest: {e}");
                     }
                     Some(manifest)
                 }
                 Err(e) => {
-                    log::warn!("Failed to load version manifest from internet: {}", e);
+                    log::warn!("Failed to load version manifest from internet: {e}");
                     // Try to load from cache
                     match load_manifest_from_cache().await {
                         Ok(cached_manifest) => {
@@ -86,7 +86,7 @@ pub async fn init_launcher() {
                             Some(cached_manifest)
                         }
                         Err(cache_err) => {
-                            log::error!("Failed to load cached manifest: {}", cache_err);
+                            log::error!("Failed to load cached manifest: {cache_err}");
                             None
                         }
                     }
@@ -166,7 +166,7 @@ pub async fn init_launcher() {
             let _ = PYTHON_BRIDGE.set(bridge);
         }
         Err(e) => {
-            log::error!("Failed to initialize Python Bridge: {}", e);
+            log::error!("Failed to initialize Python bridge: {e}");
         }
     }
 }
@@ -175,7 +175,7 @@ pub async fn get_version_manifest() -> Result<VersionManifest> {
     let manifest_lock = VERSION_MANIFEST
         .get()
         .ok_or_else(|| anyhow::anyhow!("Version manifest not initialized"))?;
-    
+
     let manifest = manifest_lock.read().await;
     Ok(manifest.clone())
 }
@@ -188,7 +188,7 @@ pub fn get_python_bridge() -> Result<&'static PythonMinecraftBridge> {
 
 pub async fn refresh_version_manifest() -> Result<()> {
     log::info!("Refreshing version manifest from Mojang servers...");
-    
+
     match fetch_version_manifest_from_mojang().await {
         Ok(manifest_json) => {
             // Parse the manifest JSON into our VersionManifest struct
@@ -230,25 +230,27 @@ pub async fn refresh_version_manifest() -> Result<()> {
                     .collect();
 
                 let new_manifest = VersionManifest { latest, versions };
-                
+
                 // Update the global manifest using AsyncRwLock
                 let manifest_lock = VERSION_MANIFEST
                     .get()
                     .ok_or_else(|| anyhow::anyhow!("Version manifest not initialized"))?;
-                
+
                 let mut manifest = manifest_lock.write().await;
                 *manifest = new_manifest.clone();
-                
+
                 log::info!(
                     "Version manifest refreshed successfully with {} versions. Latest release: {}, Latest snapshot: {}",
                     versions_array.len(),
                     new_manifest.latest.release,
                     new_manifest.latest.snapshot
                 );
-                
+
                 Ok(())
             } else {
-                Err(anyhow::anyhow!("Invalid manifest format received from Python bridge"))
+                Err(anyhow::anyhow!(
+                    "Invalid manifest format received from Python bridge"
+                ))
             }
         }
         Err(e) => {

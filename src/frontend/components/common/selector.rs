@@ -28,7 +28,7 @@ pub fn Selector(props: SelectorProps) -> Element {
     use_effect(move || {
         if show() && available_versions.read().is_empty() && !*is_loading.read() {
             is_loading.set(true);
-            let mut available_versions = available_versions.clone();
+            let mut available_versions = available_versions;
             spawn(async move {
                 match launcher::get_version_manifest().await {
                     Ok(manifest) => {
@@ -47,15 +47,27 @@ pub fn Selector(props: SelectorProps) -> Element {
     use_effect(move || {
         let filter = version_filter.read().clone();
         let all_versions = available_versions.read().clone();
-        
+
         let filtered: Vec<VersionInfo> = match filter.as_str() {
-            "release" => all_versions.into_iter().filter(|v| v.version_type == "release").collect(),
-            "snapshot" => all_versions.into_iter().filter(|v| v.version_type == "snapshot").collect(),
-            "beta" => all_versions.into_iter().filter(|v| v.version_type == "old_beta").collect(),
-            "alpha" => all_versions.into_iter().filter(|v| v.version_type == "old_alpha").collect(),
+            "release" => all_versions
+                .into_iter()
+                .filter(|v| v.version_type == "release")
+                .collect(),
+            "snapshot" => all_versions
+                .into_iter()
+                .filter(|v| v.version_type == "snapshot")
+                .collect(),
+            "beta" => all_versions
+                .into_iter()
+                .filter(|v| v.version_type == "old_beta")
+                .collect(),
+            "alpha" => all_versions
+                .into_iter()
+                .filter(|v| v.version_type == "old_alpha")
+                .collect(),
             _ => all_versions, // "all" or any other value
         };
-        
+
         filtered_versions.set(filtered);
     });
 
@@ -76,7 +88,7 @@ pub fn Selector(props: SelectorProps) -> Element {
 
     let handle_select_click = move |_| {
         let version = selected_version.read().clone();
-        match InstanceManager::create_instance_with_version(version) {
+        match InstanceManager::create_instance_with_version(&version) {
             Some(_) => {}
             None => log::error!("Failed to create instance"),
         }

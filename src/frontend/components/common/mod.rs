@@ -1,14 +1,14 @@
 //! Common reusable components.
 
-pub mod news;
-pub mod logo;
-pub mod titlebar;
-pub mod selector;
-pub mod progressbar;
 pub mod game_progress;
+pub mod logo;
+pub mod news;
+pub mod progressbar;
+pub mod selector;
+pub mod titlebar;
 
-pub use news::News;
-pub use logo::Logo;
-pub use selector::Selector;
-pub use progressbar::UpdateProgress;
 pub use game_progress::GameProgress;
+pub use logo::Logo;
+pub use news::News;
+pub use progressbar::UpdateProgress;
+pub use selector::Selector;

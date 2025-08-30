@@ -49,7 +49,7 @@ impl Instance {
 
         Self {
             id,
-            name: format!("Instance {}", id),
+            name: format!("Instance {id}"),
             color,
             level: 28, // Default level
             version,
@@ -81,7 +81,7 @@ impl InstanceManager {
         }
     }
 
-    pub fn create_instance_with_version(version: String) -> Option<u32> {
+    pub fn create_instance_with_version(version: &str) -> Option<u32> {
         let mut instances = INSTANCES.write();
         let current_id = *NEXT_ID.read();
 
@@ -90,7 +90,7 @@ impl InstanceManager {
             return None;
         }
 
-        let new_instance = Instance::new_with_version(current_id, version.clone());
+        let new_instance = Instance::new_with_version(current_id, version.to_string());
         let instance_id = new_instance.id;
         log::info!("Creating instance {instance_id} with version: {version}");
         log::info!(
@@ -257,7 +257,7 @@ async fn save_instances_data(data: &InstancesData) -> anyhow::Result<()> {
     }
 
     let json = serde_json::to_string_pretty(data)?;
-    log::debug!("JSON to save: {}", json);
+    log::debug!("JSON to save: {json}");
     async_fs::write(config_path, json).await?;
 
     Ok(())
