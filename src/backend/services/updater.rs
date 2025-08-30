@@ -26,6 +26,9 @@ fn get_platform_asset_name() -> Option<&'static str> {
 }
 
 async fn download_file(url: &str) -> Result<Vec<u8>, String> {
+    use crate::frontend::services::states::set_update_state;
+    use futures_util::StreamExt;
+    
     let client = reqwest::Client::new();
     let response = client
         .get(url)
@@ -41,11 +44,27 @@ async fn download_file(url: &str) -> Result<Vec<u8>, String> {
         ));
     }
 
-    response
-        .bytes()
-        .await
-        .map(|b| b.to_vec())
-        .map_err(|e| format!("Failed to read download content: {e}"))
+    let total_size = response.content_length().unwrap_or(0);
+    let mut downloaded = 0u64;
+    let mut stream = response.bytes_stream();
+    let mut data = Vec::new();
+
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|e| format!("Failed to read chunk: {e}"))?;
+        data.extend_from_slice(&chunk);
+        downloaded += chunk.len() as u64;
+        
+        if total_size > 0 {
+            let progress = (downloaded as f32 / total_size as f32) * 100.0;
+            let status = format!("Downloading update... {progress:.1}%");
+            set_update_state(true, progress, status);
+        } else {
+            let status = format!("Downloading update... {downloaded} bytes");
+            set_update_state(true, 0.0, status);
+        }
+    }
+
+    Ok(data)
 }
 
 fn replace_executable(new_content: &[u8]) -> Result<(), String> {
@@ -463,18 +482,23 @@ fn find_mount_point_fallback() -> Option<String> {
 }
 
 pub async fn check_for_updates() {
+    use crate::frontend::services::states::set_update_state;
+    
     log::info!("Checking for updates...");
+    set_update_state(true, 0.0, "Checking for updates...".to_string());
 
     // Get the platform-specific asset name
     let platform_asset_name = match get_platform_asset_name() {
         Some(name) => name,
         None => {
             log::error!("Unsupported platform for auto-updates");
+            set_update_state(false, 0.0, String::new());
             return;
         }
     };
 
     // Fetch latest release info from GitHub
+    set_update_state(true, 10.0, "Fetching release information...".to_string());
     let client = reqwest::Client::new();
     let response = match client
         .get("https://api.github.com/repos/FrogdreamStudios/launcher/releases/latest")
@@ -485,6 +509,7 @@ pub async fn check_for_updates() {
         Ok(res) => res,
         Err(e) => {
             log::error!("Failed to fetch release info from GitHub: {e}");
+            set_update_state(false, 0.0, String::new());
             return;
         }
     };
@@ -493,20 +518,24 @@ pub async fn check_for_updates() {
         Ok(release) => release,
         Err(e) => {
             log::error!("Failed to parse GitHub release info: {e}");
+            set_update_state(false, 0.0, String::new());
             return;
         }
     };
 
     // Check if we need to update
+    set_update_state(true, 20.0, "Checking version...".to_string());
     let current_version = cargo_crate_version!();
     let latest_version = release.tag_name.trim_start_matches('v');
 
     if latest_version == current_version {
         log::info!("Already running the latest version: {current_version}");
+        set_update_state(false, 0.0, String::new());
         return;
     }
 
     log::info!("New version available: {latest_version} (current: {current_version})");
+    set_update_state(true, 25.0, format!("New version {} available!", latest_version));
 
     // Find the asset for our platform
     let asset = match release
@@ -517,22 +546,26 @@ pub async fn check_for_updates() {
         Some(asset) => asset,
         None => {
             log::error!("No compatible binary found for platform: {platform_asset_name}");
+            set_update_state(false, 0.0, String::new());
             return;
         }
     };
 
     log::info!("Downloading update from: {}", asset.browser_download_url);
+    set_update_state(true, 30.0, "Starting download...".to_string());
 
     // Download the new version
     let new_content = match download_file(&asset.browser_download_url).await {
         Ok(content) => content,
         Err(e) => {
             log::error!("Failed to download update: {e}");
+            set_update_state(false, 0.0, String::new());
             return;
         }
     };
 
     log::info!("Download completed. Installing update...");
+    set_update_state(true, 95.0, "Installing update...".to_string());
 
     // Handle DMG files on macOS (automatic installation)
     if platform_asset_name.ends_with(".dmg") {
@@ -542,6 +575,13 @@ pub async fn check_for_updates() {
             Ok(_) => {
                 log::info!("DMG installation completed successfully!");
                 log::info!("The application has been updated to version {latest_version}");
+                set_update_state(true, 100.0, format!("Update to {} completed!", latest_version));
+                tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+                set_update_state(false, 0.0, String::new());
+                
+                // Restart the launcher
+                log::info!("Restarting launcher...");
+                restart_launcher();
                 return;
             }
             Err(e) => {
@@ -550,6 +590,7 @@ pub async fn check_for_updates() {
                     "Please download and install manually from: {}",
                     asset.browser_download_url
                 );
+                set_update_state(false, 0.0, String::new());
                 return;
             }
         }
@@ -560,10 +601,61 @@ pub async fn check_for_updates() {
         Ok(_) => {
             log::info!("Update installed successfully!");
             log::info!("The application will now restart with version {latest_version}");
+            set_update_state(true, 100.0, format!("Update to {} completed!", latest_version));
+            tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
             std::process::exit(0);
         }
         Err(e) => {
             log::error!("Failed to install update: {e}");
+            set_update_state(false, 0.0, String::new());
+        }
+    }
+}
+
+fn restart_launcher() {
+    use std::process::Command;
+    
+    // Get the current executable path
+    let current_exe = match std::env::current_exe() {
+        Ok(exe) => exe,
+        Err(e) => {
+            log::error!("Failed to get current executable path: {e}");
+            return;
+        }
+    };
+    
+    log::info!("Restarting launcher from: {:?}", current_exe);
+    
+    #[cfg(target_os = "macos")]
+    {
+        // On macOS, if we're running from Applications, launch the .app bundle
+        if let Some(app_path) = current_exe.to_str() {
+            if app_path.contains("/Applications/Dream Launcher.app/") {
+                // Launch the .app bundle
+                match Command::new("open")
+                    .arg("/Applications/Dream Launcher.app")
+                    .spawn()
+                {
+                    Ok(_) => {
+                        log::info!("Successfully launched new instance from Applications");
+                        std::process::exit(0);
+                    }
+                    Err(e) => {
+                        log::error!("Failed to launch from Applications: {e}");
+                    }
+                }
+            }
+        }
+    }
+    
+    // Fallback: launch the current executable directly
+    match Command::new(&current_exe).spawn() {
+        Ok(_) => {
+            log::info!("Successfully launched");
+            std::process::exit(0);
+        }
+        Err(e) => {
+            log::error!("Failed to restart launcher: {e}");
         }
     }
 }

@@ -7,12 +7,12 @@ use crate::frontend::components::common::titlebar::TitleBar;
 use crate::frontend::services::launcher;
 use crate::frontend::{
     components::{
-        common::{News, Logo, Selector},
+        common::{News, Logo, Selector, UpdateProgress},
         launcher::{ContextMenu, RenameDialog},
         layout::Navigation,
     },
     services::instances::InstanceManager,
-    services::states::{GameStatus, use_game_state},
+    services::states::{GameStatus, use_game_state, use_update_state},
 };
 use dioxus::prelude::{Key, *};
 use dioxus_router::{components::Outlet, navigator, use_route};
@@ -28,6 +28,9 @@ pub fn Layout() -> Element {
     let mut last_active_page = use_signal(|| "Home");
     let nav = navigator();
     let auth = use_context::<AuthState>();
+
+    // Update progress state
+    let (show_update, progress, status) = use_update_state();
 
     // Visit the tracker with reactive signals
     let visit_tracker = use_signal(VisitTracker::new);
@@ -110,6 +113,12 @@ pub fn Layout() -> Element {
         }
 
         TitleBar {}
+
+        UpdateProgress {
+            show: show_update(),
+            progress: progress(),
+            status: status()
+        }
 
         div {
             class: if show_ui() { "desktop fade-in" } else { "desktop fade-out" },

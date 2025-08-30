@@ -12,6 +12,7 @@ dependencies = [
  "dioxus-desktop",
  "dioxus-router",
  "env_logger",
+ "futures-util",
  "log",
  "once_cell",
  "reqwest",
