@@ -2,18 +2,20 @@
 
 use dioxus::prelude::*;
 use crate::backend::utils::css::ResourceLoader;
+use crate::frontend::services::states::ProgressStatus;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct GameProgressProps {
     pub show: bool,
     pub progress: f32,
     pub status: String,
+    pub status_type: ProgressStatus,
 }
 
 #[component]
 pub fn GameProgress(props: GameProgressProps) -> Element {
-    let GameProgressProps { show, progress, status } = props;
-
+    let GameProgressProps { show, progress, status, status_type } = props;
+    
     if !show {
         return rsx! { div {} };
     }
@@ -33,7 +35,11 @@ pub fn GameProgress(props: GameProgressProps) -> Element {
             }
             
             div {
-                class: "launch-progress-bar"
+                class: match status_type {
+                    ProgressStatus::InProgress => "launch-progress-bar",
+                    ProgressStatus::Success => "launch-progress-bar success",
+                    ProgressStatus::Failed => "launch-progress-bar failed",
+                }
             }
         }
     }

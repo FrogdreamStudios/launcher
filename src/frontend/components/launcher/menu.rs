@@ -23,6 +23,7 @@ pub struct ContextMenuProps {
     pub show_rename_dialog: Signal<bool>,
     pub rename_instance_id: Signal<Option<u32>>,
     pub rename_current_name: Signal<String>,
+    pub active_instance_id: Signal<Option<u32>>,
 }
 
 #[component]
@@ -30,7 +31,7 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
     let mut show = props.show;
     let x = props.x;
     let y = props.y;
-    let instance_id = props.instance_id;
+    let mut instance_id = props.instance_id;
     let mut show_debug_window = props.show_debug_window;
     let mut show_rename_dialog = props.show_rename_dialog;
     let mut rename_instance_id = props.rename_instance_id;
@@ -105,7 +106,7 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
             let username = auth.get_username();
             show.set(false);
             // Start Minecraft launch after menu closes
-            spawn(install_and_launch_instance(version, username, id));
+            spawn(install_and_launch_instance(version, username, id, props.active_instance_id));
         }
     };
 
@@ -145,6 +146,8 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
         if let Some(id) = instance_id() {
             log::info!("Delete clicked for instance {id}");
             InstanceManager::delete_instance(id);
+            // Clear the instance ID to prevent further access
+            instance_id.set(None);
         }
         show.set(false);
     };

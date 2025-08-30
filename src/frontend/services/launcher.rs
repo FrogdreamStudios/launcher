@@ -128,8 +128,6 @@ pub fn get_python_bridge() -> Result<&'static PythonMinecraftBridge> {
 pub async fn refresh_version_manifest() -> Result<()> {
     log::info!("Refreshing version manifest from Mojang servers...");
     
-    let bridge = get_python_bridge()?;
-    
     match fetch_version_manifest_from_mojang().await {
         Ok(manifest_json) => {
             // Parse the manifest JSON into our VersionManifest struct

@@ -21,6 +21,8 @@ pub fn Selector(props: SelectorProps) -> Element {
     let mut filtered_versions = use_signal(Vec::<VersionInfo>::new);
     let mut is_loading = use_signal(|| false);
     let mut version_filter = use_signal(|| "all".to_string()); // all, release, snapshot, beta, alpha
+    let mut showing = use_signal(|| false);
+    let mut hiding = use_signal(|| false);
 
     // Load versions when the component shows
     use_effect(move || {
@@ -57,6 +59,21 @@ pub fn Selector(props: SelectorProps) -> Element {
         filtered_versions.set(filtered);
     });
 
+    // Handle show/hide animations
+    use_effect(move || {
+        if show() {
+            showing.set(true);
+            hiding.set(false);
+        } else if showing() {
+            hiding.set(true);
+            spawn(async move {
+                tokio::time::sleep(tokio::time::Duration::from_millis(150)).await;
+                showing.set(false);
+                hiding.set(false);
+            });
+        }
+    });
+
     let handle_select_click = move |_| {
         let version = selected_version.read().clone();
         match InstanceManager::create_instance_with_version(version) {
@@ -66,9 +83,15 @@ pub fn Selector(props: SelectorProps) -> Element {
         show.set(false);
     };
 
-    if !show() {
+    if !showing() {
         return rsx! {};
     }
+
+    let selector_class = if hiding() {
+        "version-selector version-selector-hide"
+    } else {
+        "version-selector version-selector-show"
+    };
 
     rsx! {
         div {
@@ -76,7 +99,7 @@ pub fn Selector(props: SelectorProps) -> Element {
             onclick: move |_| show.set(false),
 
             div {
-                class: "version-selector",
+                class: "{selector_class}",
                 onclick: |e| e.stop_propagation(),
 
                 // Header

@@ -3,6 +3,9 @@
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::path::PathBuf;
+use std::process::{Command, Stdio};
+use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::process::Command as TokioCommand;
 use tokio::task;
 
 /// Result of Minecraft launch from Python.
@@ -11,6 +14,34 @@ pub struct MinecraftLaunchResult {
     pub success: bool,
     pub pid: Option<u32>,
     pub message: String,
+}
+
+/// Log message from Python Minecraft process.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum MinecraftLogMessage {
+    #[serde(rename = "launch_result")]
+    LaunchResult {
+        success: bool,
+        pid: u32,
+        message: String,
+    },
+    #[serde(rename = "log")]
+    Log {
+        line: String,
+        pid: u32,
+    },
+    #[serde(rename = "exit")]
+    Exit {
+        pid: u32,
+        exit_code: i32,
+        message: String,
+    },
+    #[serde(rename = "error")]
+    Error {
+        success: bool,
+        message: String,
+    },
 }
 
 /// Configuration for Minecraft launch.
@@ -140,5 +171,52 @@ impl PythonMinecraftBridge {
         .await??;
 
         Ok(result)
+    }
+
+    /// Launch Minecraft with log streaming.
+    pub async fn launch_minecraft_with_logs<F>(
+        &self,
+        config: LaunchConfig,
+        log_callback: F,
+    ) -> Result<i32, Box<dyn std::error::Error + Send + Sync>>
+    where
+        F: Fn(MinecraftLogMessage) + Send + 'static,
+    {
+
+        let script_path = self.python_script_path.clone();
+        let username = config.username.clone();
+        let version = config.version.clone();
+
+        let mut command = TokioCommand::new("python3")
+            .arg(&script_path)
+            .arg("launch_with_logs")
+            .arg(&username)
+            .arg(&version)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|e| format!("Failed to start Python process: {e}"))?;
+
+        let stdout = command.stdout.take().unwrap();
+        let reader = BufReader::new(stdout);
+
+        // Read lines from stdout in a separate task
+        let handle = tokio::spawn(async move {
+            let mut lines = reader.lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                if let Ok(message) = serde_json::from_str::<MinecraftLogMessage>(&line) {
+                    log_callback(message);
+                }
+            }
+        });
+
+        // Wait for the process to complete
+        let exit_status = command.wait().await
+            .map_err(|e| format!("Failed to wait for Python process: {e}"))?;
+
+        // Wait for the log reading task to complete
+        let _ = handle.await;
+
+        Ok(exit_status.code().unwrap_or(-1))
     }
 }

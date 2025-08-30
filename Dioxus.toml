@@ -12,7 +12,7 @@ icon = ["assets/icons/app_icon.icns"]
 resources = ["assets/**/*"]
 short_description = "A powerful and lightweight Minecraft launcher"
 long_description = "A powerful and lightweight Minecraft launcher that will be perfect for every player"
-# category = "Game"
+category = "Game"
 
 [bundle.linux]
 app_name = "DreamLauncher"

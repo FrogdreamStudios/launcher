@@ -102,7 +102,7 @@ def launch_minecraft(username, version):
         logging.info(f"Launching Minecraft {version} for user {username}")
 
         # Launch Minecraft
-        process = subprocess.Popen(command)
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
         logging.info(f"Minecraft launched with PID: {process.pid}")
 
         return {
@@ -119,6 +119,86 @@ def launch_minecraft(username, version):
             "pid": None,
             "message": error_msg
         }
+
+# Launch Minecraft with log streaming
+def launch_minecraft_with_logs(username, version):
+    """Launch Minecraft and stream logs to stdout"""
+    try:
+        minecraft_directory = get_minecraft_directory()
+        
+        # Check if Rosetta is needed for older versions on Apple Silicon
+        if needs_rosetta(version):
+            logging.info(f"Launching {version} with Rosetta compatibility")
+        
+        # Create launch options
+        options = {
+            "username": username,
+            "uuid": str(uuid.uuid4()),
+            "token": "",  # Offline mode
+        }
+
+        # Get launch command
+        command = minecraft_launcher_lib.command.get_minecraft_command(
+            version=version,
+            minecraft_directory=minecraft_directory,
+            options=options
+        )
+
+        logging.info(f"Launching Minecraft {version} for user {username}")
+
+        # Launch Minecraft with stdout/stderr capture
+        process = subprocess.Popen(
+            command, 
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.STDOUT, 
+            text=True, 
+            bufsize=1,
+            universal_newlines=True
+        )
+        
+        # Send initial success message
+        print(json.dumps({
+            "type": "launch_result",
+            "success": True,
+            "pid": process.pid,
+            "message": f"Minecraft {version} launched successfully"
+        }), flush=True)
+        
+        # Stream logs in real-time
+        try:
+            for line in iter(process.stdout.readline, ''):
+                if line:
+                    # Send log line to Rust
+                    print(json.dumps({
+                        "type": "log",
+                        "line": line.strip(),
+                        "pid": process.pid
+                    }), flush=True)
+        except Exception as e:
+            logging.error(f"Error reading logs: {e}")
+        
+        # Wait for process to complete and get exit code
+        exit_code = process.wait()
+        
+        # Send final status
+        print(json.dumps({
+            "type": "exit",
+            "pid": process.pid,
+            "exit_code": exit_code,
+            "message": f"Minecraft process exited with code {exit_code}"
+        }), flush=True)
+        
+        return exit_code
+        
+    except Exception as e:
+        error_msg = f"Error launching Minecraft: {e}"
+        logging.error(error_msg)
+        print(json.dumps({
+            "type": "error",
+            "success": False,
+            "message": error_msg
+        }), flush=True)
+        return 1
 
 # Entry point when called from Rust launcher.
 if __name__ == "__main__":
@@ -145,6 +225,12 @@ if __name__ == "__main__":
         print(json.dumps(result))
         if not result["success"]:
             exit(1)
+    elif command == "launch_with_logs" and len(sys.argv) == 4:
+        # Launch Minecraft with log streaming
+        username = sys.argv[2]
+        version = sys.argv[3]
+        exit_code = launch_minecraft_with_logs(username, version)
+        exit(exit_code)
     elif command == "logs" and len(sys.argv) == 3:
         # Get logs from running process
         pid = int(sys.argv[2])

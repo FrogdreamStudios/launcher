@@ -112,7 +112,7 @@ pub fn RenameDialog(props: RenameDialogProps) -> Element {
                     class: "rename-dialog-header",
                     h2 {
                         class: "rename-dialog-title",
-                        "Rename Instance"
+                        "Rename instance"
                     }
                     button {
                         class: "rename-dialog-close",
