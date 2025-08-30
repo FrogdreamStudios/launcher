@@ -12,7 +12,11 @@ import requests
 import os
 import platform
 import shutil
+import logging
 from pathlib import Path
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 from packaging import version as pkg_version
 
 # Minecraft directory
@@ -26,7 +30,7 @@ def get_version_manifest():
         response.raise_for_status()
         return response.json()
     except Exception as e:
-        print(f"Error fetching version manifest: {e}")
+        logging.error(f"Error fetching version manifest: {e}")
         return None
 
 # Get available versions
@@ -87,20 +91,20 @@ def download_arm64_lwjgl_libraries(minecraft_directory, minecraft_version):
             native_file = lib_dir / f"{lib_name}-{lib_version}-natives-macos-arm64.jar"
             
             if not native_file.exists():
-                print(f"Downloading ARM64 native library: {lib_name}")
+                logging.info(f"Downloading ARM64 native library: {lib_name}")
                 response = requests.get(native_url)
                 if response.status_code == 200:
                     with open(native_file, 'wb') as f:
                         f.write(response.content)
-                    print(f"Downloaded: {native_file}")
+                    logging.info(f"Downloaded: {native_file}")
                 else:
-                    print(f"Failed to download {native_url}: {response.status_code}")
+                    logging.error(f"Failed to download {native_url}: {response.status_code}")
         
-        print(f"ARM64 LWJGL libraries prepared for Minecraft {minecraft_version}")
+        logging.info(f"ARM64 LWJGL libraries prepared for Minecraft {minecraft_version}")
         return True
         
     except Exception as e:
-        print(f"Error downloading ARM64 LWJGL libraries: {e}")
+        logging.error(f"Error downloading ARM64 LWJGL libraries: {e}")
         return False
 
 def patch_version_json_for_arm64(minecraft_directory, minecraft_version):
@@ -109,7 +113,7 @@ def patch_version_json_for_arm64(minecraft_directory, minecraft_version):
         version_json_path = Path(minecraft_directory) / "versions" / minecraft_version / f"{minecraft_version}.json"
         
         if not version_json_path.exists():
-            print(f"Version JSON not found: {version_json_path}")
+            logging.error(f"Version JSON not found: {version_json_path}")
             return False
             
         # Read version JSON
@@ -150,11 +154,11 @@ def patch_version_json_for_arm64(minecraft_directory, minecraft_version):
         with open(version_json_path, 'w') as f:
             json.dump(version_data, f, indent=2)
         
-        print(f"Patched version JSON for ARM64: {version_json_path}")
+        logging.info(f"Patched version JSON for ARM64: {version_json_path}")
         return True
         
     except Exception as e:
-        print(f"Error patching version JSON: {e}")
+        logging.error(f"Error patching version JSON: {e}")
         return False
 
 # Install Minecraft version
@@ -164,7 +168,7 @@ def install_minecraft_version(version="1.20.1"):
         
         # For Apple Silicon and older versions, use custom installation process
         if is_apple_silicon() and needs_lwjgl_fix(version):
-            print(f"Installing Minecraft {version} with Apple Silicon compatibility...")
+            logging.info(f"Installing Minecraft {version} with Apple Silicon compatibility...")
             
             # Use forge installation method which is more flexible
             try:
@@ -176,7 +180,7 @@ def install_minecraft_version(version="1.20.1"):
                 )
             except Exception as install_error:
                 if 'natives-macos-arm64' in str(install_error):
-                    print(f"Handling ARM64 natives compatibility...")
+                    logging.info(f"Handling ARM64 natives compatibility...")
                     
                     # Manually install base version files
                     try:
@@ -184,7 +188,7 @@ def install_minecraft_version(version="1.20.1"):
                         manifest_url = "https://launchermeta.mojang.com/mc/game/version_manifest.json"
                         response = requests.get(manifest_url)
                         if response.status_code != 200:
-                            print(f"Failed to get version manifest: {response.status_code}")
+                            logging.error(f"Failed to get version manifest: {response.status_code}")
                             return False
                         
                         version_manifest = response.json()
@@ -195,7 +199,7 @@ def install_minecraft_version(version="1.20.1"):
                                 break
                         
                         if not version_info:
-                            print(f"Version {version} not found in manifest")
+                            logging.error(f"Version {version} not found in manifest")
                             return False
                         
                         # Download version JSON
@@ -226,11 +230,11 @@ def install_minecraft_version(version="1.20.1"):
                         download_arm64_lwjgl_libraries(minecraft_directory, version)
                         patch_version_json_for_arm64(minecraft_directory, version)
                         
-                        print(f"Successfully installed {version} with ARM64 compatibility")
+                        logging.info(f"Successfully installed {version} with ARM64 compatibility")
                         return True
                         
                     except Exception as manual_error:
-                        print(f"Manual installation failed: {manual_error}")
+                        logging.error(f"Manual installation failed: {manual_error}")
                         return False
                 else:
                     raise install_error
@@ -238,10 +242,10 @@ def install_minecraft_version(version="1.20.1"):
             # Normal installation for newer versions or non-Apple Silicon
             minecraft_launcher_lib.install.install_minecraft_version(version, minecraft_directory)
         
-        print(f"Version {version} installed successfully")
+        logging.info(f"Version {version} installed successfully")
         return True
     except Exception as e:
-        print(f"Error installing version {version}: {e}")
+        logging.error(f"Error installing version {version}: {e}")
         return False
 
 def check_and_apply_lwjgl_fix(minecraft_directory, minecraft_version):
@@ -254,13 +258,13 @@ def check_and_apply_lwjgl_fix(minecraft_directory, minecraft_version):
     arm64_lib = libraries_dir / "lwjgl-3.3.0-natives-macos-arm64.jar"
     
     if not arm64_lib.exists():
-        print(f"ARM64 LWJGL libraries not found, downloading for version {minecraft_version}...")
+        logging.info(f"ARM64 LWJGL libraries not found, downloading for version {minecraft_version}...")
         if not download_arm64_lwjgl_libraries(minecraft_directory, minecraft_version):
             return False
         if not patch_version_json_for_arm64(minecraft_directory, minecraft_version):
             return False
     else:
-        print(f"ARM64 LWJGL libraries already available for version {minecraft_version}")
+        logging.info(f"ARM64 LWJGL libraries already available for version {minecraft_version}")
     
     return True
 
@@ -291,11 +295,11 @@ def launch_minecraft(username="TestPlayer", version="1.20.1"):
             options=options
         )
 
-        print(f"Launching Minecraft {version} for user {username}")
+        logging.info(f"Launching Minecraft {version} for user {username}")
 
         # Launch Minecraft
         process = subprocess.Popen(command)
-        print(f"Minecraft launched with PID: {process.pid}")
+        logging.info(f"Minecraft launched with PID: {process.pid}")
 
         return {
             "success": True,
@@ -305,7 +309,7 @@ def launch_minecraft(username="TestPlayer", version="1.20.1"):
 
     except Exception as e:
         error_msg = f"Error launching Minecraft: {e}"
-        print(error_msg)
+        logging.error(error_msg)
         return {
             "success": False,
             "pid": None,
@@ -341,13 +345,13 @@ def main():
     
     # Install version if requested
     if args.install:
-        print(f"Installing Minecraft version {args.version}...")
+        logging.info(f"Installing Minecraft version {args.version}...")
         if not install_minecraft_version(args.version):
-            print(f"Failed to install version {args.version}")
+            logging.error(f"Failed to install version {args.version}")
             sys.exit(1)
     
     # Launch Minecraft
-    print(f"Launching Minecraft {args.version} for user {args.username}...")
+    logging.info(f"Launching Minecraft {args.version} for user {args.username}...")
     result = launch_minecraft(args.username, args.version)
     
     # Output result as JSON for bridge compatibility

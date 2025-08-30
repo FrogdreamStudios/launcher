@@ -21,7 +21,7 @@ pub fn ChatSidebar(animations_played: bool) -> Element {
             div {
                 class: "chat-item",
                 onclick: move |_| {
-                    // TODO: Account functionality
+                    // Account functionality not implemented
                 },
                 div { class: "chat-avatar",
                     img { class: "avatar-img", src: "https://minotar.net/avatar/cubelius/33.png", alt: "cubelius" }
@@ -60,7 +60,7 @@ pub fn ChatSidebar(animations_played: bool) -> Element {
                 div {
                     class: "chat-item",
                     onclick: move |_| {
-                        // TODO: Account functionality
+                        // Account functionality not implemented
                     },
                     div { class: "chat-avatar",
                         img { class: "avatar-img", src: "https://minotar.net/avatar/cubelius/33.png", alt: "cubelius" }

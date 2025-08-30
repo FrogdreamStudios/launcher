@@ -12,6 +12,7 @@ pub struct VersionSelection {
     pub is_loading: Signal<bool>,
     pub is_deleting: Signal<bool>,
     pub system_info: Signal<String>,
+    pub launcher_logs: Signal<Vec<String>>,
 }
 
 impl Default for VersionSelection {
@@ -20,6 +21,7 @@ impl Default for VersionSelection {
             is_loading: Signal::new(false),
             is_deleting: Signal::new(false),
             system_info: Signal::new(String::new()),
+            launcher_logs: Signal::new(Vec::new()),
         }
     }
 }
@@ -44,18 +46,18 @@ pub fn DebugWindow(
         let instances = INSTANCES.read();
         if let Some(instance) = instances.get(&id) {
             (
-                format!("Debug Panel - Instance {}", instance.name),
-                format!("Instance ID: {} | Color: #{}", id, instance.color),
+                format!("Debug for {}", instance.name),
+                format!("Instance ID: {}, color: #{}", id, instance.color),
             )
         } else {
             (
-                format!("Debug Panel - Instance {id}"),
+                format!("Debug for Instance {id}"),
                 "Instance not found".to_string(),
             )
         }
     } else {
         (
-            "Debug Panel".to_string(),
+            "Debug for Instance".to_string(),
             "No instance selected".to_string(),
         )
     };
@@ -99,12 +101,33 @@ pub fn DebugWindow(
                     if !vs.system_info.read().is_empty() {
                         div {
                             class: "debug-system-info",
-                            div { class: "debug-section-title", "System Info" }
+                            div { class: "debug-section-title", "System info" }
                             pre { "{vs.system_info.read()}" }
                         }
                     }
 
-
+                    // Launcher Console
+                    div {
+                        class: "debug-launcher-console",
+                        div { class: "debug-section-title", "Launcher console" }
+                        div {
+                            class: "console-container",
+                            div {
+                                class: "console-output",
+                                if vs.launcher_logs.read().is_empty() {
+                                    div { class: "console-empty", "No logs available" }
+                                } else {
+                                    for (index, log) in vs.launcher_logs.read().iter().enumerate() {
+                                        div {
+                                            key: "{index}",
+                                            class: "console-line",
+                                            "{log}"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
 
                 // Actions
@@ -135,6 +158,38 @@ pub fn DebugWindow(
                     }
 
                     button {
+                        class: if busy { "debug-btn debug-btn-disabled" } else { "debug-btn debug-btn-secondary" },
+                        disabled: busy,
+                        onclick: {
+                            let mut launcher_logs = vs.launcher_logs;
+                            move |_| {
+                                spawn(async move {
+                                    match load_launcher_logs().await {
+                                        Ok(logs) => launcher_logs.set(logs),
+                                        Err(e) => {
+                                            log::error!("Failed to load logs: {e}");
+                                            launcher_logs.set(vec![format!("Error loading logs: {e}")]);
+                                        }
+                                    }
+                                });
+                            }
+                        },
+                        "Load logs"
+                    }
+
+                    button {
+                        class: if busy { "debug-btn debug-btn-disabled" } else { "debug-btn debug-btn-secondary" },
+                        disabled: busy,
+                        onclick: {
+                            let mut launcher_logs = vs.launcher_logs;
+                            move |_| {
+                                launcher_logs.set(Vec::new());
+                            }
+                        },
+                        "Clear console"
+                    }
+
+                    button {
                         class: if busy { "debug-btn debug-btn-disabled" } else { "debug-btn debug-btn-primary" },
                         disabled: busy,
                         onclick: {
@@ -145,15 +200,15 @@ pub fn DebugWindow(
                                     is_loading.set(true);
                                     spawn(async move {
                                         match update_manifest().await {
-                                            Ok(()) => log::info!("Manifest updated"),
-            Err(e) => log::error!("Failed to update manifest: {e}"),
-                                        }
+                            Ok(()) => {},
+                            Err(e) => log::error!("Failed to update manifest: {e}"),
+                        }
                                         is_loading.set(false);
                                     });
                                 }
                             }
                         },
-                        if loading { "Updating..." } else { "Update Manifest" }
+                        if loading { "Updating..." } else { "Update manifest" }
                     }
 
 
@@ -169,15 +224,15 @@ pub fn DebugWindow(
                                     is_deleting.set(true);
                                     spawn(async move {
                                         match delete_launcher_files().await {
-                                            Ok(()) => log::info!("Launcher files deleted"),
-            Err(e) => log::error!("Failed to delete files: {e}"),
-                                        }
+                            Ok(()) => {},
+                            Err(e) => log::error!("Failed to delete files: {e}"),
+                        }
                                         is_deleting.set(false);
                                     });
                                 }
                             }
                         },
-                        if deleting { "Deleting..." } else { "Delete Files" }
+                        if deleting { "Deleting..." } else { "Delete files" }
                     }
                 }
             }
@@ -186,18 +241,20 @@ pub fn DebugWindow(
 }
 
 async fn update_manifest() -> anyhow::Result<()> {
-    log::info!("Update manifest functionality moved to Python bridge");
-    // TODO: Implement manifest update through Python bridge if needed
-    Ok(())
+    match crate::frontend::services::launcher::refresh_version_manifest().await {
+        Ok(_) => {
+            log::info!("Manifest refresh completed successfully!");
+            Ok(())
+        }
+        Err(e) => {
+            log::error!("Failed to refresh manifest: {}", e);
+            Err(anyhow::anyhow!("Failed to refresh manifest: {}", e))
+        }
+    }
 }
 
 async fn delete_launcher_files() -> anyhow::Result<()> {
-    log::info!("Starting launcher files deletion...");
-
-    // Use standard Minecraft directory instead of launcher.get_game_dir()
     let game_dir = crate::backend::utils::paths::get_game_dir(None, None)?;
-
-    log::info!("Game directory: {game_dir:?}");
 
     let directories = [
         ("versions", game_dir.join("versions")),
@@ -206,53 +263,29 @@ async fn delete_launcher_files() -> anyhow::Result<()> {
         ("natives", game_dir.join("natives")),
     ];
 
-    let mut deleted_count = 0;
-    let mut total_found = 0;
-
-    // Count existing directories first
-    for (name, path) in &directories {
-        if path.exists() {
-            total_found += 1;
-            log::info!("Found {name} directory: {path:?}");
-        }
-    }
+    let total_found = 0;
 
     if total_found == 0 {
-        log::info!("No launcher files found to delete");
         return Ok(());
     }
-
-    log::info!("Found {total_found} directories to delete");
 
     // Delete directories with progress
     for (name, path) in &directories {
         if path.exists() {
-            log::info!(
-                "Deleting {} directory... ({}/{})",
-                name,
-                deleted_count + 1,
-                total_found
-            );
-
             match fs::remove_dir_all(path) {
-                Ok(()) => {
-                    deleted_count += 1;
-                    log::info!("✓ Successfully deleted {name} directory");
-                }
+                Ok(()) => {}
                 Err(e) => {
-                    log::error!("✗ Failed to delete {name} directory: {e}");
+                    log::error!("Failed to delete {name} directory: {e}");
                     return Err(anyhow::anyhow!("Failed to delete {name} directory: {e}"));
                 }
             }
         }
     }
 
-    log::info!("Deletion complete! Removed {deleted_count} directories");
     Ok(())
 }
 
 async fn get_system_info() -> anyhow::Result<String> {
-    // Use standard Minecraft directory instead of launcher.get_game_dir()
     let game_dir = crate::backend::utils::paths::get_game_dir(None, None)?;
 
     let mut info = String::new();
@@ -331,6 +364,29 @@ fn get_instance_info(instance_id: u32) -> String {
     info.push_str(&format!("Architecture: {}\n", std::env::consts::ARCH));
 
     info
+}
+
+async fn load_launcher_logs() -> anyhow::Result<Vec<String>> {
+    use crate::backend::utils::paths::get_launcher_dir;
+    
+    let logs_dir = get_launcher_dir()?.join("logs");
+    let latest_log = logs_dir.join("latest.log");
+    
+    if !latest_log.exists() {
+        return Ok(vec!["No log file found".to_string()]);
+    }
+    
+    let content = tokio::fs::read_to_string(&latest_log).await
+        .map_err(|e| anyhow::anyhow!("Failed to read log file: {}", e))?;
+    
+    let lines: Vec<String> = content
+        .lines()
+        .rev() // Reverse to show newest logs first
+        .take(100) // Limit to last 100 lines
+        .map(|s| s.to_string())
+        .collect();
+    
+    Ok(lines)
 }
 
 pub fn use_version_selection() -> Signal<VersionSelection> {

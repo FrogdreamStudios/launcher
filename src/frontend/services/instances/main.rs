@@ -68,7 +68,7 @@ impl InstanceManager {
         if !*INSTANCES_LOADED.read() {
             spawn(async move {
                 if let Err(e) = load_instances().await {
-                    println!("Failed to load instances: {e}, creating default instance");
+                    log::error!("Failed to load instances: {e}, creating default instance");
                     // Create default instance if loading fails
                     let mut instances = INSTANCES.write();
                     instances.insert(1, Instance::new(1));
@@ -90,18 +90,18 @@ impl InstanceManager {
 
         let new_instance = Instance::new_with_version(current_id, version.clone());
         let instance_id = new_instance.id;
-        println!("Creating instance {instance_id} with version: {version}");
-        println!(
+        log::info!("Creating instance {instance_id} with version: {version}");
+        log::info!(
             "Instance created: id={}, name={}, version={}",
-            new_instance.id, new_instance.name, new_instance.version
+            new_instance.id,
+            new_instance.name,
+            new_instance.version
         );
         instances.insert(instance_id, new_instance);
 
         // Create instance directories
         if let Err(e) = create_instance_directories(instance_id) {
-            println!("Warning: Failed to create directories for instance {instance_id}: {e}");
-        } else {
-            println!("Created directories for instance {instance_id}");
+            log::warn!("Failed to create directories for instance {instance_id}: {e}");
         }
 
         // Update next_id
@@ -112,14 +112,11 @@ impl InstanceManager {
             instances: instances.clone(),
             next_id: current_id + 1,
         };
-        drop(instances); // Release the write lock
+        drop(instances);
 
         spawn(async move {
-            println!("Saving instances data...");
             if let Err(e) = save_instances_data(&instances_data).await {
-                println!("Failed to save instances: {e}");
-            } else {
-                println!("Successfully saved instances data");
+                log::error!("Failed to save instances: {e}");
             }
         });
 
@@ -135,9 +132,9 @@ impl InstanceManager {
             let instance_dir = get_instance_directory(id);
             if instance_dir.exists() {
                 if let Err(e) = fs::remove_dir_all(&instance_dir) {
-                    println!("Warning: Failed to delete instance {id} directory: {e}");
+                    log::warn!("Failed to delete instance {id} directory: {e}");
                 } else {
-                    println!("Deleted instance {id} directory: {instance_dir:?}");
+                    log::info!("Deleted instance {id} directory: {instance_dir:?}");
                 }
             }
 
@@ -149,7 +146,7 @@ impl InstanceManager {
             drop(instances); // Release the write lock
             spawn(async move {
                 if let Err(e) = save_instances_data(&instances_data).await {
-                    println!("Failed to save instances: {e}");
+                    log::error!("Failed to save instances: {e}");
                 }
             });
         }
@@ -175,7 +172,7 @@ impl InstanceManager {
             drop(instances); // Release the write lock
             spawn(async move {
                 if let Err(e) = save_instances_data(&instances_data).await {
-                    println!("Failed to save instances: {e}");
+                    log::error!("Failed to save instances: {e}");
                 }
             });
         }
@@ -242,11 +239,13 @@ async fn save_instances_data(data: &InstancesData) -> anyhow::Result<()> {
     let config_path = get_instances_config_path();
 
     // Debug: Print what we're about to save
-    println!("Saving {} instances:", data.instances.len());
+    log::info!("Saving {} instances:", data.instances.len());
     for (id, instance) in &data.instances {
-        println!(
+        log::info!(
             "  Instance {}: name='{}', version='{}'",
-            id, instance.name, instance.version
+            id,
+            instance.name,
+            instance.version
         );
     }
 
@@ -256,7 +255,7 @@ async fn save_instances_data(data: &InstancesData) -> anyhow::Result<()> {
     }
 
     let json = serde_json::to_string_pretty(data)?;
-    println!("JSON to save: {}", json);
+    log::debug!("JSON to save: {}", json);
     async_fs::write(config_path, json).await?;
 
     Ok(())
@@ -267,7 +266,7 @@ async fn load_instances() -> anyhow::Result<()> {
     let config_path = get_instances_config_path();
 
     if !config_path.exists() {
-        println!("No instances config found, creating default instance");
+        log::info!("No instances config found, creating default instance");
         let mut instances = INSTANCES.write();
         instances.insert(1, Instance::new(1));
         *NEXT_ID.write() = 2;
@@ -281,13 +280,15 @@ async fn load_instances() -> anyhow::Result<()> {
     *INSTANCES.write() = data.instances;
     *NEXT_ID.write() = data.next_id;
 
-    println!("Loaded {} instances from config", INSTANCES.read().len());
+    log::info!("Loaded {} instances from config", INSTANCES.read().len());
 
     // Debug
     for (id, instance) in INSTANCES.read().iter() {
-        println!(
+        log::info!(
             "Loaded instance {}: name='{}', version='{}'",
-            id, instance.name, instance.version
+            id,
+            instance.name,
+            instance.version
         );
     }
 
@@ -312,6 +313,6 @@ pub async fn open_instance_folder(instance_id: u32) -> anyhow::Result<()> {
         return Err(anyhow::anyhow!("Failed to open instance folder"));
     }
 
-    println!("Opened instance {instance_id} folder: {instance_dir:?}");
+    log::info!("Opened instance {instance_id} folder: {instance_dir:?}");
     Ok(())
 }

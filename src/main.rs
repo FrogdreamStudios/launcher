@@ -31,7 +31,7 @@ fn main() {
             .enable_all()
             .build()
             .unwrap_or_else(|_| {
-                eprintln!("Failed to create tokio runtime, exiting");
+                log::error!("Failed to create tokio runtime, exiting");
                 std::process::exit(1);
             })
     });

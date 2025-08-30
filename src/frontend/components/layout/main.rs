@@ -189,21 +189,18 @@ pub fn Layout() -> Element {
                                 div {
                                     key: "{instance.id}",
                                     class: {
-                                        let mut classes = vec!["instance-card"];
-                                        if game_status().is_active() && active_instance_id() == Some(instance.id) {
+                                        let mut classes = vec!["instance-card", "instance-card-dynamic"];
+                                        if active_instance_id() == Some(instance.id) {
                                             classes.push("instance-card-pulsing");
                                         }
                                         classes.join(" ")
                                     },
-                                    style: "background-color: #{instance.color};",
+                                    style: format!("--instance-color: #{}", instance.color),
                                     onclick: {
                                         let instance_version = instance.version.clone();
                                         let instance_id = instance.id;
                                         let auth = auth.clone();
-                                        let game_status = game_status.clone();
                                         move |_| {
-                                            // Don't launch if the game is running
-                                            if !game_status().is_active() {
                                                 active_instance_id.set(Some(instance_id));
                                                 let username = auth.get_username();
 
@@ -212,7 +209,6 @@ pub fn Layout() -> Element {
                                                     instance_version.clone(),
                                                     username
                                                 ));
-                                            }
                                         }
                                     },
                                     oncontextmenu: {
@@ -342,14 +338,12 @@ pub fn Layout() -> Element {
 
             if is_new {
                 div {
-                    class: "new-title",
-                    style: "top: 84px !important;",
+                    class: "new-title new-title-fixed",
                     "What will you jump into?"
                 }
 
                 div {
-                    class: "new-divider",
-                    style: "top: 100px !important; left: 369px",
+                    class: "new-divider new-divider-fixed",
                 }
 
                 {
@@ -369,23 +363,22 @@ pub fn Layout() -> Element {
                         rsx! {
                             div {
                                 key: "{site.url}",
-                                class: "new-panel",
-                                style: format!("top: {}px;", 137 + (i * 81)),
+                                class: "new-panel new-panel-dynamic",
+                                style: format!("--panel-top: {}px;", 137 + (i * 81)),
                             }
 
                             div {
-                                class: "new-server-icon",
-                                style: format!("top: {}px;", 145 + (i * 81)),
+                                class: "new-server-icon new-server-icon-dynamic",
+                                style: format!("--icon-top: {}px;", 145 + (i * 81)),
                                 img {
                                     src: ResourceLoader::get_asset(&site.icon_key),
-                                    class: "server-icon-img",
-                                    style: "width: 49px; height: 49px; border-radius: 4px;"
+                                    class: "server-icon-img server-icon-img-fixed"
                                 }
                             }
 
                             div {
-                                class: "new-server-name",
-                                style: format!("top: {}px;", 149 + (i * 81)),
+                                class: "new-server-name new-server-name-dynamic",
+                                style: format!("--name-top: {}px;", 149 + (i * 81)),
                                 "{site.name}"
                             }
 
@@ -424,7 +417,7 @@ pub fn Layout() -> Element {
                                         let url_clone = url.clone();
                                         spawn(async move {
                                             if let Err(e) = webbrowser::open(&url_clone) {
-                                                eprintln!("Failed to open browser: {e}");
+                                                log::error!("Failed to open browser: {e}");
                                             }
                                         });
                                     }
@@ -474,57 +467,22 @@ pub fn Layout() -> Element {
             VersionSelector {
                 show: show_version_selector
             }
-
-            // Progress bar at bottom when game is launching
-            if game_status().is_active() {
-                div {
-                    class: "launch-progress-container",
-                    div {
-                        class: "launch-progress-text",
-                        "{game_status().get_message()}"
-                    }
-                    div {
-                        class: "launch-progress-bar",
-                        style: "--progress-width: {game_status().get_progress() * 100.0}%",
-                    }
-                }
-            }
         }
-
     }
 }
 
 async fn install_and_launch_instance(version: String, username: String) {
-    use crate::backend::launcher::progress::ProgressStage;
-    use crate::backend::utils::progress_bridge::{send_progress_custom, send_progress_stage};
-
-    // Step 1: Preparing
-    send_progress_stage(ProgressStage::Preparing, &version);
-
     // Get Python bridge
     let bridge = match launcher::get_python_bridge() {
         Ok(bridge) => bridge,
         Err(e) => {
-            log::error!("Failed to get Python bridge: {}", e);
-            send_progress_stage(ProgressStage::Failed, &version);
+            log::error!("Failed to get Python bridge: {e}");
             return;
         }
     };
 
-    // Step 2: Downloading (if needed)
-    send_progress_stage(ProgressStage::Downloading, &version);
-
-    // Step 3: Installing
-    send_progress_stage(ProgressStage::Installing, &version);
-    log::info!("Installing version {}...", version);
-
     match bridge.install_version(&version).await {
         Ok(_) => {
-            log::info!("Version {} installed successfully!", version);
-
-            // Step 4: Launching
-            send_progress_stage(ProgressStage::Launching, &version);
-
             let config = crate::backend::bridge::LaunchConfig {
                 username,
                 version: version.clone(),
@@ -533,36 +491,17 @@ async fn install_and_launch_instance(version: String, username: String) {
             match bridge.launch_minecraft(config).await {
                 Ok(result) => {
                     if result.success {
-                        log::info!(
-                            "Minecraft {} launched successfully! PID: {:?}",
-                            version,
-                            result.pid
-                        );
-
-                        // Step 5: Running
-                        send_progress_stage(ProgressStage::Running, &version);
-
-                        // Wait a bit to show "running" status, then complete
-                        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-                        send_progress_stage(ProgressStage::Completed, &version);
                     } else {
-                        log::error!("Failed to launch Minecraft {}: {}", version, result.message);
-                        send_progress_custom(
-                            ProgressStage::Failed,
-                            0.0,
-                            format!("Error: {}", result.message),
-                        );
+                        log::error!("Failed to launch Minecraft: {}", result.message);
                     }
                 }
                 Err(e) => {
-                    log::error!("Error launching Minecraft {}: {}", version, e);
-                    send_progress_custom(ProgressStage::Failed, 0.0, format!("Error: {}", e));
+                    log::error!("Error launching Minecraft: {e}");
                 }
             }
         }
         Err(e) => {
-            log::error!("Failed to install version {}: {}", version, e);
-            send_progress_custom(ProgressStage::Failed, 0.0, format!("Error: {}", e));
+            log::error!("Failed to install version: {e}");
         }
     }
 }

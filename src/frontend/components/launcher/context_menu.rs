@@ -17,7 +17,7 @@ async fn spawn_launch_minecraft(
     username: String,
 ) {
     tokio::time::sleep(std::time::Duration::from_millis(160)).await;
-    println!("About to call launch_minecraft with version: {version}");
+    log::info!("About to call launch_minecraft with version: {version}");
     launch_minecraft(game_status, &version, id, &username);
 }
 
@@ -74,30 +74,34 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
     let handle_run_click = move |e: Event<MouseData>| {
         e.stop_propagation();
         if let Some(id) = instance_id() {
-            println!("Instance ID: {}", id);
+            log::info!("Instance ID: {}", id);
 
             // Get the instance version
             let version = {
                 let instances = INSTANCES.read();
-                println!("Total instances loaded: {}", instances.len());
+                log::info!("Total instances loaded: {}", instances.len());
 
                 // Debug
                 for (inst_id, inst) in instances.iter() {
-                    println!(
+                    log::info!(
                         "Instance {}: name='{}', version='{}'",
-                        inst_id, inst.name, inst.version
+                        inst_id,
+                        inst.name,
+                        inst.version
                     );
                 }
 
                 if let Some(instance) = instances.get(&id) {
-                    println!(
+                    log::info!(
                         "Found target instance {}: name='{}', version='{}'",
-                        id, instance.name, instance.version
+                        id,
+                        instance.name,
+                        instance.version
                     );
                     instance.version.clone()
                 } else {
-                    println!("ERROR: Instance {} not found in loaded instances!", id);
-                    println!(
+                    log::error!("Instance {} not found in loaded instances!", id);
+                    log::error!(
                         "Available instance IDs: {:?}",
                         instances.keys().collect::<Vec<_>>()
                     );
@@ -115,13 +119,13 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
     let handle_folder_click = move |e: Event<MouseData>| {
         e.stop_propagation();
         if let Some(id) = instance_id() {
-            println!("Folder clicked - opening instance {id} folder");
+            log::info!("Folder clicked - opening instance {id} folder");
             show.set(false);
             // Open instance folder after menu closes
             spawn(async move {
                 tokio::time::sleep(std::time::Duration::from_millis(160)).await;
                 if let Err(e) = open_instance_folder(id).await {
-                    println!("Failed to open instance {id} folder: {e}");
+                    log::error!("Failed to open instance {id} folder: {e}");
                 }
             });
         }
@@ -130,7 +134,7 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
     let handle_change_click = move |e: Event<MouseData>| {
         e.stop_propagation();
         if let Some(id) = instance_id() {
-            println!("Change clicked for instance {id}");
+            log::info!("Change clicked for instance {id}");
 
             // Get the current instance name and set up the rename dialog
             let instances = INSTANCES.read();
@@ -146,7 +150,7 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
     let handle_delete_click = move |e: Event<MouseData>| {
         e.stop_propagation();
         if let Some(id) = instance_id() {
-            println!("Delete clicked for instance {id}");
+            log::info!("Delete clicked for instance {id}");
             InstanceManager::delete_instance(id);
         }
         show.set(false);
@@ -154,8 +158,7 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
 
     let handle_debug_click = move |e: Event<MouseData>| {
         e.stop_propagation();
-        if let Some(id) = instance_id() {
-            println!("Debug clicked for instance {id}");
+        if let Some(_id) = instance_id() {
             show.set(false);
             show_debug_window.set(true);
         }
@@ -174,8 +177,8 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
             onclick: handle_backdrop_click,
 
             div {
-                class: if is_hiding() { "context-menu context-menu-hide" } else { "context-menu context-menu-show" },
-                style: "left: {x()}px; top: {y()}px;",
+                class: if is_hiding() { "context-menu context-menu-hide context-menu-positioned" } else { "context-menu context-menu-show context-menu-positioned" },
+                style: format!("--menu-left: {}px; --menu-top: {}px;", x(), y()),
                 onclick: |e| e.stop_propagation(),
 
                 button {

@@ -21,7 +21,7 @@ pub struct ChatData {
 
 #[component]
 pub fn Chat(username: String) -> Element {
-    // TODO: use mock data
+    // Using mock data for chat functionality
     let username_clone = username;
     let chat_data = use_memo(move || get_chat_data(&username_clone));
 
@@ -47,7 +47,7 @@ pub fn Chat(username: String) -> Element {
     }
 }
 
-// TODO: get chat data
+// Mock chat data implementation
 fn get_chat_data(username: &str) -> ChatData {
     ChatData {
         username: username.to_string(),
