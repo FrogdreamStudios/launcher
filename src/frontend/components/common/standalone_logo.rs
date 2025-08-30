@@ -1,4 +1,4 @@
-use crate::backend::utils::css::main::ResourceLoader;
+use crate::backend::utils::css::ResourceLoader;
 use dioxus::prelude::*;
 
 #[component]

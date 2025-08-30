@@ -1,6 +1,6 @@
 use crate::{
     backend::launcher::models::VersionInfo,
-    backend::utils::css::main::ResourceLoader,
+    backend::utils::css::ResourceLoader,
     frontend::services::{instances::main::InstanceManager, launcher},
 };
 

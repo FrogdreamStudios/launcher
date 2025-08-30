@@ -1,6 +1,6 @@
-use crate::backend::utils::launcher::paths::get_launcher_dir;
+use crate::backend::utils::paths::get_launcher_dir;
 use crate::{
-    backend::utils::css::main::ResourceLoader,
+    backend::utils::css::ResourceLoader,
     frontend::{services::instances::main::INSTANCES, states::GameStatus},
 };
 
@@ -195,7 +195,7 @@ async fn delete_launcher_files() -> anyhow::Result<()> {
     log::info!("Starting launcher files deletion...");
 
     // Use standard Minecraft directory instead of launcher.get_game_dir()
-    let game_dir = crate::backend::utils::launcher::paths::get_game_dir(None, None)?;
+    let game_dir = crate::backend::utils::paths::get_game_dir(None, None)?;
 
     log::info!("Game directory: {game_dir:?}");
 
@@ -253,7 +253,7 @@ async fn delete_launcher_files() -> anyhow::Result<()> {
 
 async fn get_system_info() -> anyhow::Result<String> {
     // Use standard Minecraft directory instead of launcher.get_game_dir()
-    let game_dir = crate::backend::utils::launcher::paths::get_game_dir(None, None)?;
+    let game_dir = crate::backend::utils::paths::get_game_dir(None, None)?;
 
     let mut info = String::new();
     info.push_str(&format!("Game Directory: {game_dir:?}\n"));

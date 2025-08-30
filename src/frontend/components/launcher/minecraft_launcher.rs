@@ -1,4 +1,4 @@
-use crate::{backend::utils::launcher::starter, frontend::states::GameStatus};
+use crate::{backend::utils::starter, frontend::states::GameStatus};
 
 use dioxus::prelude::*;
 

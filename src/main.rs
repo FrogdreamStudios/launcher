@@ -11,7 +11,7 @@ use dioxus::{LaunchBuilder, prelude::*};
 use dioxus_desktop::{Config, LogicalSize, WindowBuilder};
 use dioxus_router::Router;
 
-use crate::backend::utils::app::main::Route;
+use crate::backend::utils::application::Route;
 use tokio::runtime::Runtime;
 
 static RUNTIME: OnceLock<Runtime> = OnceLock::new();

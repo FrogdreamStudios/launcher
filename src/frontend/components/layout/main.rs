@@ -1,6 +1,6 @@
 use crate::backend::services::VisitTracker;
-use crate::backend::utils::app::main::Route;
-use crate::backend::utils::css::main::ResourceLoader;
+use crate::backend::utils::application::Route;
+use crate::backend::utils::css::ResourceLoader;
 use crate::frontend::components::common::titlebar::TitleBar;
 use crate::frontend::pages::auth::AuthState;
 use crate::frontend::services::launcher;

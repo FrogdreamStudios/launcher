@@ -1,4 +1,4 @@
-use crate::backend::utils::launcher::paths::get_launcher_dir;
+use crate::backend::utils::paths::get_launcher_dir;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
