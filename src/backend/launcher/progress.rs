@@ -40,7 +40,7 @@ impl ProgressStage {
             Self::Failed => 0.0,
         }
     }
-    
+
     /// Get the default message for this stage
     pub fn default_message(&self, version: &str) -> String {
         match self {

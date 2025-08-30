@@ -1,9 +1,8 @@
 //! Path utilities for Minecraft launcher directories.
 
-use std::path::{PathBuf};
+use std::path::PathBuf;
 
-use crate::{simple_error};
-use crate::utils::Result;
+use anyhow::Result;
 
 /// Name of the main launcher directory.
 const LAUNCHER_DIR: &str = "DreamLauncher";
@@ -18,15 +17,15 @@ pub fn get_launcher_dir() -> Result<PathBuf> {
         "windows" => std::env::var("APPDATA")
             .ok()
             .map(PathBuf::from)
-            .ok_or_else(|| simple_error!("Could not determine AppData directory"))?,
+            .ok_or_else(|| anyhow::anyhow!("Could not determine AppData directory"))?,
         "macos" => std::env::var("HOME")
             .ok()
             .map(|home| PathBuf::from(home).join("Library/Application Support"))
-            .ok_or_else(|| simple_error!("Could not determine home directory"))?,
+            .ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?,
         _ => std::env::var("HOME")
             .ok()
             .map(PathBuf::from)
-            .ok_or_else(|| simple_error!("Could not determine home directory"))?,
+            .ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?,
     };
     Ok(base_dir.join(LAUNCHER_DIR))
 }

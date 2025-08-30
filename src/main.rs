@@ -4,7 +4,6 @@
 
 mod backend;
 mod frontend;
-mod utils;
 
 use std::sync::OnceLock;
 
@@ -20,7 +19,7 @@ static RUNTIME: OnceLock<Runtime> = OnceLock::new();
 /// Main function for starting the application.
 fn main() {
     // Logging
-    utils::logging::init_from_env();
+    env_logger::init();
 
     // Set icon on macOS
     #[cfg(target_os = "macos")]

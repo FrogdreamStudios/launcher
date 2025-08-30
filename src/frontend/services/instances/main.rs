@@ -1,5 +1,5 @@
 use crate::backend::utils::launcher::paths::get_launcher_dir;
-use crate::simple_error;
+
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -238,7 +238,7 @@ pub fn create_instance_directories(instance_id: u32) -> std::io::Result<PathBuf>
 }
 
 /// Save instances data to the disk.
-async fn save_instances_data(data: &InstancesData) -> crate::utils::Result<()> {
+async fn save_instances_data(data: &InstancesData) -> anyhow::Result<()> {
     let config_path = get_instances_config_path();
 
     // Debug: Print what we're about to save
@@ -263,7 +263,7 @@ async fn save_instances_data(data: &InstancesData) -> crate::utils::Result<()> {
 }
 
 /// Load instances from disk.
-async fn load_instances() -> crate::utils::Result<()> {
+async fn load_instances() -> anyhow::Result<()> {
     let config_path = get_instances_config_path();
 
     if !config_path.exists() {
@@ -295,7 +295,7 @@ async fn load_instances() -> crate::utils::Result<()> {
 }
 
 /// Open instance folder in system file explorer.
-pub async fn open_instance_folder(instance_id: u32) -> crate::utils::Result<()> {
+pub async fn open_instance_folder(instance_id: u32) -> anyhow::Result<()> {
     use std::process::Command;
 
     let instance_dir = get_instance_directory(instance_id);
@@ -309,7 +309,7 @@ pub async fn open_instance_folder(instance_id: u32) -> crate::utils::Result<()> 
     let output = Command::new("open").arg(&instance_dir).output()?;
 
     if !output.status.success() {
-        return Err(simple_error!("Failed to open instance folder"));
+        return Err(anyhow::anyhow!("Failed to open instance folder"));
     }
 
     println!("Opened instance {instance_id} folder: {instance_dir:?}");

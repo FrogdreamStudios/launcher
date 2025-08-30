@@ -3,18 +3,16 @@ use crate::backend::utils::app::main::Route;
 use crate::backend::utils::css::main::ResourceLoader;
 use crate::frontend::components::common::titlebar::TitleBar;
 use crate::frontend::pages::auth::AuthState;
+use crate::frontend::services::launcher;
 use crate::frontend::{
     components::{
         common::{News, StandaloneLogo, VersionSelector},
-        launcher::{
-            ContextMenu, DebugWindow, RenameDialog, debug_window::use_version_selection
-        },
+        launcher::{ContextMenu, DebugWindow, RenameDialog, debug_window::use_version_selection},
         layout::Navigation,
     },
     services::instances::main::InstanceManager,
     states::{GameStatus, use_game_state},
 };
-use crate::{frontend::services::launcher, log_error, log_info};
 use dioxus::prelude::{Key, *};
 use dioxus_router::{components::Outlet, navigator, use_route};
 use webbrowser;
@@ -208,7 +206,7 @@ pub fn Layout() -> Element {
                                             if !game_status().is_active() {
                                                 active_instance_id.set(Some(instance_id));
                                                 let username = auth.get_username();
-                                                
+
                                                 // Start installation and launch process
                                                 spawn(install_and_launch_instance(
                                                     instance_version.clone(),
@@ -496,69 +494,74 @@ pub fn Layout() -> Element {
     }
 }
 
-async fn install_and_launch_instance(
-    version: String,
-    username: String,
-) {
-    use crate::backend::utils::progress_bridge::{send_progress_stage, send_progress_custom};
+async fn install_and_launch_instance(version: String, username: String) {
     use crate::backend::launcher::progress::ProgressStage;
-    
+    use crate::backend::utils::progress_bridge::{send_progress_custom, send_progress_stage};
+
     // Step 1: Preparing
     send_progress_stage(ProgressStage::Preparing, &version);
-    
+
     // Get Python bridge
     let bridge = match launcher::get_python_bridge() {
         Ok(bridge) => bridge,
         Err(e) => {
-            log_error!("Failed to get Python bridge: {}", e);
+            log::error!("Failed to get Python bridge: {}", e);
             send_progress_stage(ProgressStage::Failed, &version);
             return;
         }
     };
-    
+
     // Step 2: Downloading (if needed)
     send_progress_stage(ProgressStage::Downloading, &version);
-    
+
     // Step 3: Installing
     send_progress_stage(ProgressStage::Installing, &version);
-    log_info!("Installing version {}...", version);
-    
+    log::info!("Installing version {}...", version);
+
     match bridge.install_version(&version).await {
         Ok(_) => {
-            log_info!("Version {} installed successfully!", version);
-            
+            log::info!("Version {} installed successfully!", version);
+
             // Step 4: Launching
             send_progress_stage(ProgressStage::Launching, &version);
-            
+
             let config = crate::backend::bridge::LaunchConfig {
                 username,
                 version: version.clone(),
             };
-            
+
             match bridge.launch_minecraft(config).await {
                 Ok(result) => {
                     if result.success {
-                        log_info!("Minecraft {} launched successfully! PID: {:?}", version, result.pid);
-                        
+                        log::info!(
+                            "Minecraft {} launched successfully! PID: {:?}",
+                            version,
+                            result.pid
+                        );
+
                         // Step 5: Running
                         send_progress_stage(ProgressStage::Running, &version);
-                        
+
                         // Wait a bit to show "running" status, then complete
                         tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
                         send_progress_stage(ProgressStage::Completed, &version);
                     } else {
-                        log_error!("Failed to launch Minecraft {}: {}", version, result.message);
-                        send_progress_custom(ProgressStage::Failed, 0.0, format!("Error: {}", result.message));
+                        log::error!("Failed to launch Minecraft {}: {}", version, result.message);
+                        send_progress_custom(
+                            ProgressStage::Failed,
+                            0.0,
+                            format!("Error: {}", result.message),
+                        );
                     }
                 }
                 Err(e) => {
-                    log_error!("Error launching Minecraft {}: {}", version, e);
+                    log::error!("Error launching Minecraft {}: {}", version, e);
                     send_progress_custom(ProgressStage::Failed, 0.0, format!("Error: {}", e));
                 }
             }
         }
         Err(e) => {
-            log_error!("Failed to install version {}: {}", version, e);
+            log::error!("Failed to install version {}: {}", version, e);
             send_progress_custom(ProgressStage::Failed, 0.0, format!("Error: {}", e));
         }
     }

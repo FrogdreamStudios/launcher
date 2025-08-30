@@ -1,9 +1,9 @@
 use crate::backend::utils::launcher::paths::get_launcher_dir;
 use crate::{
     backend::utils::css::main::ResourceLoader,
-    frontend::{services::{instances::main::INSTANCES}, states::GameStatus},
+    frontend::{services::instances::main::INSTANCES, states::GameStatus},
 };
-use crate::{log_error, log_info, simple_error};
+
 use dioxus::prelude::*;
 use std::fs;
 
@@ -126,7 +126,7 @@ pub fn DebugWindow(
                                     };
                                     match result {
                                         Ok(info) => system_info.set(info),
-                                        Err(e) => log_error!("Failed to get system info: {e}"),
+                                        Err(e) => log::error!("Failed to get system info: {e}"),
                                     }
                                 });
                             }
@@ -145,8 +145,8 @@ pub fn DebugWindow(
                                     is_loading.set(true);
                                     spawn(async move {
                                         match update_manifest().await {
-                                            Ok(()) => log_info!("Manifest updated"),
-                                            Err(e) => log_error!("Failed to update manifest: {e}"),
+                                            Ok(()) => log::info!("Manifest updated"),
+            Err(e) => log::error!("Failed to update manifest: {e}"),
                                         }
                                         is_loading.set(false);
                                     });
@@ -169,8 +169,8 @@ pub fn DebugWindow(
                                     is_deleting.set(true);
                                     spawn(async move {
                                         match delete_launcher_files().await {
-                                            Ok(()) => log_info!("Launcher files deleted"),
-                                            Err(e) => log_error!("Failed to delete files: {e}"),
+                                            Ok(()) => log::info!("Launcher files deleted"),
+            Err(e) => log::error!("Failed to delete files: {e}"),
                                         }
                                         is_deleting.set(false);
                                     });
@@ -185,19 +185,19 @@ pub fn DebugWindow(
     }
 }
 
-async fn update_manifest() -> crate::utils::Result<()> {
-    log_info!("Update manifest functionality moved to Python bridge");
+async fn update_manifest() -> anyhow::Result<()> {
+    log::info!("Update manifest functionality moved to Python bridge");
     // TODO: Implement manifest update through Python bridge if needed
     Ok(())
 }
 
-async fn delete_launcher_files() -> crate::utils::Result<()> {
-    log_info!("Starting launcher files deletion...");
+async fn delete_launcher_files() -> anyhow::Result<()> {
+    log::info!("Starting launcher files deletion...");
 
     // Use standard Minecraft directory instead of launcher.get_game_dir()
     let game_dir = crate::backend::utils::launcher::paths::get_game_dir(None, None)?;
 
-    log_info!("Game directory: {game_dir:?}");
+    log::info!("Game directory: {game_dir:?}");
 
     let directories = [
         ("versions", game_dir.join("versions")),
@@ -213,21 +213,21 @@ async fn delete_launcher_files() -> crate::utils::Result<()> {
     for (name, path) in &directories {
         if path.exists() {
             total_found += 1;
-            log_info!("Found {name} directory: {path:?}");
+            log::info!("Found {name} directory: {path:?}");
         }
     }
 
     if total_found == 0 {
-        log_info!("No launcher files found to delete");
-        return Ok(())
+        log::info!("No launcher files found to delete");
+        return Ok(());
     }
 
-    log_info!("Found {total_found} directories to delete");
+    log::info!("Found {total_found} directories to delete");
 
     // Delete directories with progress
     for (name, path) in &directories {
         if path.exists() {
-            log_info!(
+            log::info!(
                 "Deleting {} directory... ({}/{})",
                 name,
                 deleted_count + 1,
@@ -237,21 +237,21 @@ async fn delete_launcher_files() -> crate::utils::Result<()> {
             match fs::remove_dir_all(path) {
                 Ok(()) => {
                     deleted_count += 1;
-                    log_info!("✓ Successfully deleted {name} directory");
+                    log::info!("✓ Successfully deleted {name} directory");
                 }
                 Err(e) => {
-                    log_error!("✗ Failed to delete {name} directory: {e}");
-                    return Err(simple_error!("Failed to delete {name} directory: {e}"));
+                    log::error!("✗ Failed to delete {name} directory: {e}");
+                    return Err(anyhow::anyhow!("Failed to delete {name} directory: {e}"));
                 }
             }
         }
     }
 
-    log_info!("Deletion complete! Removed {deleted_count} directories");
+    log::info!("Deletion complete! Removed {deleted_count} directories");
     Ok(())
 }
 
-async fn get_system_info() -> crate::utils::Result<String> {
+async fn get_system_info() -> anyhow::Result<String> {
     // Use standard Minecraft directory instead of launcher.get_game_dir()
     let game_dir = crate::backend::utils::launcher::paths::get_game_dir(None, None)?;
 
@@ -279,7 +279,6 @@ async fn get_system_info() -> crate::utils::Result<String> {
 
     Ok(info)
 }
-
 
 fn get_instance_info(instance_id: u32) -> String {
     use crate::frontend::services::instances::main::get_instance_directory;

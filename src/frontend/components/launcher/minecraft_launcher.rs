@@ -1,5 +1,5 @@
 use crate::{backend::utils::launcher::starter, frontend::states::GameStatus};
-use crate::{log_error, log_info};
+
 use dioxus::prelude::*;
 
 /// Launch Minecraft.
@@ -15,7 +15,7 @@ pub fn launch_minecraft(
     spawn(async move {
         println!("Received version: {version_owned}");
         println!("Received instance_id: {instance_id}");
-        log_info!("Starting Minecraft launch for version: {version_owned}");
+        log::info!("Starting Minecraft launch for version: {version_owned}");
 
         // Use the simplified launch function from starter.rs
         // Progress is now handled entirely through progress_bridge
@@ -27,11 +27,9 @@ pub fn launch_minecraft(
                 let rt = tokio::runtime::Builder::new_current_thread()
                     .enable_all()
                     .build()
-                    .map_err(|e| format!("Failed to create runtime: {e}"))?;
+                    .map_err(|e| anyhow::anyhow!("Failed to create runtime: {e}"))?;
 
-                println!(
-                    "Calling starter::launch_minecraft with version: {version_owned}"
-                );
+                println!("Calling starter::launch_minecraft with version: {version_owned}");
                 rt.block_on(async {
                     starter::launch_minecraft(version_owned, instance_id, username_owned).await
                 })
@@ -42,17 +40,17 @@ pub fn launch_minecraft(
         // Handle the result - errors are now sent through progress_bridge
         match launch_result {
             Ok(Ok(())) => {
-                log_info!("Minecraft {version_owned} launched and completed successfully");
+                log::info!("Minecraft {version_owned} launched and completed successfully");
             }
             Ok(Err(e)) => {
-                log_error!("Failed to launch Minecraft {version_owned}: {e}");
+                log::error!("Failed to launch Minecraft {version_owned}: {e}");
                 // Error handling is now done in starter.rs through progress_bridge
             }
             Err(e) => {
-                log_error!("Minecraft launch task failed: {e}");
+                log::error!("Minecraft launch task failed: {e}");
                 // Error handling is now done in starter.rs through progress_bridge
             }
         }
-        log_info!("Minecraft launch process completed");
+        log::info!("Minecraft launch process completed");
     });
 }

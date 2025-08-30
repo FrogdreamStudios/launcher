@@ -1,8 +1,9 @@
-use crate::{backend::launcher::models::VersionInfo,
+use crate::{
+    backend::launcher::models::VersionInfo,
     backend::utils::css::main::ResourceLoader,
     frontend::services::{instances::main::InstanceManager, launcher},
 };
-use crate::{log_error, log_info};
+
 use dioxus::prelude::*;
 
 #[derive(Clone, PartialEq, Debug)]
@@ -87,7 +88,7 @@ pub fn VersionSelector(props: VersionSelectorProps) -> Element {
                             filtered_versions,
                         );
                     }
-                    Err(e) => log_error!("Failed to get version manifest: {e}"),
+                    Err(e) => log::error!("Failed to get version manifest: {e}"),
                 }
                 is_loading.set(false);
             });
@@ -109,18 +110,18 @@ pub fn VersionSelector(props: VersionSelectorProps) -> Element {
     let handle_select_click = move |_| {
         let version = selected_version.read().clone();
         println!("Selected version in handle_select_click: {version}");
-        log_info!("Creating instance with version: {version}");
-        
+        log::info!("Creating instance with version: {version}");
+
         // Create instance with selected version
         match InstanceManager::create_instance_with_version(version) {
             Some(instance_id) => {
-                log_info!("Instance created successfully with ID: {instance_id}");
+                log::info!("Instance created successfully with ID: {instance_id}");
             }
             None => {
-                log_error!("Failed to create instance: maximum instances reached or other error");
+                log::error!("Failed to create instance: maximum instances reached or other error");
             }
         }
-        
+
         show.set(false);
     };
 
@@ -225,7 +226,7 @@ pub fn VersionSelector(props: VersionSelectorProps) -> Element {
                         class: "version-action-btn select",
                         disabled: *is_loading.read(),
                         onclick: handle_select_click,
-                        "Create Instance"
+                        "Create instance"
                     }
                 }
             }
