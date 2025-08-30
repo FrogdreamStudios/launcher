@@ -3,7 +3,21 @@
 [![License](https://img.shields.io/github/license/FrogdreamStudios/launcher)](https://github.com/FrogdreamStudios/launcher/blob/master/LICENSE)
 
 # Dream Launcher
+> [!Warning] 
+> This is a beta release. Some features may not work as expected, and stability is not guaranteed. Use at your own risk!
 
-Dream Launcher is a simple and lightweight launcher for Minecraft. At the moment the project is in active development.
+Dream Launcher is a simple and lightweight launcher for Minecraft. The project is actively developed.
 
-Keep an eye on the news!
+Stay tuned for updates and new features!
+
+## Roadmap
+- [ ] CurseForge integration
+- [ ] Last connections
+- [ ] Play together mode
+- [ ] Cross-platform optimizations
+- [ ] Changing and editing skins and capes
+- [ ] Modpack explorer
+- [ ] Friends and chats
+- [ ] Discord integration
+- [ ] More settings
+- [ ] More statistics
