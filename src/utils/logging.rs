@@ -10,10 +10,6 @@ static LOG_CHANNEL: Lazy<(broadcast::Sender<String>,)> = Lazy::new(|| {
     (sender,)
 });
 
-pub fn get_log_receiver() -> broadcast::Receiver<String> {
-    LOG_CHANNEL.0.subscribe()
-}
-
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd)]
 #[repr(u8)]
 pub enum LogLevel {

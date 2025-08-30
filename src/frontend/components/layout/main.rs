@@ -7,8 +7,7 @@ use crate::frontend::{
     components::{
         common::{News, StandaloneLogo, VersionSelector},
         launcher::{
-            ContextMenu, DebugWindow, RenameDialog, debug_window::use_version_selection,
-            launch_minecraft,
+            ContextMenu, DebugWindow, RenameDialog, debug_window::use_version_selection
         },
         layout::Navigation,
     },
@@ -16,7 +15,6 @@ use crate::frontend::{
     states::{GameStatus, use_game_state},
 };
 use crate::{frontend::services::launcher, log_error, log_info};
-use crate::backend::bridge::LaunchConfig;
 use dioxus::prelude::{Key, *};
 use dioxus_router::{components::Outlet, navigator, use_route};
 use webbrowser;
@@ -213,9 +211,7 @@ pub fn Layout() -> Element {
                                                 
                                                 // Start installation and launch process
                                                 spawn(install_and_launch_instance(
-                                                    game_status,
                                                     instance_version.clone(),
-                                                    instance_id,
                                                     username
                                                 ));
                                             }
@@ -501,9 +497,7 @@ pub fn Layout() -> Element {
 }
 
 async fn install_and_launch_instance(
-    mut game_status: Signal<GameStatus>,
     version: String,
-    instance_id: u32,
     username: String,
 ) {
     use crate::backend::utils::progress_bridge::{send_progress_stage, send_progress_custom};

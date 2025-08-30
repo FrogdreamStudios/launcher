@@ -4,13 +4,12 @@ version = 4
 
 [[package]]
 name = "DreamLauncher"
-version = "0.1.1"
+version = "0.1.0"
 dependencies = [
  "base64",
  "dioxus",
  "dioxus-desktop",
  "dioxus-router",
- "native-tls",
  "once_cell",
  "pyo3",
  "reqwest",
@@ -18,7 +17,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
- "tokio-native-tls",
  "webbrowser",
  "winres",
 ]

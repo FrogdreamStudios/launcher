@@ -1,7 +1,7 @@
 use crate::backend::utils::launcher::paths::get_launcher_dir;
 use crate::{
     backend::utils::css::main::ResourceLoader,
-    frontend::{services::{instances::main::INSTANCES, launcher}, states::GameStatus},
+    frontend::{services::{instances::main::INSTANCES}, states::GameStatus},
 };
 use crate::{log_error, log_info, simple_error};
 use dioxus::prelude::*;

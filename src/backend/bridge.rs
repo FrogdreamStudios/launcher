@@ -57,33 +57,9 @@ impl PythonMinecraftBridge {
         Err("Python script launcher.py not found in any expected location".into())
     }
 
-    /// Install Python dependencies.
-    pub async fn install_dependencies(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let python_dir = self.python_script_path.parent().unwrap();
-        let requirements_path = python_dir.join("requirements.txt");
-
-        if !requirements_path.exists() {
-            return Err("requirements.txt not found".into());
-        }
-
-        let output = tokio::process::Command::new("pip")
-            .args(["install", "-r", requirements_path.to_str().unwrap()])
-            .output()
-            .await?;
-
-        if !output.status.success() {
-            let e = String::from_utf8_lossy(&output.stderr);
-            return Err(format!("Failed to install dependencies: {e}").into());
-        }
-
-        println!("Python dependencies installed successfully");
-        Ok(())
-    }
-
     /// Launch Minecraft through Python script with command line arguments.
     pub async fn launch_minecraft(&self, config: LaunchConfig) -> Result<MinecraftLaunchResult, Box<dyn std::error::Error + Send + Sync>> {
         use std::process::Command;
-        use tokio::process::Command as AsyncCommand;
         
         let script_path = self.python_script_path.clone();
         let username = config.username.clone();
@@ -123,50 +99,6 @@ impl PythonMinecraftBridge {
                     pid: None,
                     message: format!("Failed to launch Minecraft: {stderr}"),
                 })
-            }
-        }).await??;
-
-        Ok(result)
-    }
-
-    /// Test Minecraft launch with a specific version.
-    pub async fn test_launch(&self, version: Option<String>) -> Result<MinecraftLaunchResult, Box<dyn std::error::Error + Send + Sync>> {
-        let config = LaunchConfig {
-            username: "TestPlayer".to_string(),
-            version: version.unwrap_or_else(|| "1.20.1".to_string()),
-        };
-        
-        self.launch_minecraft(config).await
-    }
-
-    /// Get available Minecraft versions.
-    pub async fn get_available_versions(&self) -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {
-        use std::process::Command;
-        
-        let script_path = self.python_script_path.clone();
-
-        let result = task::spawn_blocking(move || -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {
-            let output = Command::new("python3")
-                .arg(&script_path)
-                .arg("--list-versions")
-                .output()?;
-
-            if output.status.success() {
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                let versions: Vec<String> = stdout
-                    .lines()
-                    .filter_map(|line| {
-                        let trimmed = line.trim();
-                        if trimmed.starts_with("  ") && !trimmed.contains("...") && !trimmed.contains("Available") {
-                            Some(trimmed.trim().to_string())
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
-                Ok(versions)
-            } else {
-                Err("Failed to get available versions".into())
             }
         }).await??;
 
@@ -221,28 +153,4 @@ impl PythonMinecraftBridge {
 
         Ok(result)
     }
-}
-
-/// Global function for test launch.
-pub async fn test_python_minecraft_launch() -> Result<MinecraftLaunchResult, Box<dyn std::error::Error + Send + Sync>> {
-    println!("Initializing Python bridge...");
-
-    let bridge = PythonMinecraftBridge::new()?;
-
-    println!("Installing Python dependencies...");
-    if let Err(e) = bridge.install_dependencies().await {
-        println!("Warning: failed to install dependencies: {e}");
-    }
-
-    println!("Getting available versions...");
-    match bridge.get_available_versions().await {
-        Ok(versions) => println!("Available versions: {} found", versions.len()),
-        Err(e) => println!("Failed to get versions: {e}"),
-    }
-
-    println!("Launching test Minecraft...");
-    let result = bridge.test_launch(None).await?;
-
-    println!("Launch result: {result:?}");
-    Ok(result)
 }

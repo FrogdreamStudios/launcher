@@ -1,5 +1,5 @@
 use std::sync::{Arc, OnceLock};
-use crate::backend::launcher::models::{VersionManifest, VersionInfo};
+use crate::backend::launcher::models::{VersionManifest};
 use crate::backend::bridge::PythonMinecraftBridge;
 use crate::utils::Result;
 use crate::{log_info, log_error};

@@ -19,20 +19,6 @@ pub fn get_progress_sender() -> Option<mpsc::UnboundedSender<ProgressInfo>> {
     PROGRESS_SENDER.get().cloned()
 }
 
-/// Helper function to update progress from backend operations.
-pub fn update_global_progress(progress: f32, message: String) {
-    if let Some(sender) = get_progress_sender() {
-        use crate::backend::launcher::progress::ProgressStage;
-
-        let info = ProgressInfo {
-            progress,
-            message,
-            stage: ProgressStage::Launching,
-        };
-        let _ = sender.send(info);
-    }
-}
-
 /// Send progress update with specific stage.
 pub fn send_progress_stage(stage: crate::backend::launcher::progress::ProgressStage, version: &str) {
     if let Some(sender) = get_progress_sender() {
