@@ -98,9 +98,33 @@ fn replace_executable_windows(current_exe: &PathBuf, new_content: &[u8]) -> Resu
         return Err(format!("Failed to replace executable: {e}"));
     }
 
-    // Clean up backup and temp files
-    let _ = std::fs::remove_file(&backup_path);
-    let _ = std::fs::remove_file(&temp_path);
+    // Clean up backup and temp files with retry mechanism
+    for attempt in 1..=3 {
+        match std::fs::remove_file(&backup_path) {
+            Ok(_) => break,
+            Err(e) => {
+                if attempt == 3 {
+                    log::warn!("Failed to clean up backup file {} after 3 attempts: {}", backup_path.display(), e);
+                } else {
+                    log::debug!("Attempt {} to remove backup file failed: {}", attempt, e);
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                }
+            }
+        }
+    }
+    for attempt in 1..=3 {
+        match std::fs::remove_file(&temp_path) {
+            Ok(_) => break,
+            Err(e) => {
+                if attempt == 3 {
+                    log::warn!("Failed to clean up temp file {} after 3 attempts: {}", temp_path.display(), e);
+                } else {
+                    log::debug!("Attempt {} to remove temp file failed: {}", attempt, e);
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                }
+            }
+        }
+    }
 
     Ok(())
 }
