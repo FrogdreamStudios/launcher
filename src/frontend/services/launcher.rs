@@ -16,7 +16,7 @@ fn get_manifest_cache_path() -> PathBuf {
         .join("version_manifest.json")
 }
 
-/// Fetch version manifest directly from Mojang API.
+/// Fetch versions manifest directly from Mojang API.
 async fn fetch_version_manifest_from_mojang() -> Result<serde_json::Value> {
     let url = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
     let response = reqwest::get(url).await?;
@@ -24,18 +24,17 @@ async fn fetch_version_manifest_from_mojang() -> Result<serde_json::Value> {
     Ok(manifest)
 }
 
-/// Save version manifest to cache file.
+/// Save version manifest to the cache file.
 async fn save_manifest_to_cache(manifest: &serde_json::Value) -> Result<()> {
     let cache_path = get_manifest_cache_path();
 
-    // Create parent directory if it doesn't exist
+    // Create a parent directory if it doesn't exist
     if let Some(parent) = cache_path.parent() {
         fs::create_dir_all(parent).await?;
     }
 
     let manifest_json = serde_json::to_string_pretty(manifest)?;
     fs::write(&cache_path, manifest_json).await?;
-    log::info!("Version manifest cached to: {cache_path:?}");
     Ok(())
 }
 
@@ -61,13 +60,11 @@ pub async fn init_launcher() {
         return;
     }
 
-    log::info!("Initializing Python Minecraft Bridge...");
-
     match PythonMinecraftBridge::new() {
         Ok(bridge) => {
-            log::info!("Python Minecraft Bridge initialized successfully!");
+            log::info!("Python Minecraft bridge initialized successfully");
 
-            // Try to load manifest from internet first, fallback to cache
+            // Try to load manifest from the internet first, fallback to cache
             let manifest_json = match fetch_version_manifest_from_mojang().await {
                 Ok(manifest) => {
                     log::info!("Version manifest loaded from Mojang servers");
@@ -79,7 +76,7 @@ pub async fn init_launcher() {
                 }
                 Err(e) => {
                     log::warn!("Failed to load version manifest from internet: {e}");
-                    // Try to load from cache
+                    // Try to load from a cache
                     match load_manifest_from_cache().await {
                         Ok(cached_manifest) => {
                             log::info!("Using cached version manifest");
@@ -187,8 +184,6 @@ pub fn get_python_bridge() -> Result<&'static PythonMinecraftBridge> {
 }
 
 pub async fn refresh_version_manifest() -> Result<()> {
-    log::info!("Refreshing version manifest from Mojang servers...");
-
     match fetch_version_manifest_from_mojang().await {
         Ok(manifest_json) => {
             // Parse the manifest JSON into our VersionManifest struct

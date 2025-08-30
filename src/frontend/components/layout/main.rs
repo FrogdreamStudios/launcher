@@ -4,12 +4,12 @@ use crate::backend::services::VisitTracker;
 use crate::backend::utils::application::Route;
 use crate::backend::utils::css::ResourceLoader;
 use crate::frontend::components::common::titlebar::TitleBar;
+use crate::frontend::components::common::{ContextMenu, DebugWindow, RenameDialog};
 use crate::frontend::services::context::AuthState;
-use crate::frontend::services::launcher;
+use crate::frontend::services::launcher::get_python_bridge;
 use crate::frontend::{
     components::{
         common::{GameProgress, Logo, News, Selector, UpdateProgress},
-        launcher::{ContextMenu, DebugWindow, RenameDialog},
         layout::Navigation,
     },
     services::instances::InstanceManager,
@@ -536,7 +536,7 @@ pub async fn install_and_launch_instance(
     );
 
     // Get Python bridge
-    let bridge = match launcher::get_python_bridge() {
+    let bridge = match get_python_bridge() {
         Ok(bridge) => bridge,
         Err(e) => {
             log::error!("Failed to get Python bridge: {e}");

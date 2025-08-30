@@ -284,16 +284,6 @@ async fn load_instances() -> anyhow::Result<()> {
 
     log::info!("Loaded {} instances from config", INSTANCES.read().len());
 
-    // Debug
-    for (id, instance) in INSTANCES.read().iter() {
-        log::info!(
-            "Loaded instance {}: name='{}', version='{}'",
-            id,
-            instance.name,
-            instance.version
-        );
-    }
-
     Ok(())
 }
 

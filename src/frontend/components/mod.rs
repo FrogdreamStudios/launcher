@@ -2,5 +2,4 @@
 //! with non-UI logic for the launcher and communication with the backend.
 
 pub mod common;
-pub mod launcher;
 pub mod layout;
