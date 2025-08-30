@@ -1,4 +1,4 @@
-//! Frontend UI components organized by functionality.
+//! Frontend UI components.
 
 pub mod common;
 pub mod launcher;

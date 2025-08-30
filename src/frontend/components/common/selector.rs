@@ -1,18 +1,18 @@
 use crate::{
     backend::launcher::models::VersionInfo,
     backend::utils::css::ResourceLoader,
-    frontend::services::{instances::main::InstanceManager, launcher},
+    frontend::services::{instances::InstanceManager, launcher},
 };
 
 use dioxus::prelude::*;
 
 #[derive(Props, Clone, PartialEq)]
-pub struct VersionSelectorProps {
+pub struct SelectorProps {
     pub show: Signal<bool>,
 }
 
 #[component]
-pub fn VersionSelector(props: VersionSelectorProps) -> Element {
+pub fn Selector(props: SelectorProps) -> Element {
     let mut show = props.show;
     let selected_version = use_signal(|| "1.21.8".to_string());
     let available_versions = use_signal(Vec::<VersionInfo>::new);

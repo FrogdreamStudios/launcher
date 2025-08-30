@@ -2,20 +2,20 @@ use crate::backend::services::VisitTracker;
 use crate::backend::utils::application::Route;
 use crate::backend::utils::css::ResourceLoader;
 use crate::frontend::components::common::titlebar::TitleBar;
-use crate::frontend::pages::auth::AuthState;
 use crate::frontend::services::launcher;
 use crate::frontend::{
     components::{
-        common::{News, StandaloneLogo, VersionSelector},
-        launcher::{ContextMenu, DebugWindow, RenameDialog, debug_window::use_version_selection},
+        common::{News, Logo, Selector},
+        launcher::{ContextMenu, RenameDialog},
         layout::Navigation,
     },
-    services::instances::main::InstanceManager,
-    states::{GameStatus, use_game_state},
+    services::instances::InstanceManager,
+    services::states::{GameStatus, use_game_state},
 };
 use dioxus::prelude::{Key, *};
 use dioxus_router::{components::Outlet, navigator, use_route};
 use webbrowser;
+use crate::frontend::services::context::AuthState;
 
 #[component]
 pub fn Layout() -> Element {
@@ -55,7 +55,6 @@ pub fn Layout() -> Element {
 
     // Debug window and version selection state
     let show_debug_window = use_signal(|| false);
-    let version_selection = use_version_selection();
 
     // Version selector state
     let mut show_version_selector = use_signal(|| false);
@@ -120,7 +119,7 @@ pub fn Layout() -> Element {
                 }
             },
 
-            StandaloneLogo { animations_played: animations_played() }
+            Logo { animations_played: animations_played() }
 
             Navigation { animations_played: animations_played() }
 
@@ -455,16 +454,8 @@ pub fn Layout() -> Element {
                 current_name: rename_current_name
             }
 
-            // Debug window
-            DebugWindow {
-                show: show_debug_window,
-                version_selection: version_selection,
-                game_status: game_status,
-                instance_id: context_menu_instance_id
-            }
-
             // Version selector
-            VersionSelector {
+            Selector {
                 show: show_version_selector
             }
         }

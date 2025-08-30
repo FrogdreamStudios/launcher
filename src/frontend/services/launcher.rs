@@ -183,8 +183,8 @@ pub async fn refresh_version_manifest() -> Result<()> {
             }
         }
         Err(e) => {
-            log::error!("Failed to refresh version manifest: {}", e);
-            Err(anyhow::anyhow!("Failed to refresh version manifest: {}", e))
+            log::error!("Failed to refresh version manifest: {e}");
+            Err(anyhow::anyhow!("Failed to refresh version manifest: {e}"))
         }
     }
 }

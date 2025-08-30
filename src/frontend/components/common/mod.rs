@@ -1,10 +1,10 @@
 //! Common reusable components.
 
 pub mod news;
-pub mod standalone_logo;
+pub mod logo;
 pub mod titlebar;
-pub mod version_selector;
+pub mod selector;
 
 pub use news::News;
-pub use standalone_logo::StandaloneLogo;
-pub use version_selector::VersionSelector;
+pub use logo::Logo;
+pub use selector::Selector;

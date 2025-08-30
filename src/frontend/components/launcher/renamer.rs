@@ -1,5 +1,5 @@
 use crate::{
-    backend::utils::css::ResourceLoader, frontend::services::instances::main::InstanceManager,
+    backend::utils::css::ResourceLoader, frontend::services::instances::InstanceManager,
 };
 use dioxus::prelude::*;
 

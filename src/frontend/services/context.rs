@@ -1,7 +1,7 @@
 //! Context for authentication.
 
-use super::UserConfig;
 use dioxus::prelude::*;
+use crate::frontend::services::user::UserConfig;
 
 #[derive(Clone, Copy)]
 pub struct AuthState {

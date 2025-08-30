@@ -1,9 +1,10 @@
 use crate::backend::utils::css::ResourceLoader;
-use crate::frontend::{components::layout::AuthLayout, pages::auth::AuthState};
+use crate::frontend::{components::layout::AuthLayout};
 use dioxus::{events::KeyboardEvent, prelude::*};
 use dioxus_router::use_navigator;
 use std::time::Duration;
 use tokio::time::sleep;
+use crate::frontend::services::context::AuthState;
 
 #[component]
 pub fn Auth() -> Element {

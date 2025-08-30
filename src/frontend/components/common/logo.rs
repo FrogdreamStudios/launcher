@@ -2,7 +2,7 @@ use crate::backend::utils::css::ResourceLoader;
 use dioxus::prelude::*;
 
 #[component]
-pub fn StandaloneLogo(animations_played: bool) -> Element {
+pub fn Logo(animations_played: bool) -> Element {
     let logo = ResourceLoader::get_asset("logo");
 
     rsx! {

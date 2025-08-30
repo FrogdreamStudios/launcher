@@ -1,5 +1,5 @@
 use crate::frontend::components::layout::Layout;
-use crate::frontend::pages::auth::AuthState;
+use crate::frontend::services::context::AuthState;
 use dioxus::prelude::*;
 use dioxus_router::navigator;
 

@@ -79,10 +79,10 @@ impl ResourceLoader {
                 m.insert($n, include_str!(concat!(env!("CARGO_MANIFEST_DIR"), $p)));
             };
         }
-        style!("base", "/assets/styles/base.css");
-        style!("animations", "/assets/styles/animations.css");
-        style!("auth", "/assets/styles/auth.css");
-        style!("tailwind", "/assets/styles/output.css");
+        style!("base", "/assets/styles/pages/base.css");
+        style!("animations", "/assets/styles/other/animations.css");
+        style!("auth", "/assets/styles/pages/auth.css");
+        style!("tailwind", "/assets/styles/other/output.css");
         style!("logo", "/assets/styles/components/logo.css");
         style!("navigation", "/assets/styles/components/navigation.css");
         style!("chat", "/assets/styles/components/chat.css");

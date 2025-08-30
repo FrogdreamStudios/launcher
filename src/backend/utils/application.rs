@@ -1,10 +1,10 @@
 //! Application routing system.
 
 use crate::frontend::pages::auth::Auth;
-use crate::frontend::pages::main::main::Main;
+use crate::frontend::pages::main::Main;
 use crate::frontend::pages::new::New as NewPage;
 use crate::frontend::pages::settings::Settings as SettingsPage;
-use crate::frontend::services::chats::main::Chat;
+use crate::frontend::services::chats::Chat;
 
 use dioxus::prelude::*;
 use dioxus_router::Routable;

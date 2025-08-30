@@ -1,13 +1,13 @@
 //! Layout components.
 
-pub mod auth_layout;
-pub mod chat_sidebar;
+pub mod auth;
+pub mod chat;
 pub mod main;
-pub mod navigation;
+pub mod nav;
 
-pub use auth_layout::AuthLayout;
+pub use auth::AuthLayout;
 pub use main::Layout;
-pub use navigation::Navigation;
+pub use nav::Navigation;
 
 // Temporarily hidden
 // pub use chat_sidebar::ChatSidebar;

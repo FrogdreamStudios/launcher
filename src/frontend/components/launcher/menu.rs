@@ -1,13 +1,13 @@
 use crate::{
     backend::utils::css::ResourceLoader,
     frontend::{
-        components::launcher::minecraft_launcher::launch_minecraft,
-        pages::auth::AuthState,
-        services::instances::main::{INSTANCES, InstanceManager, open_instance_folder},
-        states::GameStatus,
+        components::launcher::launcher::launch_minecraft,
+        services::instances::{INSTANCES, InstanceManager, open_instance_folder},
     },
 };
 use dioxus::prelude::*;
+use crate::frontend::services::context::AuthState;
+use crate::frontend::services::states::GameStatus;
 
 // Define async logic outside the component (because of closure issues)
 async fn spawn_launch_minecraft(

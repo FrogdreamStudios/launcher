@@ -115,7 +115,7 @@ fn set_macos_icon() {
 fn AppRoot() -> Element {
     let is_authenticated = use_signal(|| false);
     let current_user = use_signal(|| None);
-    let auth_state = frontend::pages::auth::AuthState {
+    let auth_state = frontend::services::context::AuthState {
         is_authenticated,
         current_user,
     };
