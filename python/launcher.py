@@ -40,10 +40,9 @@ def needs_rosetta(minecraft_version):
         return True
 
 # Install Minecraft version.
-def install_minecraft_version(version):
+def install_minecraft_version(version, minecraft_directory):
     """Install Minecraft version"""
     try:
-        minecraft_directory = get_minecraft_directory()
         
         # Check if Rosetta is needed for older versions on Apple Silicon
         if needs_rosetta(version):
@@ -75,56 +74,10 @@ def install_minecraft_version(version):
         logging.error(f"Error installing version {version}: {e}")
         return False
 
-# Launch Minecraft.
-def launch_minecraft(username, version):
-    """Launch Minecraft with the specified version"""
-    try:
-        minecraft_directory = get_minecraft_directory()
-        
-        # Check if Rosetta is needed for older versions on Apple Silicon
-        if needs_rosetta(version):
-            logging.info(f"Launching {version} with Rosetta compatibility")
-        
-        # Create launch options
-        options = {
-            "username": username,
-            "uuid": str(uuid.uuid4()),
-            "token": "",  # Offline mode
-        }
-
-        # Get launch command
-        command = minecraft_launcher_lib.command.get_minecraft_command(
-            version=version,
-            minecraft_directory=minecraft_directory,
-            options=options
-        )
-
-        logging.info(f"Launching Minecraft {version} for user {username}")
-
-        # Launch Minecraft
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
-        logging.info(f"Minecraft launched with PID: {process.pid}")
-
-        return {
-            "success": True,
-            "pid": process.pid,
-            "message": f"Minecraft {version} launched successfully"
-        }
-
-    except Exception as e:
-        error_msg = f"Error launching Minecraft: {e}"
-        logging.error(error_msg)
-        return {
-            "success": False,
-            "pid": None,
-            "message": error_msg
-        }
-
 # Launch Minecraft with log streaming
-def launch_minecraft_with_logs(username, version):
+def launch_minecraft(username, version, minecraft_directory, game_dir=None):
     """Launch Minecraft and stream logs to stdout"""
     try:
-        minecraft_directory = get_minecraft_directory()
         
         # Check if Rosetta is needed for older versions on Apple Silicon
         if needs_rosetta(version):
@@ -136,6 +89,8 @@ def launch_minecraft_with_logs(username, version):
             "uuid": str(uuid.uuid4()),
             "token": "",  # Offline mode
         }
+        if game_dir:
+            options["gameDirectory"] = game_dir
 
         # Get launch command
         command = minecraft_launcher_lib.command.get_minecraft_command(
@@ -209,27 +164,22 @@ if __name__ == "__main__":
 
     command = sys.argv[1]
 
-    if command == "install" and len(sys.argv) == 3:
+    if command == "install" and len(sys.argv) == 4:
         # Install version
         version = sys.argv[2]
-        success = install_minecraft_version(version)
+        minecraft_dir = sys.argv[3]
+        success = install_minecraft_version(version, minecraft_dir)
         result = {"success": success}
         print(json.dumps(result))
         if not success:
             exit(1)
-    elif command == "launch" and len(sys.argv) == 4:
-        # Launch Minecraft
-        username = sys.argv[2]
-        version = sys.argv[3]
-        result = launch_minecraft(username, version)
-        print(json.dumps(result))
-        if not result["success"]:
-            exit(1)
-    elif command == "launch_with_logs" and len(sys.argv) == 4:
+    elif command == "launch" and len(sys.argv) == 6:
         # Launch Minecraft with log streaming
         username = sys.argv[2]
         version = sys.argv[3]
-        exit_code = launch_minecraft_with_logs(username, version)
+        minecraft_dir = sys.argv[4]
+        game_dir = sys.argv[5]
+        exit_code = launch_minecraft(username, version, minecraft_dir, game_dir)
         exit(exit_code)
     elif command == "logs" and len(sys.argv) == 3:
         # Get logs from running process

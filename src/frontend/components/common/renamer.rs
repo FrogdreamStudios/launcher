@@ -63,7 +63,7 @@ pub fn RenameDialog(props: RenameDialogProps) -> Element {
     };
 
     let handle_input_change = move |e: Event<FormData>| {
-        let value: String = e.value().chars().take(7).collect();
+        let value: String = e.value().chars().take(8).collect();
         new_name.set(value);
     };
 
@@ -148,14 +148,14 @@ pub fn RenameDialog(props: RenameDialogProps) -> Element {
                             class: "rename-input",
                             value: "{new_name()}",
                             placeholder: "Enter new name...",
-                            maxlength: "7",
+                            maxlength: "8",
                             autofocus: true,
                             oninput: handle_input_change,
                             onkeydown: handle_key_press,
                         }
                         div {
                             class: "rename-char-count",
-                            "{new_name().len()}/7"
+                            "{new_name().len()}/8"
                         }
                     }
                 }

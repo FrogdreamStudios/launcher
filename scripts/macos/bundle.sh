@@ -6,7 +6,7 @@ set -e
 
 APP_NAME="Dream Launcher"
 BUNDLE_ID="com.frogdream.dreamlauncher"
-EXECUTABLE_NAME="DreamLauncher"
+EXECUTABLE_NAME="Dream Launcher"
 BUILD_TYPE="release"
 
 # Check if custom binary path is provided.

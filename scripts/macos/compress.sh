@@ -30,7 +30,7 @@ compress_app_bundle() {
 }
 
 restore_backup() {
-    local binary="${1:-target/release/DreamLauncher}"
+    local binary="${1:-target/release/Dream Launcher}"
     [[ -f "$binary.backup" ]] && cp "$binary.backup" "$binary" || { error "No backup found"; exit 1; }
 }
 

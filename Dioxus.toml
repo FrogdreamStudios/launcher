@@ -15,7 +15,7 @@ long_description = "A powerful and lightweight Minecraft launcher that will be p
 category = "Game"
 
 [bundle.linux]
-app_name = "DreamLauncher"
+app_name = "Dream Launcher"
 short_description = "A powerful and lightweight Minecraft launcher"
 long_description = "A powerful and lightweight Minecraft launcher that will be perfect for every player"
 

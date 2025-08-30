@@ -1,6 +1,6 @@
 //! Website visit tracking service.
 
-use crate::backend::utils::paths::get_launcher_dir;
+use crate::backend::utils::paths::get_cache_dir;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -29,8 +29,8 @@ pub struct VisitTracker {
 
 impl VisitTracker {
     pub fn new() -> Self {
-        let config_path = get_launcher_dir()
-            .unwrap_or_else(|_| PathBuf::from("DreamLauncher"))
+        let config_path = get_cache_dir()
+            .unwrap_or_else(|_| PathBuf::from("Dream Launcher/cache"))
             .join("visit_history.json");
         let data = Self::load_data(&config_path);
 
