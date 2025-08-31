@@ -1,7 +1,9 @@
 ; Dream Launcher NSIS installer script.
 
 !define APP_NAME "Dream Launcher"
-!define APP_VERSION "0.1.0"
+!ifndef APP_VERSION
+  !define APP_VERSION "0.1.0"
+!endif
 !define APP_PUBLISHER "Frogdream Studios"
 !define APP_URL "https://github.com/FrogdreamStudios/launcher"
 !define APP_EXECUTABLE "DreamLauncher.exe"
