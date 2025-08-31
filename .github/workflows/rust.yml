@@ -51,12 +51,12 @@ jobs:
         shell: bash
         run: |
           if [[ "${{ runner.os }}" == "Windows" ]]; then
-            upx --best --lzma target/release/DreamLauncher.exe
+            upx --best --lzma "target/release/DreamLauncher.exe"
           elif [[ "${{ runner.os }}" == "Linux" ]]; then
-            upx --best --lzma target/release/DreamLauncher
+            upx --best --lzma "target/release/DreamLauncher"
           elif [[ "${{ runner.os }}" == "macOS" ]]; then
             chmod +x scripts/macos/compress.sh
-            ./scripts/macos/compress.sh target/release/DreamLauncher
+            ./scripts/macos/compress.sh "target/release/DreamLauncher"
           fi
 
       - name: Package
@@ -65,8 +65,8 @@ jobs:
           set -e
           mkdir -p dist
           if [[ "${{ runner.os }}" == "Windows" ]]; then
-            cp target/release/DreamLauncher.exe dist/
-            powershell -Command "Compress-Archive -Path dist/DreamLauncher.exe -DestinationPath DreamLauncher-Windows.zip"
+            cp "target/release/DreamLauncher.exe" "dist/Dream Launcher.exe"
+            powershell -Command "Compress-Archive -Path "dist/Dream Launcher.exe" -DestinationPath "Dream Launcher-Windows.zip""
           elif [[ "${{ runner.os }}" == "macOS" ]]; then
             chmod +x scripts/macos/bundle.sh
             ./scripts/macos/bundle.sh
@@ -80,7 +80,7 @@ jobs:
             chmod +x scripts/macos/dmg.sh
             ./scripts/macos/dmg.sh
 
-            if [[ -f "DreamLauncher-macOS.dmg" ]]; then
+            if [[ -f "Dream Launcher-macOS.dmg" ]]; then
               echo "DMG created successfully"
             else
               echo "No DMG file found"
@@ -88,14 +88,14 @@ jobs:
 
             echo "macOS packaging completed"
           else
-            cp target/release/DreamLauncher dist/
-            zip -j DreamLauncher-linux.zip dist/DreamLauncher
+            cp "target/release/DreamLauncher" "dist/Dream Launcher"
+            zip -j "Dream Launcher-linux.zip" "dist/Dream Launcher"
           fi
 
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: DreamLauncher-${{ runner.os }}
+          name: Dream Launcher-${{ runner.os }}
           path: |
-            DreamLauncher-*.zip
-            DreamLauncher-*.dmg
+            Dream Launcher-*.zip
+            Dream Launcher-*.dmg

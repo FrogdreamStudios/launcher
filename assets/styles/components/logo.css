@@ -15,6 +15,11 @@
     opacity: 1;
     transform: translateX(0);
     z-index: 10;
+    filter: brightness(1);
+    transition: filter 200ms ease;
+}
+.standalone-logo-wrapper:hover {
+    filter: brightness(1.15);
 }
 .standalone-logo-wrapper.logo-animate {
     opacity: 0;

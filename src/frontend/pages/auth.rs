@@ -129,7 +129,7 @@ pub fn Auth() -> Element {
                                             show_error.set(false);
                                         },
                                         onkeypress: on_keypress,
-                                        placeholder: "Offline account",
+                                        placeholder: "Enter nickname...",
                                         autofocus: true,
                                         onmounted: move |element| {
                                             input_ref.set(Some(element.data()));

@@ -1,6 +1,6 @@
 //! User configuration.
 
-use crate::backend::utils::paths::get_launcher_dir;
+use crate::backend::utils::paths::get_cache_dir;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tokio::fs;
@@ -26,8 +26,8 @@ impl UserConfig {
 
     /// Gets the path to the user config file.
     pub fn get_config_path() -> PathBuf {
-        get_launcher_dir()
-            .unwrap_or_else(|_| PathBuf::from("DreamLauncher"))
+        get_cache_dir()
+            .unwrap_or_else(|_| PathBuf::from("Dream Launcher/cache"))
             .join("user_config.json")
     }
 

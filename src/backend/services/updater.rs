@@ -18,9 +18,9 @@ struct Release {
 
 fn get_platform_asset_name() -> Option<&'static str> {
     match std::env::consts::OS {
-        "windows" => Some("DreamLauncher-Windows.exe"),
-        "macos" => Some("DreamLauncher-macOS.dmg"),
-        "linux" => Some("DreamLauncher-Linux"),
+        "windows" => Some("Dream Launcher-Windows.exe"),
+        "macos" => Some("Dream Launcher-macOS.dmg"),
+        "linux" => Some("Dream Launcher-Linux"),
         _ => None,
     }
 }
@@ -223,7 +223,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
         .await
         .map_err(|e| format!("Failed to create temp directory: {e}"))?;
 
-    let dmg_path = temp_dir.join("DreamLauncher.dmg");
+    let dmg_path = temp_dir.join("Dream Launcher.dmg");
 
     // Write DMG to a temp file
     fs::write(&dmg_path, dmg_content)
@@ -555,8 +555,8 @@ pub async fn check_for_updates() {
     let current_version = cargo_crate_version!();
     let latest_version = release.tag_name.trim_start_matches('v');
 
-    if latest_version == current_version {
-        log::info!("Already running the latest version: {current_version}");
+    if !is_version_newer(latest_version, current_version) {
+        log::info!("No newer version available: latest {latest_version}, current {current_version}");
         set_update_state(false, 0.0, String::new());
         return;
     }
@@ -647,6 +647,15 @@ pub async fn check_for_updates() {
             set_update_state(false, 0.0, String::new());
         }
     }
+}
+
+fn is_version_newer(new: &str, current: &str) -> bool {
+    let parse_version = |v: &str| -> Vec<u32> {
+        v.split('.').filter_map(|s| s.parse().ok()).collect()
+    };
+    let new_parts = parse_version(new);
+    let current_parts = parse_version(current);
+    new_parts > current_parts
 }
 
 fn restart_launcher() {

@@ -272,10 +272,10 @@ pub fn Layout() -> Element {
                                         style: {
                                             let text_len = instance.name.len();
                                             let font_size = match text_len {
-                                                0..=3 => "36px",
-                                                4 => "30px",
-                                                5 => "26px",
-                                                6 => "22px",
+                                                0..=3 => "34px",
+                                                4 => "28px",
+                                                5 => "24px",
+                                                6 => "20px",
                                                 _ => "18px",
                                             };
                                             format!("font-size: {font_size}; padding: 0 16px;")
@@ -565,11 +565,10 @@ pub async fn install_and_launch_instance(
 
     match bridge.install_version(&version).await {
         Ok(_) => {
-            // Update progress for launch preparation
             set_game_progress_state_simple(
                 true,
                 70.0,
-                format!("Starting {version}"),
+                format!("Minecraft is starting..."),
                 Some(instance_id),
             );
 
@@ -734,7 +733,7 @@ pub async fn install_and_launch_instance(
             });
 
             match bridge
-                .launch_minecraft_with_logs(config, move |log_message| {
+                .launch_minecraft(config, instance_id, move |log_message| {
                     let _ = tx.send(log_message);
                 })
                 .await

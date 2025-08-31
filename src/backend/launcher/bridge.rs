@@ -7,6 +7,8 @@ use std::process::Stdio;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command as TokioCommand;
 use tokio::task;
+use crate::backend::utils::paths::get_shared_dir;
+use crate::frontend::services::instances::get_instance_directory;
 
 /// Result of Minecraft launch from Python.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -92,6 +94,7 @@ impl PythonMinecraftBridge {
     ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
         let script_path = self.python_script_path.clone();
         let version = version.to_string();
+        let minecraft_dir = get_shared_dir()?;
 
         let result = task::spawn_blocking(
             move || -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
@@ -99,6 +102,7 @@ impl PythonMinecraftBridge {
                     .arg(&script_path)
                     .arg("install")
                     .arg(&version)
+                    .arg(&*minecraft_dir.to_string_lossy())
                     .output()?;
 
                 if !output.status.success() {
@@ -115,9 +119,10 @@ impl PythonMinecraftBridge {
     }
 
     /// Launch Minecraft with log streaming.
-    pub async fn launch_minecraft_with_logs<F>(
+    pub async fn launch_minecraft<F>(
         &self,
         config: LaunchConfig,
+        instance_id: u32,
         log_callback: F,
     ) -> Result<i32, Box<dyn std::error::Error + Send + Sync>>
     where
@@ -126,12 +131,20 @@ impl PythonMinecraftBridge {
         let script_path = self.python_script_path.clone();
         let username = config.username.clone();
         let version = config.version.clone();
+        let minecraft_dir = get_shared_dir()?;
+        tokio::fs::create_dir_all(&minecraft_dir).await?;
+
+        let instance_dir = get_instance_directory(instance_id);
+        let game_dir = instance_dir;
+        tokio::fs::create_dir_all(&game_dir).await?;
 
         let mut command = TokioCommand::new("python3")
             .arg(&script_path)
-            .arg("launch_with_logs")
+            .arg("launch")
             .arg(&username)
             .arg(&version)
+            .arg(&*minecraft_dir.to_string_lossy())
+            .arg(&*game_dir.to_string_lossy())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()

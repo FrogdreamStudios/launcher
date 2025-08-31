@@ -2,7 +2,7 @@
 
 use crate::backend::launcher::bridge::PythonMinecraftBridge;
 use crate::backend::launcher::models::VersionManifest;
-use crate::backend::utils::paths::get_launcher_dir;
+use crate::backend::utils::paths::get_cache_dir;
 use anyhow::Result;
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
@@ -11,8 +11,8 @@ use tokio::sync::RwLock as AsyncRwLock;
 
 /// Get the path to the cached version manifest file.
 fn get_manifest_cache_path() -> PathBuf {
-    get_launcher_dir()
-        .unwrap_or_else(|_| PathBuf::from("DreamLauncher"))
+    get_cache_dir()
+        .unwrap_or_else(|_| PathBuf::from("Dream Launcher/cache"))
         .join("version_manifest.json")
 }
 
