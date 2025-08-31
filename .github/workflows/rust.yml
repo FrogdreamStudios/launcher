@@ -10,13 +10,13 @@ env:
 
 jobs:
   build-windows:
-    name: Build Windows
+    name: Windows
     runs-on: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: Install Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.13'
@@ -26,7 +26,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r python/requirements.txt
 
-      - name: Deps (Windows)
+      - name: Install dependencies
         run: choco install upx
 
       - name: Cache
@@ -41,23 +41,23 @@ jobs:
           key: windows-allcache-${{ hashFiles('rust-toolchain.toml') }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: windows-allcache-
 
-      - name: Build
+      - name: Build Rust
         run: cargo build --release --locked --features "desktop"
 
-      - name: Compress with UPX (Windows)
+      - name: Compress
         run: |
           upx --best --lzma target/release/DreamLauncher.exe
 
-      - name: Install NSIS (Windows)
+      - name: Install NSIS
         run: |
           choco install nsis -y
 
-      - name: Create Windows Installer
+      - name: Create installer
         run: |
           mkdir dist
           powershell -ExecutionPolicy Bypass -File scripts/windows/build_installer.ps1 -Version "${{ github.ref_name || 'dev' }}"
 
-      - name: Upload Windows Installer
+      - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
           name: DreamLauncher-Windows
@@ -65,13 +65,13 @@ jobs:
             dist/Dream Launcher Setup.exe
 
   build-linux:
-    name: Build Linux
+    name: Linux
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: Install Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.13'
@@ -81,7 +81,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r python/requirements.txt
 
-      - name: Deps (Linux)
+      - name: Install dependencies
         uses: awalsh128/cache-apt-pkgs-action@v1
         with:
           packages: libgtk-3-dev libglib2.0-dev libsoup-3.0-dev libssl-dev libjavascriptcoregtk-4.1-dev libwebkit2gtk-4.1-dev libxdo-dev pkg-config build-essential curl xdotool upx-ucl libfuse2
@@ -99,14 +99,14 @@ jobs:
           key: linux-allcache-${{ hashFiles('rust-toolchain.toml') }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: linux-allcache-
 
-      - name: Build
+      - name: Build Rust
         run: cargo build --release --locked --features "desktop"
 
-      - name: Compress with UPX (Linux)
+      - name: Compress
         run: |
           upx --best --lzma target/release/DreamLauncher
 
-      - name: Install AppImage dependencies (Linux)
+      - name: Install AppImage
         run: |
           sudo apt-get update
           sudo apt-get install -y file
@@ -114,12 +114,12 @@ jobs:
           chmod +x appimagetool-x86_64.AppImage
           sudo mv appimagetool-x86_64.AppImage /usr/local/bin/appimagetool
 
-      - name: Create AppImage (Linux)
+      - name: Create AppImage
         run: |
           chmod +x scripts/linux/appimage.sh
           ./scripts/linux/appimage.sh
 
-      - name: Upload Linux AppImage
+      - name: Upload AppImage
         uses: actions/upload-artifact@v4
         with:
           name: DreamLauncher-Linux-AppImage
@@ -127,13 +127,13 @@ jobs:
             *.AppImage
 
   build-macos:
-    name: Build macOS
+    name: macOS
     runs-on: macos-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: Install Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.13'
@@ -143,7 +143,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r python/requirements.txt
 
-      - name: Deps (macOS)
+      - name: Install dependencies
         run: brew install create-dmg upx
 
       - name: Cache
@@ -158,15 +158,15 @@ jobs:
           key: macos-allcache-${{ hashFiles('rust-toolchain.toml') }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: macos-allcache-
 
-      - name: Build
+      - name: Build Rust
         run: cargo build --release --locked --features "desktop"
 
-      - name: Compress with UPX (macOS)
+      - name: Compress
         run: |
           chmod +x scripts/macos/compress.sh
           ./scripts/macos/compress.sh "target/release/DreamLauncher"
 
-      - name: Package for macOS
+      - name: Package
         shell: bash
         run: |
           set -e
