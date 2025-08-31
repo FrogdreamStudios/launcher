@@ -1,5 +1,7 @@
 //! Rust-Python bridge.
 
+use crate::backend::utils::paths::get_shared_dir;
+use crate::frontend::services::instances::get_instance_directory;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::path::PathBuf;
@@ -7,8 +9,6 @@ use std::process::Stdio;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command as TokioCommand;
 use tokio::task;
-use crate::backend::utils::paths::get_shared_dir;
-use crate::frontend::services::instances::get_instance_directory;
 
 /// Result of Minecraft launch from Python.
 #[derive(Debug, Clone, Serialize, Deserialize)]

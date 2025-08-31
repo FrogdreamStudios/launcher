@@ -1,6 +1,6 @@
 //! Instance management service.
 
-use crate::backend::utils::paths::{get_launcher_dir, get_cache_dir};
+use crate::backend::utils::paths::{get_cache_dir, get_launcher_dir};
 
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -62,7 +62,7 @@ impl InstanceManager {
                     let mut instances = INSTANCES.write();
                     instances.insert(1, Instance::new_with_version(1, "1.21.8".to_string()));
                     *NEXT_ID.write() = 2;
-                    
+
                     // Create instance directories for the default instance
                     if let Err(e) = create_instance_directories(1) {
                         log::warn!("Failed to create directories for default instance: {e}");
@@ -74,14 +74,24 @@ impl InstanceManager {
     }
 
     pub fn create_instance_with_version(version: &str) -> Option<u32> {
-        log::info!("create_instance_with_version called with version: {}", version);
+        log::info!(
+            "create_instance_with_version called with version: {}",
+            version
+        );
         let mut instances = INSTANCES.write();
         let current_id = *NEXT_ID.read();
-        log::info!("Current instances count: {}, next_id: {}", instances.len(), current_id);
+        log::info!(
+            "Current instances count: {}, next_id: {}",
+            instances.len(),
+            current_id
+        );
 
         // Check if we can create more instances (max 14)
         if instances.len() >= 14 {
-            log::warn!("Cannot create more instances, limit reached: {}", instances.len());
+            log::warn!(
+                "Cannot create more instances, limit reached: {}",
+                instances.len()
+            );
             return None;
         }
 
@@ -100,21 +110,21 @@ impl InstanceManager {
         *NEXT_ID.write() = current_id + 1;
 
         // Calculate directory path before releasing the lock
-        let folder_name = generate_folder_name_for_version(&version, instance_id, &instances)
-            .unwrap_or_else(|| format!("instance_{}", instance_id));
+        let folder_name = generate_folder_name_for_version(version, instance_id, &instances)
+            .unwrap_or_else(|| format!("instance_{instance_id}"));
         let instance_dir = get_launcher_dir()
             .unwrap_or_else(|_| PathBuf::from("Dream Launcher"))
-            .join(format!("instances/{}", folder_name));
-        
+            .join(format!("instances/{folder_name}"));
+
         // Clone data for saving before releasing the lock
         let instances_data = InstancesData {
             instances: instances.clone(),
             next_id: current_id + 1,
         };
-        
+
         // Release the lock before creating directories to avoid blocking other operations
         drop(instances);
-        
+
         // Create instance directories
         if let Err(e) = create_instance_directories_with_path(&instance_dir) {
             log::warn!("Failed to create directories for instance {instance_id}: {e}");
@@ -131,21 +141,21 @@ impl InstanceManager {
 
     pub fn delete_instance(id: u32) -> bool {
         let mut instances = INSTANCES.write();
-        
+
         // Get the instance directory path BEFORE removing the instance
         let instance_dir = if let Some(instance) = instances.get(&id) {
             let folder_name = generate_folder_name_for_version(&instance.version, id, &instances)
-                .unwrap_or_else(|| format!("instance_{}", id));
+                .unwrap_or_else(|| format!("instance_{id}"));
             get_launcher_dir()
                 .unwrap_or_else(|_| PathBuf::from("Dream Launcher"))
-                .join(format!("instances/{}", folder_name))
+                .join(format!("instances/{folder_name}"))
         } else {
             // Fallback if instance doesn't exist
             get_launcher_dir()
                 .unwrap_or_else(|_| PathBuf::from("Dream Launcher"))
-                .join(format!("instances/instance_{}", id))
+                .join(format!("instances/instance_{id}"))
         };
-        
+
         let removed = instances.remove(&id).is_some();
 
         if removed {
@@ -222,18 +232,22 @@ impl InstanceManager {
 }
 
 /// Helper function to generate folder name for existing instance.
-fn generate_folder_name_for_version(version: &str, instance_id: u32, instances: &HashMap<u32, Instance>) -> Option<String> {
+fn generate_folder_name_for_version(
+    version: &str,
+    instance_id: u32,
+    instances: &HashMap<u32, Instance>,
+) -> Option<String> {
     let mut count = 1;
     // Sanitize version name for filesystem compatibility
     let base_name = version.replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], "_");
-    
+
     // Count how many instances with this version exist before this instance_id
     for (id, instance) in instances {
         if *id < instance_id && instance.version == version {
             count += 1;
         }
     }
-    
+
     if count > 1 {
         Some(format!("{}_{}", base_name, count))
     } else {
@@ -245,16 +259,17 @@ fn generate_folder_name_for_version(version: &str, instance_id: u32, instances: 
 pub fn get_instance_directory(instance_id: u32) -> PathBuf {
     let instances = INSTANCES.read();
     if let Some(instance) = instances.get(&instance_id) {
-        let folder_name = generate_folder_name_for_version(&instance.version, instance_id, &instances)
-            .unwrap_or_else(|| format!("instance_{}", instance_id));
+        let folder_name =
+            generate_folder_name_for_version(&instance.version, instance_id, &instances)
+                .unwrap_or_else(|| format!("instance_{instance_id}"));
         get_launcher_dir()
             .unwrap_or_else(|_| PathBuf::from("Dream Launcher"))
-            .join(format!("instances/{}", folder_name))
+            .join(format!("instances/{folder_name}"))
     } else {
         // Fallback for instances that don't exist yet
         get_launcher_dir()
             .unwrap_or_else(|_| PathBuf::from("Dream Launcher"))
-            .join(format!("instances/instance_{}", instance_id))
+            .join(format!("instances/instance_{instance_id}"))
     }
 }
 

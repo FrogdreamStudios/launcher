@@ -46,7 +46,7 @@ pub fn Layout() -> Element {
 
     // Initialize sites on the first render
     use_effect(move || {
-        let initial_sites = visit_tracker.with(|tracker| tracker.get_sorted_sites());
+        let initial_sites = visit_tracker.with(VisitTracker::get_sorted_sites);
         sites.set(initial_sites);
     });
 
@@ -460,7 +460,7 @@ pub fn Layout() -> Element {
                                         tracker.with_mut(|t| t.record_visit(&site_key));
 
                                         // Update sites list
-                                        let updated_sites = tracker.with(|t| t.get_sorted_sites());
+                                        let updated_sites = tracker.with(VisitTracker::get_sorted_sites);
                                         sites_signal.set(updated_sites);
 
                                         // Trigger refresh
@@ -568,7 +568,7 @@ pub async fn install_and_launch_instance(
             set_game_progress_state_simple(
                 true,
                 70.0,
-                format!("Minecraft is starting..."),
+                "Minecraft is starting...".to_string(),
                 Some(instance_id),
             );
 
@@ -658,7 +658,12 @@ pub async fn install_and_launch_instance(
                                 // Hide success status after 3 seconds
                                 spawn(async move {
                                     tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
-                                    set_game_progress_state_simple(false, 0.0, String::new(), None);
+                                    set_game_progress_state_simple(
+                                        false,
+                                        0.0,
+                                        String::new(),
+                                        None,
+                                    ); // Clear status
                                 });
                             }
                         }
@@ -691,7 +696,12 @@ pub async fn install_and_launch_instance(
                                 // Hide failed status after 5 seconds
                                 spawn(async move {
                                     tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-                                    set_game_progress_state_simple(false, 0.0, String::new(), None);
+                                    set_game_progress_state_simple(
+                                        false,
+                                        0.0,
+                                        String::new(),
+                                        None,
+                                    );
                                 });
                             }
 

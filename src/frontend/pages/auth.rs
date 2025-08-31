@@ -63,7 +63,7 @@ pub fn Auth() -> Element {
 
     // Check if a user is already authenticated and redirect
     use_effect(move || {
-        if auth.is_authenticated.read().clone() {
+        if *auth.is_authenticated.read() {
             nav.push("/home");
         } else {
             spawn(async move {

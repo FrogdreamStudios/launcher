@@ -1,6 +1,6 @@
 //! Entry point of the application.
 
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+// #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod backend;
 mod frontend;
@@ -18,6 +18,16 @@ static RUNTIME: OnceLock<Runtime> = OnceLock::new();
 
 /// Main function for starting the application.
 fn main() {
+    // Change working directory to the executable directory on Windows
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(exe_path) = std::env::current_exe() {
+            if let Some(exe_dir) = exe_path.parent() {
+                let _ = std::env::set_current_dir(exe_dir);
+            }
+        }
+    }
+
     // Logging
     env_logger::init();
 

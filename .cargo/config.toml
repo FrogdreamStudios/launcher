@@ -19,7 +19,7 @@ clean-all = "clean"
 clean-target = ["clean", "--target-dir", "target"]
 
 # Clippy with different levels.
-# Please run strict checks before submitting any code to the repository.
+# Please run strict and pedantic checks before submitting any code to the repository.
 clippy-strict = "clippy --all-targets --all-features -- -D warnings -D clippy::all"
 clippy-pedantic = "clippy --all-targets --all-features -- -W clippy::pedantic"
 clippy-nursery = "clippy --all-targets --all-features -- -W clippy::nursery"
