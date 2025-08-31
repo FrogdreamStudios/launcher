@@ -113,8 +113,12 @@ jobs:
         run: |
           set -e
           mkdir -p dist
-          chmod +x scripts/macos/bundle.sh
-          ./scripts/macos/bundle.sh
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            cp "target/release/DreamLauncher.exe" "dist/Dream Launcher.exe"
+            powershell -Command "Compress-Archive -Path 'dist/Dream Launcher.exe' -DestinationPath 'DreamLauncher-Windows.zip'"
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            chmod +x scripts/macos/bundle.sh
+            ./scripts/macos/bundle.sh
 
           chmod +x scripts/macos/clean.sh
           ./scripts/macos/clean.sh "target/release/Dream Launcher.app"
@@ -124,14 +128,19 @@ jobs:
 
           chmod +x scripts/macos/dmg.sh
           ./scripts/macos/dmg.sh
+            if [[ -f "Dream Launcher.dmg" ]]; then
+              mv "Dream Launcher.dmg" "dist/Dream Launcher.dmg"
+              zip -j "DreamLauncher-macOS.zip" "dist/Dream Launcher.dmg"
+              echo "DMG created and zipped successfully"
+            else
+              echo "No DMG file found"
+              exit 1
+            fi
 
-          if [[ -f "Dream Launcher.dmg" ]]; then
-            mv "Dream Launcher.dmg" "dist/Dream Launcher.dmg"
-            zip -j "DreamLauncher-macOS.zip" "dist/Dream Launcher.dmg"
-            echo "DMG created and zipped successfully"
+            echo "macOS packaging completed"
           else
-            echo "No DMG file found"
-            exit 1
+            cp "target/release/DreamLauncher" "dist/Dream Launcher"
+            zip -j "DreamLauncher-Linux.zip" "dist/Dream Launcher"
           fi
 
           echo "macOS packaging completed"
@@ -172,6 +181,8 @@ jobs:
         if: matrix.os == 'macos-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: DreamLauncher-macOS
+          name: DreamLauncher-${{ runner.os }}
           path: |
+            DreamLauncher-Windows.zip
+            DreamLauncher-Linux.zip
             DreamLauncher-macOS.zip
