@@ -95,7 +95,7 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Dream Launcher-${{ runner.os }}
+          name: DreamLauncher-${{ runner.os }}
           path: |
-            Dream Launcher-*.zip
-            Dream Launcher-*.dmg
+            DreamLauncher-*.zip
+            DreamLauncher-*.dmg
