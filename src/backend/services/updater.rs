@@ -2,7 +2,7 @@
 
 use self_update::cargo_crate_version;
 use serde::Deserialize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Deserialize, Debug)]
 struct ReleaseAsset {
@@ -23,7 +23,7 @@ struct Release {
 fn find_platform_asset(assets: &[ReleaseAsset]) -> Option<&ReleaseAsset> {
     let os = std::env::consts::OS;
     let arch = std::env::consts::ARCH;
-    
+
     // Define platform-specific patterns
     let patterns = match os {
         "windows" => vec![
@@ -51,24 +51,24 @@ fn find_platform_asset(assets: &[ReleaseAsset]) -> Option<&ReleaseAsset> {
         ],
         _ => return None,
     };
-    
+
     // Try to find exact matches first
     for pattern in &patterns {
         if let Some(asset) = assets.iter().find(|a| a.name == *pattern) {
             return Some(asset);
         }
     }
-    
+
     // Fallback: try partial matches
     for pattern in &patterns {
         if let Some(asset) = assets.iter().find(|a| {
-            a.name.to_lowercase().contains(&pattern.to_lowercase()) ||
-            pattern.to_lowercase().contains(&a.name.to_lowercase())
+            a.name.to_lowercase().contains(&pattern.to_lowercase())
+                || pattern.to_lowercase().contains(&a.name.to_lowercase())
         }) {
             return Some(asset);
         }
     }
-    
+
     // Last resort: match by file extension
     let extensions = match os {
         "windows" => vec![".exe", ".msi"],
@@ -76,20 +76,24 @@ fn find_platform_asset(assets: &[ReleaseAsset]) -> Option<&ReleaseAsset> {
         "linux" => vec![".AppImage", ".tar.gz", ".deb", ".rpm"],
         _ => return None,
     };
-    
+
     for ext in extensions {
         if let Some(asset) = assets.iter().find(|a| a.name.to_lowercase().ends_with(ext)) {
             return Some(asset);
         }
     }
-    
+
     None
 }
 
-async fn download_file_to_disk(url: &str, target_path: &std::path::Path, expected_sha256: Option<&str>) -> Result<(), String> {
+async fn download_file_to_disk(
+    url: &str,
+    target_path: &std::path::Path,
+    expected_sha256: Option<&str>,
+) -> Result<(), String> {
     use crate::frontend::services::states::set_update_state;
     use futures_util::StreamExt;
-    use sha2::{Sha256, Digest};
+    use sha2::{Digest, Sha256};
     use tokio::io::AsyncWriteExt;
 
     let client = reqwest::Client::new();
@@ -110,18 +114,18 @@ async fn download_file_to_disk(url: &str, target_path: &std::path::Path, expecte
     let total_size = response.content_length().unwrap_or(0);
     let mut downloaded = 0u64;
     let mut stream = response.bytes_stream();
-    
+
     // Create parent directory if it doesn't exist
     if let Some(parent) = target_path.parent() {
         tokio::fs::create_dir_all(parent)
             .await
             .map_err(|e| format!("Failed to create directory: {e}"))?;
     }
-    
+
     let mut file = tokio::fs::File::create(target_path)
         .await
         .map_err(|e| format!("Failed to create file: {e}"))?;
-    
+
     let mut hasher = if expected_sha256.is_some() {
         Some(Sha256::new())
     } else {
@@ -130,15 +134,15 @@ async fn download_file_to_disk(url: &str, target_path: &std::path::Path, expecte
 
     while let Some(chunk) = stream.next().await {
         let chunk = chunk.map_err(|e| format!("Failed to read chunk: {e}"))?;
-        
+
         file.write_all(&chunk)
             .await
             .map_err(|e| format!("Failed to write to file: {e}"))?;
-        
+
         if let Some(ref mut h) = hasher {
             h.update(&chunk);
         }
-        
+
         downloaded += chunk.len() as u64;
 
         if total_size > 0 {
@@ -150,10 +154,12 @@ async fn download_file_to_disk(url: &str, target_path: &std::path::Path, expecte
             set_update_state(true, 0.0, status);
         }
     }
-    
-    file.flush().await.map_err(|e| format!("Failed to flush file: {e}"))?;
+
+    file.flush()
+        .await
+        .map_err(|e| format!("Failed to flush file: {e}"))?;
     drop(file);
-    
+
     // Verify SHA256 if expected hash is provided
     if let (Some(expected), Some(hasher)) = (expected_sha256, hasher) {
         let computed_hash = hex::encode(hasher.finalize());
@@ -165,7 +171,7 @@ async fn download_file_to_disk(url: &str, target_path: &std::path::Path, expecte
                 expected, computed_hash
             ));
         }
-        log::info!("SHA256 verification passed: {}", computed_hash);
+        log::info!("SHA256 verification passed: {computed_hash}");
     }
 
     Ok(())
@@ -174,46 +180,46 @@ async fn download_file_to_disk(url: &str, target_path: &std::path::Path, expecte
 /// Try to find SHA256 hash for an asset from release body or asset label
 fn find_asset_sha256(asset: &ReleaseAsset, release_body: Option<&str>) -> Option<String> {
     // First, check if the asset label contains a SHA256 hash
-    if let Some(label) = &asset.label {
-        if let Some(hash) = extract_sha256_from_text(label) {
+    if let Some(label) = &asset.label
+        && let Some(hash) = extract_sha256_from_text(label) {
             return Some(hash);
         }
-    }
-    
+
     // Then check the release body for SHA256 hashes
     if let Some(body) = release_body {
         // Look for patterns like "filename.ext: sha256hash" or "filename.ext sha256hash"
         let asset_name = &asset.name;
-        
+
         // Split body into lines and look for our asset
         for line in body.lines() {
-            if line.contains(asset_name) {
-                if let Some(hash) = extract_sha256_from_text(line) {
+            if line.contains(asset_name)
+                && let Some(hash) = extract_sha256_from_text(line) {
                     return Some(hash);
                 }
             }
-        }
-        
+
         // Also look for a separate .sha256 file asset
-        let _sha256_filename = format!("{}.sha256", asset_name);
+        let _sha256_filename = format!("{asset_name}.sha256");
         // This would require downloading the .sha256 file, which we'll skip for now
         // but could be implemented later
+
+        // TODO: look for .sha256 file asset
     }
-    
+
     None
 }
 
 /// Extract SHA256 hash from text (64 hex characters)
 fn extract_sha256_from_text(text: &str) -> Option<String> {
     use regex::Regex;
-    
+
     // SHA256 is 64 hex characters
     let re = Regex::new(r"\b[a-fA-F0-9]{64}\b").ok()?;
-    
+
     if let Some(captures) = re.find(text) {
         return Some(captures.as_str().to_lowercase());
     }
-    
+
     None
 }
 
@@ -228,29 +234,35 @@ fn replace_executable(new_content: &[u8]) -> Result<(), String> {
     }
 }
 
-fn replace_executable_windows(current_exe: &PathBuf, new_content: &[u8]) -> Result<(), String> {
+fn replace_executable_windows(current_exe: &Path, new_content: &[u8]) -> Result<(), String> {
     use std::process::Command;
-    
+
     // Find the updater.exe helper
     let current_dir = current_exe.parent().ok_or("Cannot get parent directory")?;
     let updater_path = current_dir.join("updater.exe");
-    
+
     if !updater_path.exists() {
-        return Err(format!("Updater helper not found at: {}", updater_path.display()));
+        return Err(format!(
+            "Updater helper not found at: {}",
+            updater_path.display()
+        ));
     }
-    
+
     // Write the new executable to a temporary file
     let temp_path = current_exe.with_extension("exe.new");
     std::fs::write(&temp_path, new_content)
         .map_err(|e| format!("Failed to write new executable: {e}"))?;
-    
-    log::info!("Starting Windows updater helper: {}", updater_path.display());
-    
+
+    log::info!(
+        "Starting Windows updater helper: {}",
+        updater_path.display()
+    );
+
     // Start the updater helper with temp file and target executable paths
     let mut cmd = Command::new(&updater_path);
     cmd.arg(temp_path.to_string_lossy().to_string())
-       .arg(current_exe.to_string_lossy().to_string());
-    
+        .arg(current_exe.to_string_lossy().to_string());
+
     match cmd.spawn() {
         Ok(_) => {
             log::info!("Updater helper started successfully. Main process will exit now.");
@@ -259,7 +271,7 @@ fn replace_executable_windows(current_exe: &PathBuf, new_content: &[u8]) -> Resu
         Err(e) => {
             // Clean up temp file on failure
             let _ = std::fs::remove_file(&temp_path);
-            Err(format!("Failed to start updater helper: {}", e))
+            Err(format!("Failed to start updater helper: {e}"))
         }
     }
 }
@@ -288,11 +300,10 @@ fn replace_executable_unix(current_exe: &PathBuf, new_content: &[u8]) -> Result<
         .map_err(|e| format!("Failed to replace executable: {e}"))?;
 
     // On macOS, bypass security restrictions
-    if std::env::consts::OS == "macos" {
-        if let Err(e) = bypass_macos_security(current_exe) {
+    if std::env::consts::OS == "macos"
+        && let Err(e) = bypass_macos_security(current_exe) {
             log::info!("Warning: Could not bypass macOS security restrictions: {e}");
         }
-    }
 
     Ok(())
 }
@@ -352,7 +363,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
 
     let dmg_path = temp_dir.join("Dream Launcher.dmg");
     let mount_point = temp_dir.join("mount");
-    
+
     fs::create_dir_all(&mount_point)
         .await
         .map_err(|e| format!("Failed to create mount point directory: {e}"))?;
@@ -415,17 +426,17 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
 
     let app_name = app_bundle.file_name();
     let app_source = app_bundle.path();
-    
+
     // Try to install to ~/Applications first, fallback to /Applications with admin privileges
     let home_dir = std::env::var("HOME").map_err(|_| "Could not get HOME directory")?;
     let user_apps_dir = std::path::Path::new(&home_dir).join("Applications");
     let system_apps_dir = std::path::Path::new("/Applications");
-    
+
     // Ensure ~/Applications exists
     if let Err(e) = std::fs::create_dir_all(&user_apps_dir) {
-        log::warn!("Could not create ~/Applications directory: {}", e);
+        log::warn!("Could not create ~/Applications directory: {e}");
     }
-    
+
     let (app_destination, needs_admin) = if user_apps_dir.exists() {
         (user_apps_dir.join(&app_name), false)
     } else {
@@ -445,10 +456,13 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
         let remove_result = if needs_admin {
             // Try with admin privileges using osascript
             Command::new("osascript")
-                .args(["-e", &format!(
-                    "do shell script \"rm -rf '{}'\" with administrator privileges",
-                    app_destination.display()
-                )])
+                .args([
+                    "-e",
+                    &format!(
+                        "do shell script \"rm -rf '{}'\" with administrator privileges",
+                        app_destination.display()
+                    ),
+                ])
                 .output()
         } else {
             Command::new("rm")
@@ -463,10 +477,10 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
             }
             Ok(output) => {
                 let error_msg = String::from_utf8_lossy(&output.stderr);
-                log::warn!("Could not remove existing app: {}", error_msg);
+                log::warn!("Could not remove existing app: {error_msg}");
             }
             Err(e) => {
-                log::warn!("Failed to remove existing app: {}", e);
+                log::warn!("Failed to remove existing app: {e}");
             }
         }
     }
@@ -474,15 +488,18 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
     // Copy the app to Applications
     let target_dir = app_destination.parent().unwrap();
     log::info!("Copying app to {} folder...", target_dir.display());
-    
+
     let cp_result = if needs_admin {
         // Try with admin privileges using osascript
         Command::new("osascript")
-            .args(["-e", &format!(
-                "do shell script \"cp -R '{}' '{}'\" with administrator privileges",
-                app_source.display(),
-                target_dir.display()
-            )])
+            .args([
+                "-e",
+                &format!(
+                    "do shell script \"cp -R '{}' '{}'\" with administrator privileges",
+                    app_source.display(),
+                    target_dir.display()
+                ),
+            ])
             .output()
     } else {
         Command::new("cp")
@@ -498,51 +515,62 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
         }
         Ok(output) => {
             let error_msg = String::from_utf8_lossy(&output.stderr);
-            log::error!("cp command failed: {}", error_msg);
+            log::error!("cp command failed: {error_msg}");
             // Unmount before returning error
             let _ = Command::new("hdiutil")
                 .args(["detach", "-quiet"])
                 .arg(&mount_point)
                 .output();
             let _ = fs::remove_dir_all(&temp_dir).await;
-            
+
             if needs_admin {
-                return Err(format!("Failed to copy app to {} (admin privileges required): {}. Please try installing manually.", target_dir.display(), error_msg));
+                return Err(format!(
+                    "Failed to copy app to {} (admin privileges required): {}. Please try installing manually.",
+                    target_dir.display(),
+                    error_msg
+                ));
             } else {
                 // If user installation failed, try system installation
-                log::info!("User installation failed, trying system installation with admin privileges...");
+                log::info!(
+                    "User installation failed, trying system installation with admin privileges..."
+                );
                 // Fallback to system installation with admin privileges
-                 let _system_app_destination = std::path::Path::new("/Applications").join(&app_name);
-                 let system_cp_result = Command::new("osascript")
+                let _system_app_destination = std::path::Path::new("/Applications").join(&app_name);
+                let system_cp_result = Command::new("osascript")
                      .args(["-e", &format!(
                          "do shell script \"cp -R '{}' '/Applications/'\" with administrator privileges",
                          app_source.display()
                      )])
                      .output();
-                 
-                 match system_cp_result {
-                     Ok(output) if output.status.success() => {
-                         log::info!("Successfully copied app to /Applications with admin privileges");
-                         // Continue with the rest of the installation process
-                     }
-                     Ok(output) => {
-                         let error_msg = String::from_utf8_lossy(&output.stderr);
-                         let _ = Command::new("hdiutil")
-                             .args(["detach", "-quiet"])
-                             .arg(&mount_point)
-                             .output();
-                         let _ = fs::remove_dir_all(&temp_dir).await;
-                         return Err(format!("Failed to copy app to /Applications (admin privileges required): {}. Please try installing manually.", error_msg));
-                     }
-                     Err(e) => {
-                         let _ = Command::new("hdiutil")
-                             .args(["detach", "-quiet"])
-                             .arg(&mount_point)
-                             .output();
-                         let _ = fs::remove_dir_all(&temp_dir).await;
-                         return Err(format!("Failed to execute system copy command: {}", e));
-                     }
-                 }
+
+                match system_cp_result {
+                    Ok(output) if output.status.success() => {
+                        log::info!(
+                            "Successfully copied app to /Applications with admin privileges"
+                        );
+                        // Continue with the rest of the installation process
+                    }
+                    Ok(output) => {
+                        let error_msg = String::from_utf8_lossy(&output.stderr);
+                        let _ = Command::new("hdiutil")
+                            .args(["detach", "-quiet"])
+                            .arg(&mount_point)
+                            .output();
+                        let _ = fs::remove_dir_all(&temp_dir).await;
+                        return Err(format!(
+                            "Failed to copy app to /Applications (admin privileges required): {}. Please try installing manually.",
+                            error_msg
+                        ));
+                    }
+                    Err(e) => {
+                        let _ = Command::new("hdiutil")
+                            .args(["detach", "-quiet"])
+                            .arg(&mount_point)
+                            .output();
+                        let _ = fs::remove_dir_all(&temp_dir).await;
+                        return Err(format!("Failed to execute system copy command: {e}"));
+                    }
+                }
             }
         }
         Err(e) => {
@@ -551,7 +579,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
                 .arg(&mount_point)
                 .output();
             let _ = fs::remove_dir_all(&temp_dir).await;
-            return Err(format!("Failed to execute copy command: {}", e));
+            return Err(format!("Failed to execute copy command: {e}"));
         }
     }
 
@@ -584,7 +612,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
             }
         }
         Err(e) => {
-            log::info!("Warning: Failed to run xattr command: {}", e);
+            log::info!("Warning: Failed to run xattr command: {e}");
         }
     }
 
@@ -614,7 +642,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
             }
         }
         Err(e) => {
-            log::info!("Warning: Failed to run spctl command: {}", e);
+            log::info!("Warning: Failed to run spctl command: {e}");
         }
     }
 
@@ -623,7 +651,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
         .args(["detach", "-quiet"])
         .arg(&mount_point)
         .output()
-        .map_err(|e| format!("Failed to unmount DMG: {}", e))?;
+        .map_err(|e| format!("Failed to unmount DMG: {e}"))?;
 
     if !detach_output.status.success() {
         log::info!("Warning: Failed to unmount DMG, but installation completed");
@@ -655,7 +683,11 @@ pub async fn check_for_updates() {
         Ok(res) => res,
         Err(e) => {
             log::error!("Failed to fetch release info from GitHub: {e}");
-            set_update_state(false, 0.0, "Failed to check for updates. Please check your internet connection.".to_string());
+            set_update_state(
+                false,
+                0.0,
+                "Failed to check for updates. Please check your internet connection.".to_string(),
+            );
             return;
         }
     };
@@ -664,7 +696,11 @@ pub async fn check_for_updates() {
         Ok(release) => release,
         Err(e) => {
             log::error!("Failed to parse GitHub release info: {e}");
-            set_update_state(false, 0.0, "Failed to parse update information from server.".to_string());
+            set_update_state(
+                false,
+                0.0,
+                "Failed to parse update information from server.".to_string(),
+            );
             return;
         }
     };
@@ -675,8 +711,14 @@ pub async fn check_for_updates() {
     let latest_version = release.tag_name.trim_start_matches('v');
 
     if !is_version_newer(latest_version, current_version) {
-        log::info!("No newer version available: latest {latest_version}, current {current_version}");
-        set_update_state(false, 0.0, "You are running the latest version.".to_string());
+        log::info!(
+            "No newer version available: latest {latest_version}, current {current_version}"
+        );
+        set_update_state(
+            false,
+            0.0,
+            "You are running the latest version.".to_string(),
+        );
         return;
     }
 
@@ -691,11 +733,23 @@ pub async fn check_for_updates() {
     let asset = if let Some(asset) = find_platform_asset(&release.assets) {
         asset
     } else {
-        log::error!("No compatible binary found for platform: {} {}", std::env::consts::OS, std::env::consts::ARCH);
-        set_update_state(false, 0.0, format!("No update available for your platform ({} {})", std::env::consts::OS, std::env::consts::ARCH));
+        log::error!(
+            "No compatible binary found for platform: {} {}",
+            std::env::consts::OS,
+            std::env::consts::ARCH
+        );
+        set_update_state(
+            false,
+            0.0,
+            format!(
+                "No update available for your platform ({} {})",
+                std::env::consts::OS,
+                std::env::consts::ARCH
+            ),
+        );
         return;
     };
-    
+
     log::info!("Found compatible asset: {}", asset.name);
 
     log::info!("Downloading update from: {}", asset.browser_download_url);
@@ -708,13 +762,22 @@ pub async fn check_for_updates() {
     // Try to find SHA256 hash for integrity verification
     let expected_sha256 = find_asset_sha256(asset, release.body.as_deref());
     if let Some(ref hash) = expected_sha256 {
-        log::info!("Found SHA256 hash for verification: {}", hash);
+        log::info!("Found SHA256 hash for verification: {hash}");
     } else {
-        log::warn!("No SHA256 hash found for asset {}. File integrity will not be verified.", asset.name);
+        log::warn!(
+            "No SHA256 hash found for asset {}. File integrity will not be verified.",
+            asset.name
+        );
     }
 
     // Download the new version to disk
-    match download_file_to_disk(&asset.browser_download_url, &temp_file, expected_sha256.as_deref()).await {
+    match download_file_to_disk(
+        &asset.browser_download_url,
+        &temp_file,
+        expected_sha256.as_deref(),
+    )
+    .await
+    {
         Ok(_) => {
             log::info!("Download completed successfully");
         }
@@ -754,7 +817,7 @@ pub async fn check_for_updates() {
                 );
                 let _ = tokio::fs::remove_file(&temp_file).await;
                 tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
-                set_update_state(false, 0.0, "".to_string()); // Clear status before restart
+                set_update_state(false, 0.0, String::new());
 
                 // Restart the launcher
                 log::info!("Restarting launcher...");
@@ -767,7 +830,11 @@ pub async fn check_for_updates() {
                     "Please download and install manually from: {}",
                     asset.browser_download_url
                 );
-                set_update_state(false, 0.0, format!("Installation failed: {e}. Please install manually."));
+                set_update_state(
+                    false,
+                    0.0,
+                    format!("Installation failed: {e}. Please install manually."),
+                );
                 let _ = tokio::fs::remove_file(&temp_file).await;
                 return;
             }
@@ -790,7 +857,7 @@ pub async fn check_for_updates() {
             log::info!("Update installed successfully!");
             set_update_state(true, 100.0, format!("Update to {latest_version} completed"));
             let _ = tokio::fs::remove_file(&temp_file).await;
-            
+
             // On Windows, the helper will restart the app, so we just exit
             // On other platforms, we restart manually
             if std::env::consts::OS == "windows" {
@@ -813,19 +880,22 @@ pub async fn check_for_updates() {
 
 fn is_version_newer(new: &str, current: &str) -> bool {
     use semver::Version;
-    
+
     // Parse versions, handling 'v' prefix
     let new_clean = new.trim_start_matches('v');
     let current_clean = current.trim_start_matches('v');
-    
+
     match (Version::parse(new_clean), Version::parse(current_clean)) {
         (Ok(new_ver), Ok(current_ver)) => new_ver > current_ver,
         _ => {
             // Fallback to simple string comparison if semver parsing fails
-            log::warn!("Failed to parse versions as semver: '{}' vs '{}', using fallback", new, current);
-            let parse_version = |v: &str| -> Vec<u32> {
-                v.split('.').filter_map(|s| s.parse().ok()).collect()
-            };
+            log::warn!(
+                "Failed to parse versions as semver: '{}' vs '{}', using fallback",
+                new,
+                current
+            );
+            let parse_version =
+                |v: &str| -> Vec<u32> { v.split('.').filter_map(|s| s.parse().ok()).collect() };
             let new_parts = parse_version(new_clean);
             let current_parts = parse_version(current_clean);
             new_parts > current_parts
@@ -861,10 +931,10 @@ fn restart_launcher() {
             {
                 Ok(mut child) => {
                     log::info!("Successfully launched new instance from Applications");
-                    
+
                     // Give the new process time to start before we exit
                     std::thread::sleep(Duration::from_millis(500));
-                    
+
                     // Check if the new process is still running
                     match child.try_wait() {
                         Ok(Some(status)) => {
@@ -891,10 +961,10 @@ fn restart_launcher() {
     match Command::new(&current_exe).spawn() {
         Ok(mut child) => {
             log::info!("Successfully launched new instance");
-            
+
             // Give the new process time to start before we exit
             std::thread::sleep(Duration::from_millis(500));
-            
+
             // Check if the new process is still running
             match child.try_wait() {
                 Ok(Some(status)) => {

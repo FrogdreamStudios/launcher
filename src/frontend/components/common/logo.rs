@@ -14,7 +14,7 @@ pub fn Logo(animations_played: bool) -> Element {
     };
 
     rsx! {
-        div { 
+        div {
             class: if !animations_played { "standalone-logo-wrapper logo-animate" } else { "standalone-logo-wrapper" },
             style: "cursor: pointer;",
             onclick: handle_click,

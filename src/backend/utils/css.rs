@@ -162,7 +162,7 @@ impl ResourceLoader {
             .get_or_init(Self::get_all_fonts)
             .get(name)
             .cloned()
-            .unwrap_or_else(|| "".into())
+            .unwrap_or_else(|| String::new())
     }
 
     pub fn get_embedded_css_with_fonts() -> String {
