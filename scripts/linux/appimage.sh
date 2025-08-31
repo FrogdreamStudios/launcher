@@ -4,6 +4,13 @@
 
 set -e
 
+# Check if running on Linux
+if [[ "$OSTYPE" != "linux-gnu"* ]]; then
+    echo "Error: AppImage can only be created on Linux systems"
+    echo "Current OS: $OSTYPE"
+    exit 1
+fi
+
 APP_NAME="Dream Launcher"
 EXECUTABLE_NAME="DreamLauncher"
 APP_DIR="DreamLauncher.AppDir"
@@ -49,11 +56,11 @@ if [[ -f "assets/icons/app_icon.icns" ]]; then
         fi
     elif command -v convert &> /dev/null; then
         # Use ImageMagick to convert ICNS to PNG
-        convert "assets/icons/app_icon.icns[0]" "$ICON_FILE"
+        if ! convert "assets/icons/app_icon.icns[0]" "$ICON_FILE" 2>/dev/null; then
+            echo "Warning: Failed to convert ICNS to PNG"
+        fi
     else
-        echo "Warning: No tool found to convert ICNS to PNG. Using default icon."
-        # Create a simple placeholder icon
-        convert -size 256x256 xc:blue "$ICON_FILE" 2>/dev/null || echo "No ImageMagick available"
+        echo "Warning: No tool found to convert ICNS to PNG"
     fi
 else
     echo "Warning: No app icon found at assets/icons/app_icon.icns"
@@ -80,8 +87,7 @@ EOF
 
 chmod +x "$APP_DIR/AppRun"
 
-# Copy desktop file to root of AppDir
-cp "$DESKTOP_FILE" "$APP_DIR/"
+# Desktop file is already created in the correct location
 
 # Copy icon to root of AppDir
 if [[ -f "$ICON_FILE" ]]; then
@@ -91,7 +97,14 @@ fi
 # Download appimagetool if not available
 if ! command -v appimagetool &> /dev/null; then
     echo "Downloading appimagetool..."
-    wget -O appimagetool "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
+    if command -v wget &> /dev/null; then
+        wget -O appimagetool "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
+    elif command -v curl &> /dev/null; then
+        curl -L -o appimagetool "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
+    else
+        echo "Error: Neither wget nor curl found. Cannot download appimagetool"
+        exit 1
+    fi
     chmod +x appimagetool
     APPIMAGETOOL="./appimagetool"
 else
