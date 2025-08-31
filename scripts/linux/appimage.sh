@@ -4,11 +4,9 @@
 
 set -e
 
-# Check if running on Linux
-if [[ "$OSTYPE" != "linux-gnu"* ]]; then
-    echo "Error: AppImage can only be created on Linux systems"
-    echo "Current OS: $OSTYPE"
-    exit 1
+# Check if FUSE is available
+if ! command -v fusermount &> /dev/null; then
+    echo "Warning: fusermount not found"
 fi
 
 APP_NAME="Dream Launcher"
