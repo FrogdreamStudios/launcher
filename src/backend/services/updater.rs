@@ -18,9 +18,9 @@ struct Release {
 
 fn get_platform_asset_name() -> Option<&'static str> {
     match std::env::consts::OS {
-        "windows" => Some("DreamLauncher-Windows.exe"),
-        "macos" => Some("DreamLauncher-macOS.dmg"),
-        "linux" => Some("DreamLauncher-Linux"),
+        "windows" => Some("Dream Launcher.exe"),
+        "macos" => Some("Dream Launcher.dmg"),
+        "linux" => Some("Dream Launcher"),
         _ => None,
     }
 }
