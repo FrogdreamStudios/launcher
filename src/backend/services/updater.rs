@@ -635,8 +635,6 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
     Ok(())
 }
 
-
-
 pub async fn check_for_updates() {
     use crate::frontend::services::states::set_update_state;
 
