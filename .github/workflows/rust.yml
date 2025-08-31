@@ -1,3 +1,5 @@
+# Rust workflow to build and package the launcher for Windows, macOS, and Linux.
+
 name: Rust CI
 
 on: [push, pull_request]
@@ -66,7 +68,7 @@ jobs:
           mkdir -p dist
           if [[ "${{ runner.os }}" == "Windows" ]]; then
             cp "target/release/DreamLauncher.exe" "dist/Dream Launcher.exe"
-            powershell -Command "Compress-Archive -Path 'dist/Dream Launcher.exe' -DestinationPath 'Dream Launcher-Windows.zip'"
+            powershell -Command "Compress-Archive -Path 'dist/Dream Launcher.exe' -DestinationPath 'DreamLauncher-Windows.zip'"
           elif [[ "${{ runner.os }}" == "macOS" ]]; then
             chmod +x scripts/macos/bundle.sh
             ./scripts/macos/bundle.sh
@@ -80,22 +82,26 @@ jobs:
             chmod +x scripts/macos/dmg.sh
             ./scripts/macos/dmg.sh
 
-            if [[ -f "Dream Launcher-macOS.dmg" ]]; then
-              echo "DMG created successfully"
+            if [[ -f "Dream Launcher.dmg" ]]; then
+              mv "Dream Launcher.dmg" "dist/Dream Launcher.dmg"
+              zip -j "DreamLauncher-macOS.zip" "dist/Dream Launcher.dmg"
+              echo "DMG created and zipped successfully"
             else
               echo "No DMG file found"
+              exit 1
             fi
 
             echo "macOS packaging completed"
           else
             cp "target/release/DreamLauncher" "dist/Dream Launcher"
-            zip -j "Dream Launcher-linux.zip" "dist/Dream Launcher"
+            zip -j "DreamLauncher-Linux.zip" "dist/Dream Launcher"
           fi
 
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Dream Launcher-${{ runner.os }}
+          name: DreamLauncher-${{ runner.os }}
           path: |
-            Dream Launcher-*.zip
-            Dream Launcher-*.dmg
+            DreamLauncher-Windows.zip
+            DreamLauncher-Linux.zip
+            DreamLauncher-macOS.zip
