@@ -72,10 +72,10 @@ jobs:
             ./scripts/macos/bundle.sh
 
             chmod +x scripts/macos/clean.sh
-            ./scripts/macos/clean.sh "target/release/DreamLauncher.app"
+            ./scripts/macos/clean.sh "target/release/Dream Launcher.app"
 
             chmod +x scripts/macos/sign.sh
-            ./scripts/macos/sign.sh "target/release/DreamLauncher.app"
+            ./scripts/macos/sign.sh "target/release/Dream Launcher.app"
 
             chmod +x scripts/macos/dmg.sh
             ./scripts/macos/dmg.sh
