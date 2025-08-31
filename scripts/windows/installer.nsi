@@ -18,7 +18,7 @@
 
 ; General settings.
 Name "${APP_NAME}"
-OutFile "Dream Launcher Setup.exe"
+OutFile "${OUTPUT_DIR}\Dream Launcher Setup.exe"
 InstallDir "$PROGRAMFILES64\\${APP_NAME}"
 InstallDirRegKey HKLM "${APP_REGKEY}" "InstallPath"
 RequestExecutionLevel admin
@@ -55,7 +55,7 @@ VIAddVersionKey "LegalCopyright" "© ${APP_PUBLISHER}"
 !insertmacro MUI_PAGE_WELCOME
 
 ; License page.
-!insertmacro MUI_PAGE_LICENSE "LICENSE"
+!insertmacro MUI_PAGE_LICENSE "..\..\LICENSE"
 
 ; Components page.
 !insertmacro MUI_PAGE_COMPONENTS
