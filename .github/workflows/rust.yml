@@ -86,14 +86,6 @@ jobs:
           mkdir dist
           powershell -ExecutionPolicy Bypass -File scripts/windows/build_installer.ps1 -Version "${{ github.ref_name || 'dev' }}"
 
-      - name: Package for Windows (Fallback ZIP)
-        if: matrix.os == 'windows-latest'
-        run: |
-          mkdir dist-zip
-          cp target/release/DreamLauncher.exe dist-zip/
-          cd dist-zip
-          powershell -Command "Compress-Archive -Path '*' -DestinationPath '../DreamLauncher-Windows.zip'"
-
       - name: Install AppImage dependencies (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -109,26 +101,14 @@ jobs:
           chmod +x scripts/linux/appimage.sh
           ./scripts/linux/appimage.sh
 
-      - name: Package for Linux (Fallback)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          mkdir dist-tar
-          cp target/release/DreamLauncher dist-tar/
-          cd dist-tar
-          tar -czf ../DreamLauncher-Linux.tar.gz *
-
       - name: Package for macOS
         if: matrix.os == 'macos-latest'
         shell: bash
         run: |
           set -e
           mkdir -p dist
-          if [[ "${{ runner.os }}" == "Windows" ]]; then
-            cp "target/release/DreamLauncher.exe" "dist/Dream Launcher.exe"
-            powershell -Command "Compress-Archive -Path 'dist/Dream Launcher.exe' -DestinationPath 'DreamLauncher-Windows.zip'"
-          elif [[ "${{ runner.os }}" == "macOS" ]]; then
-            chmod +x scripts/macos/bundle.sh
-            ./scripts/macos/bundle.sh
+          chmod +x scripts/macos/bundle.sh
+          ./scripts/macos/bundle.sh
 
           chmod +x scripts/macos/clean.sh
           ./scripts/macos/clean.sh "target/release/Dream Launcher.app"
@@ -138,19 +118,12 @@ jobs:
 
           chmod +x scripts/macos/dmg.sh
           ./scripts/macos/dmg.sh
-            if [[ -f "Dream Launcher.dmg" ]]; then
-              mv "Dream Launcher.dmg" "dist/Dream Launcher.dmg"
-              zip -j "DreamLauncher-macOS.zip" "dist/Dream Launcher.dmg"
-              echo "DMG created and zipped successfully"
-            else
-              echo "No DMG file found"
-              exit 1
-            fi
-
-            echo "macOS packaging completed"
+          if [[ -f "Dream Launcher.dmg" ]]; then
+            mv "Dream Launcher.dmg" "dist/Dream Launcher.dmg"
+            echo "DMG created successfully"
           else
-            cp "target/release/DreamLauncher" "dist/Dream Launcher"
-            zip -j "DreamLauncher-Linux.zip" "dist/Dream Launcher"
+            echo "No DMG file found"
+            exit 1
           fi
 
           echo "macOS packaging completed"
@@ -159,17 +132,9 @@ jobs:
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: DreamLauncher-Windows-Installer
+          name: DreamLauncher-Windows
           path: |
             dist/Dream Launcher Setup.exe
-
-      - name: Upload Windows ZIP
-        if: matrix.os == 'windows-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: DreamLauncher-Windows-ZIP
-          path: |
-            DreamLauncher-Windows.zip
 
       - name: Upload Linux AppImage
         if: matrix.os == 'ubuntu-latest'
@@ -179,18 +144,10 @@ jobs:
           path: |
             *.AppImage
 
-      - name: Upload Linux TAR
-        if: matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: DreamLauncher-Linux-TAR
-          path: |
-            DreamLauncher-Linux.tar.gz
-
       - name: Upload macOS
         if: matrix.os == 'macos-latest'
         uses: actions/upload-artifact@v4
         with:
           name: DreamLauncher-macOS
           path: |
-            DreamLauncher-macOS.zip
+            dist/Dream Launcher.dmg
