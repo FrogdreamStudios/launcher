@@ -3,8 +3,8 @@
 
 param(
     [string]$Version = "0.1.0",
-    [string]$BuildDir = "../../target/release",
-    [string]$OutputDir = "../../dist",
+    [string]$BuildDir = "target/release",
+    [string]$OutputDir = "dist",
     [switch]$Clean = $false
 )
 
@@ -80,7 +80,7 @@ try {
     # Resolve paths
     $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
     $projectRoot = Resolve-Path (Join-Path $scriptDir "../..")
-    $buildPath = Resolve-Path (Join-Path $projectRoot $BuildDir)
+    $buildPath = Join-Path $projectRoot $BuildDir
     $outputPath = Join-Path $projectRoot $OutputDir
     $nsisScript = Join-Path $scriptDir "installer.nsi"
     
