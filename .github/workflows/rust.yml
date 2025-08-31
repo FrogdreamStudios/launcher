@@ -49,59 +49,129 @@ jobs:
       - name: Build
         run: cargo build --release --locked --features "desktop"
 
-      - name: Compress
-        shell: bash
+      - name: Compress with UPX (Linux)
+        if: matrix.os == 'ubuntu-latest'
         run: |
-          if [[ "${{ runner.os }}" == "Windows" ]]; then
-            upx --best --lzma "target/release/DreamLauncher.exe"
-          elif [[ "${{ runner.os }}" == "Linux" ]]; then
-            upx --best --lzma "target/release/DreamLauncher"
-          elif [[ "${{ runner.os }}" == "macOS" ]]; then
-            chmod +x scripts/macos/compress.sh
-            ./scripts/macos/compress.sh "target/release/DreamLauncher"
-          fi
+          upx --best --lzma target/release/DreamLauncher
 
-      - name: Package
+      - name: Compress with UPX (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          upx --best --lzma target/release/DreamLauncher.exe
+
+      - name: Compress with UPX (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          chmod +x scripts/macos/compress.sh
+          ./scripts/macos/compress.sh "target/release/DreamLauncher"
+
+      - name: Install NSIS (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          choco install nsis -y
+
+      - name: Create Windows Installer
+        if: matrix.os == 'windows-latest'
+        run: |
+          mkdir dist
+          powershell -ExecutionPolicy Bypass -File scripts/windows/build_installer.ps1 -Version "${{ github.ref_name || 'dev' }}"
+
+      - name: Package for Windows (Fallback ZIP)
+        if: matrix.os == 'windows-latest'
+        run: |
+          mkdir dist-zip
+          cp target/release/DreamLauncher.exe dist-zip/
+          cd dist-zip
+          powershell -Command "Compress-Archive -Path '*' -DestinationPath '../DreamLauncher-Windows.zip'"
+
+      - name: Install AppImage dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y file
+          wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool-x86_64.AppImage
+          sudo mv appimagetool-x86_64.AppImage /usr/local/bin/appimagetool
+
+      - name: Create AppImage (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          chmod +x scripts/linux/appimage.sh
+          ./scripts/linux/appimage.sh
+
+      - name: Package for Linux (Fallback)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          mkdir dist-tar
+          cp target/release/DreamLauncher dist-tar/
+          cd dist-tar
+          tar -czf ../DreamLauncher-Linux.tar.gz *
+
+      - name: Package for macOS
+        if: matrix.os == 'macos-latest'
         shell: bash
         run: |
           set -e
           mkdir -p dist
-          if [[ "${{ runner.os }}" == "Windows" ]]; then
-            cp "target/release/DreamLauncher.exe" "dist/Dream Launcher.exe"
-            powershell -Command "Compress-Archive -Path 'dist/Dream Launcher.exe' -DestinationPath 'DreamLauncher-Windows.zip'"
-          elif [[ "${{ runner.os }}" == "macOS" ]]; then
-            chmod +x scripts/macos/bundle.sh
-            ./scripts/macos/bundle.sh
+          chmod +x scripts/macos/bundle.sh
+          ./scripts/macos/bundle.sh
 
-            chmod +x scripts/macos/clean.sh
-            ./scripts/macos/clean.sh "target/release/Dream Launcher.app"
+          chmod +x scripts/macos/clean.sh
+          ./scripts/macos/clean.sh "target/release/Dream Launcher.app"
 
-            chmod +x scripts/macos/sign.sh
-            ./scripts/macos/sign.sh "target/release/Dream Launcher.app"
+          chmod +x scripts/macos/sign.sh
+          ./scripts/macos/sign.sh "target/release/Dream Launcher.app"
 
-            chmod +x scripts/macos/dmg.sh
-            ./scripts/macos/dmg.sh
+          chmod +x scripts/macos/dmg.sh
+          ./scripts/macos/dmg.sh
 
-            if [[ -f "Dream Launcher.dmg" ]]; then
-              mv "Dream Launcher.dmg" "dist/Dream Launcher.dmg"
-              zip -j "DreamLauncher-macOS.zip" "dist/Dream Launcher.dmg"
-              echo "DMG created and zipped successfully"
-            else
-              echo "No DMG file found"
-              exit 1
-            fi
-
-            echo "macOS packaging completed"
+          if [[ -f "Dream Launcher.dmg" ]]; then
+            mv "Dream Launcher.dmg" "dist/Dream Launcher.dmg"
+            zip -j "DreamLauncher-macOS.zip" "dist/Dream Launcher.dmg"
+            echo "DMG created and zipped successfully"
           else
-            cp "target/release/DreamLauncher" "dist/Dream Launcher"
-            zip -j "DreamLauncher-Linux.zip" "dist/Dream Launcher"
+            echo "No DMG file found"
+            exit 1
           fi
 
-      - name: Upload
+          echo "macOS packaging completed"
+
+      - name: Upload Windows Installer
+        if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: DreamLauncher-${{ runner.os }}
+          name: DreamLauncher-Windows-Installer
+          path: |
+            dist/Dream Launcher Setup.exe
+
+      - name: Upload Windows ZIP
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: DreamLauncher-Windows-ZIP
           path: |
             DreamLauncher-Windows.zip
-            DreamLauncher-Linux.zip
+
+      - name: Upload Linux AppImage
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: DreamLauncher-Linux-AppImage
+          path: |
+            *.AppImage
+
+      - name: Upload Linux TAR
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: DreamLauncher-Linux-TAR
+          path: |
+            DreamLauncher-Linux.tar.gz
+
+      - name: Upload macOS
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: DreamLauncher-macOS
+          path: |
             DreamLauncher-macOS.zip

@@ -1,0 +1,111 @@
+#!/bin/bash
+
+# Script to create AppImage for Dream Launcher
+
+set -e
+
+APP_NAME="Dream Launcher"
+EXECUTABLE_NAME="DreamLauncher"
+APP_DIR="DreamLauncher.AppDir"
+DESKTOP_FILE="$APP_DIR/DreamLauncher.desktop"
+ICON_FILE="$APP_DIR/DreamLauncher.png"
+
+echo "Creating AppImage for $APP_NAME..."
+
+# Clean up any existing AppDir
+rm -rf "$APP_DIR"
+
+# Create AppDir structure
+mkdir -p "$APP_DIR/usr/bin"
+mkdir -p "$APP_DIR/usr/share/applications"
+mkdir -p "$APP_DIR/usr/share/icons/hicolor/256x256/apps"
+
+# Copy the executable
+cp "target/release/$EXECUTABLE_NAME" "$APP_DIR/usr/bin/"
+
+# Create desktop file
+cat > "$DESKTOP_FILE" << EOF
+[Desktop Entry]
+Type=Application
+Name=$APP_NAME
+Exec=$EXECUTABLE_NAME
+Icon=DreamLauncher
+Comment=A powerful and lightweight Minecraft launcher
+Categories=Game;
+Terminal=false
+StartupWMClass=DreamLauncher
+EOF
+
+# Convert ICNS to PNG if available
+if [[ -f "assets/icons/app_icon.icns" ]]; then
+    # Try to extract PNG from ICNS
+    if command -v icns2png &> /dev/null; then
+        icns2png -x "assets/icons/app_icon.icns"
+        # Find the largest PNG and copy it
+        LARGEST_PNG=$(find . -name "app_icon_*x*.png" | sort -V | tail -1)
+        if [[ -n "$LARGEST_PNG" ]]; then
+            cp "$LARGEST_PNG" "$ICON_FILE"
+            rm app_icon_*.png
+        fi
+    elif command -v convert &> /dev/null; then
+        # Use ImageMagick to convert ICNS to PNG
+        convert "assets/icons/app_icon.icns[0]" "$ICON_FILE"
+    else
+        echo "Warning: No tool found to convert ICNS to PNG. Using default icon."
+        # Create a simple placeholder icon
+        convert -size 256x256 xc:blue "$ICON_FILE" 2>/dev/null || echo "No ImageMagick available"
+    fi
+else
+    echo "Warning: No app icon found at assets/icons/app_icon.icns"
+fi
+
+# Copy icon to hicolor theme location
+if [[ -f "$ICON_FILE" ]]; then
+    cp "$ICON_FILE" "$APP_DIR/usr/share/icons/hicolor/256x256/apps/"
+fi
+
+# Create AppRun script
+cat > "$APP_DIR/AppRun" << 'EOF'
+#!/bin/bash
+
+# Get the directory where this AppImage is located
+HERE="$(dirname "$(readlink -f "${0}")")" 
+
+# Export library path
+export LD_LIBRARY_PATH="$HERE/usr/lib:$LD_LIBRARY_PATH"
+
+# Run the application
+exec "$HERE/usr/bin/DreamLauncher" "$@"
+EOF
+
+chmod +x "$APP_DIR/AppRun"
+
+# Copy desktop file to root of AppDir
+cp "$DESKTOP_FILE" "$APP_DIR/"
+
+# Copy icon to root of AppDir
+if [[ -f "$ICON_FILE" ]]; then
+    cp "$ICON_FILE" "$APP_DIR/"
+fi
+
+# Download appimagetool if not available
+if ! command -v appimagetool &> /dev/null; then
+    echo "Downloading appimagetool..."
+    wget -O appimagetool "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
+    chmod +x appimagetool
+    APPIMAGETOOL="./appimagetool"
+else
+    APPIMAGETOOL="appimagetool"
+fi
+
+# Create AppImage
+echo "Creating AppImage..."
+"$APPIMAGETOOL" "$APP_DIR" "Dream Launcher.AppImage"
+
+# Clean up
+rm -rf "$APP_DIR"
+if [[ -f "./appimagetool" ]]; then
+    rm ./appimagetool
+fi
+
+echo "AppImage created successfully: Dream Launcher.AppImage"

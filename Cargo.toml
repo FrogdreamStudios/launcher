@@ -38,6 +38,10 @@ anyhow = "1.0.99"
 log = "0.4.27"
 env_logger = "0.11.8"
 chrono = { version = "0.4", features = ["serde"] }
+semver = "1.0.26"
+sha2 = "0.11.0-rc.0"
+regex = "1.11.2"
+hex = "0.4.3"
 
 [features]
 default = ["desktop"]
@@ -46,8 +50,12 @@ desktop = ["dioxus/desktop"]
 minimal = []
 
 [[bin]]
-name = "DreamLauncher"
+name = "launcher"
 path = "src/main.rs"
+
+[[bin]]
+name = "updater"
+path = "src/bin/updater.rs"
 
 [build-dependencies]
 winres = "0.1.12"

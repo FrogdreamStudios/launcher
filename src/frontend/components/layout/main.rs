@@ -550,7 +550,7 @@ pub async fn install_and_launch_instance(
             set_instance_running(instance_id, false);
             // Hide failed status after 5 seconds
             tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-            set_game_progress_state_simple(false, 0.0, String::new(), None);
+            set_game_progress_state_simple(false, 0.0, "".to_string(), None);
             return;
         }
     };
@@ -658,7 +658,7 @@ pub async fn install_and_launch_instance(
                                 // Hide success status after 3 seconds
                                 spawn(async move {
                                     tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
-                                    set_game_progress_state_simple(false, 0.0, String::new(), None);
+                                    set_game_progress_state_simple(false, 0.0, "".to_string(), None); // Clear status
                                 });
                             }
                         }
@@ -691,7 +691,7 @@ pub async fn install_and_launch_instance(
                                 // Hide failed status after 5 seconds
                                 spawn(async move {
                                     tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-                                    set_game_progress_state_simple(false, 0.0, String::new(), None);
+                                    set_game_progress_state_simple(false, 0.0, "".to_string(), None);
                                 });
                             }
 
@@ -721,7 +721,7 @@ pub async fn install_and_launch_instance(
                             // Hide failed status after 5 seconds
                             spawn(async move {
                                 tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-                                set_game_progress_state_simple(false, 0.0, String::new(), None);
+                                set_game_progress_state_simple(false, 0.0, "".to_string(), None);
                             });
 
                             set_instance_running(instance_id, false);
@@ -752,7 +752,7 @@ pub async fn install_and_launch_instance(
                     );
                     // Hide the failed status after 5 seconds
                     tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-                    set_game_progress_state_simple(false, 0.0, String::new(), None);
+                    set_game_progress_state_simple(false, 0.0, "".to_string(), None);
                     set_instance_running(instance_id, false);
                     active_instance_id.set(None);
                 }
@@ -774,7 +774,7 @@ pub async fn install_and_launch_instance(
             set_instance_running(instance_id, false);
             // Hide failed status after 5 seconds
             tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-            set_game_progress_state_simple(false, 0.0, String::new(), None);
+            set_game_progress_state_simple(false, 0.0, "".to_string(), None);
         }
     }
 
