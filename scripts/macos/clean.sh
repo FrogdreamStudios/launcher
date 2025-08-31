@@ -15,4 +15,4 @@ find "$APP_PATH" -type f -exec xattr -c {} \; 2>/dev/null || true
 find "$APP_PATH" -type f -exec xattr -d com.apple.quarantine {} \; 2>/dev/null || true
 
 chmod -R 755 "$APP_PATH"
-chmod +x "$APP_PATH/Contents/MacOS/Dream Launcher"
+chmod +x "$APP_PATH/Contents/MacOS/DreamLauncher"
