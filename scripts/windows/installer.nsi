@@ -51,7 +51,7 @@ VIAddVersionKey "LegalCopyright" "© ${APP_PUBLISHER}"
 
 ; Welcome page.
 !define MUI_WELCOMEPAGE_TITLE "Welcome to ${APP_NAME} Setup"
-!define MUI_WELCOMEPAGE_TEXT "This wizard will guide you through the installation of ${APP_NAME}.\r\n\r\n${APP_NAME} is a powerful and lightweight Minecraft launcher.\r\n\r\nClick Next to continue."
+!define MUI_WELCOMEPAGE_TEXT "This wizard will guide you through the installation of ${APP_NAME}. Click Next to continue."
 !insertmacro MUI_PAGE_WELCOME
 
 ; License page.
@@ -95,139 +95,139 @@ InstType "Minimal"
 
 ; Sections.
 Section "!${APP_NAME} (required)" SecMain
-  SectionIn RO 1 2
-  
-  ; Set output path to the installation directory
-  SetOutPath "$INSTDIR"
-  
-  ; Copy main executable
-  File "..\\..\\target\\release\\${APP_EXECUTABLE}"
-  
-  ; Copy assets if they exist
-  SetOutPath "$INSTDIR\\assets"
-  File /r /x ".git*" "..\\..\\assets\\*"
-  
-  ; Store installation folder
-  WriteRegStr HKLM "${APP_REGKEY}" "InstallPath" "$INSTDIR"
-  WriteRegStr HKLM "${APP_REGKEY}" "Version" "${APP_VERSION}"
-  
-  ; Create uninstaller
-  WriteUninstaller "$INSTDIR\\Uninstall.exe"
-  
-  ; Add uninstall information to Add/Remove Programs
-  WriteRegStr HKLM "${UNINSTALL_REGKEY}" "DisplayName" "${APP_NAME}"
-  WriteRegStr HKLM "${UNINSTALL_REGKEY}" "DisplayVersion" "${APP_VERSION}"
-  WriteRegStr HKLM "${UNINSTALL_REGKEY}" "Publisher" "${APP_PUBLISHER}"
-  WriteRegStr HKLM "${UNINSTALL_REGKEY}" "URLInfoAbout" "${APP_URL}"
-  WriteRegStr HKLM "${UNINSTALL_REGKEY}" "DisplayIcon" "$INSTDIR\\${APP_EXECUTABLE}"
-  WriteRegStr HKLM "${UNINSTALL_REGKEY}" "UninstallString" "$INSTDIR\\Uninstall.exe"
-  WriteRegStr HKLM "${UNINSTALL_REGKEY}" "QuietUninstallString" "$INSTDIR\\Uninstall.exe /S"
-  WriteRegDWORD HKLM "${UNINSTALL_REGKEY}" "NoModify" 1
-  WriteRegDWORD HKLM "${UNINSTALL_REGKEY}" "NoRepair" 1
-  
-  ; Calculate and store the size
-  ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
-  IntFmt $0 "0x%08X" $0
-  WriteRegDWORD HKLM "${UNINSTALL_REGKEY}" "EstimatedSize" "$0"
+ SectionIn RO 1 2
+
+ ; Set output path to the installation directory
+ SetOutPath "$INSTDIR"
+
+ ; Copy main executable
+ File "..\\..\\target\\release\\${APP_EXECUTABLE}"
+
+ ; Copy assets if they exist
+ SetOutPath "$INSTDIR\\assets"
+ File /r /x ".git*" "..\\..\\assets\\*"
+
+ ; Store installation folder
+ WriteRegStr HKLM "${APP_REGKEY}" "InstallPath" "$INSTDIR"
+ WriteRegStr HKLM "${APP_REGKEY}" "Version" "${APP_VERSION}"
+
+ ; Create uninstaller
+ WriteUninstaller "$INSTDIR\\Uninstall.exe"
+
+ ; Add uninstall information to Add/Remove Programs
+ WriteRegStr HKLM "${UNINSTALL_REGKEY}" "DisplayName" "${APP_NAME}"
+ WriteRegStr HKLM "${UNINSTALL_REGKEY}" "DisplayVersion" "${APP_VERSION}"
+ WriteRegStr HKLM "${UNINSTALL_REGKEY}" "Publisher" "${APP_PUBLISHER}"
+ WriteRegStr HKLM "${UNINSTALL_REGKEY}" "URLInfoAbout" "${APP_URL}"
+ WriteRegStr HKLM "${UNINSTALL_REGKEY}" "DisplayIcon" "$INSTDIR\\${APP_EXECUTABLE}"
+ WriteRegStr HKLM "${UNINSTALL_REGKEY}" "UninstallString" "$INSTDIR\\Uninstall.exe"
+ WriteRegStr HKLM "${UNINSTALL_REGKEY}" "QuietUninstallString" "$INSTDIR\\Uninstall.exe /S"
+ WriteRegDWORD HKLM "${UNINSTALL_REGKEY}" "NoModify" 1
+ WriteRegDWORD HKLM "${UNINSTALL_REGKEY}" "NoRepair" 1
+
+ ; Calculate and store the size
+ ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
+ IntFmt $0 "0x%08X" $0
+ WriteRegDWORD HKLM "${UNINSTALL_REGKEY}" "EstimatedSize" "$0"
 SectionEnd
 
 Section "Desktop Shortcut" SecDesktop
-  SectionIn 1
-  CreateShortcut "$DESKTOP\\${APP_NAME}.lnk" "$INSTDIR\\${APP_EXECUTABLE}" "" "$INSTDIR\\${APP_EXECUTABLE}" 0
+ SectionIn 1
+ CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${APP_EXECUTABLE}" "" "$INSTDIR\${APP_EXECUTABLE}" 0
 SectionEnd
 
 Section "Start Menu Shortcuts" SecStartMenu
-  SectionIn 1 2
-  
-  !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
-  
-  CreateDirectory "$SMPROGRAMS\\$StartMenuFolder"
-  CreateShortcut "$SMPROGRAMS\\$StartMenuFolder\\${APP_NAME}.lnk" "$INSTDIR\\${APP_EXECUTABLE}" "" "$INSTDIR\\${APP_EXECUTABLE}" 0
-  CreateShortcut "$SMPROGRAMS\\$StartMenuFolder\\Uninstall ${APP_NAME}.lnk" "$INSTDIR\\Uninstall.exe" "" "$INSTDIR\\Uninstall.exe" 0
-  
-  !insertmacro MUI_STARTMENU_WRITE_END
+ SectionIn 1 2
+
+ !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
+
+ CreateDirectory "$SMPROGRAMS\\$StartMenuFolder"
+ CreateShortcut "$SMPROGRAMS\\$StartMenuFolder\\${APP_NAME}.lnk" "$INSTDIR\\${APP_EXECUTABLE}" "" "$INSTDIR\\${APP_EXECUTABLE}" 0
+ CreateShortcut "$SMPROGRAMS\\$StartMenuFolder\\Uninstall ${APP_NAME}.lnk" "$INSTDIR\\Uninstall.exe" "" "$INSTDIR\\Uninstall.exe" 0
+
+ !insertmacro MUI_STARTMENU_WRITE_END
 SectionEnd
 
 Section "File Associations" SecFileAssoc
-  SectionIn 1
-  
-  ; Register .dreamlauncher file extension
-  WriteRegStr HKCR ".dreamlauncher" "" "DreamLauncher.Instance"
-  WriteRegStr HKCR "DreamLauncher.Instance" "" "Dream Launcher Instance"
-  WriteRegStr HKCR "DreamLauncher.Instance\\DefaultIcon" "" "$INSTDIR\\${APP_EXECUTABLE},0"
-  WriteRegStr HKCR "DreamLauncher.Instance\\shell\\open\\command" "" '"$INSTDIR\\${APP_EXECUTABLE}" "%1"'
+ SectionIn 1
+
+ ; Register .dreamlauncher file extension
+ WriteRegStr HKCR ".dreamlauncher" "" "DreamLauncher.Instance"
+ WriteRegStr HKCR "DreamLauncher.Instance" "" "Dream Launcher Instance"
+ WriteRegStr HKCR "DreamLauncher.Instance\\DefaultIcon" "" "$INSTDIR\\${APP_EXECUTABLE},0"
+ WriteRegStr HKCR "DreamLauncher.Instance\\shell\\open\\command" "" '"$INSTDIR\\${APP_EXECUTABLE}" "%1"'
 SectionEnd
 
 ; Section descriptions.
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
-  !insertmacro MUI_DESCRIPTION_TEXT ${SecMain} "The core ${APP_NAME} application files. This component is required."
-  !insertmacro MUI_DESCRIPTION_TEXT ${SecDesktop} "Creates a shortcut on the desktop for easy access to ${APP_NAME}."
-  !insertmacro MUI_DESCRIPTION_TEXT ${SecStartMenu} "Creates shortcuts in the Start Menu."
-  !insertmacro MUI_DESCRIPTION_TEXT ${SecFileAssoc} "Associates .dreamlauncher files with ${APP_NAME}."
+ !insertmacro MUI_DESCRIPTION_TEXT ${SecMain} "The core ${APP_NAME} application files. This component is required."
+ !insertmacro MUI_DESCRIPTION_TEXT ${SecDesktop} "Creates a shortcut on the desktop for easy access to ${APP_NAME}."
+ !insertmacro MUI_DESCRIPTION_TEXT ${SecStartMenu} "Creates shortcuts in the Start Menu."
+ !insertmacro MUI_DESCRIPTION_TEXT ${SecFileAssoc} "Associates .dreamlauncher files with ${APP_NAME}."
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 ; Installation functions.
 Function .onInit
-  ; Check if running on 64-bit Windows
-  ${IfNot} ${RunningX64}
-    MessageBox MB_OK|MB_ICONSTOP "${APP_NAME} requires 64-bit Windows."
-    Abort
-  ${EndIf}
-  
-  ; Check Windows version (Windows 10 or later)
-  ${IfNot} ${AtLeastWin10}
-    MessageBox MB_OK|MB_ICONSTOP "${APP_NAME} requires Windows 10 or later."
-    Abort
-  ${EndIf}
-  
-  ; Check if already installed
-  ReadRegStr $R0 HKLM "${APP_REGKEY}" "InstallPath"
-  ${If} $R0 != ""
-    MessageBox MB_YESNO|MB_ICONQUESTION "${APP_NAME} is already installed. Do you want to reinstall it?" IDYES +2
-    Abort
-  ${EndIf}
+ ; Check if running on 64-bit Windows
+ ${IfNot} ${RunningX64}
+   MessageBox MB_OK|MB_ICONSTOP "${APP_NAME} requires 64-bit Windows."
+   Abort
+ ${EndIf}
+
+ ; Check Windows version (Windows 10 or later)
+ ${IfNot} ${AtLeastWin10}
+   MessageBox MB_OK|MB_ICONSTOP "${APP_NAME} requires Windows 10 or later."
+   Abort
+ ${EndIf}
+
+ ; Check if already installed
+ ReadRegStr $R0 HKLM "${APP_REGKEY}" "InstallPath"
+ ${If} $R0 != ""
+   MessageBox MB_YESNO|MB_ICONQUESTION "${APP_NAME} is already installed. Do you want to reinstall it?" IDYES +2
+   Abort
+ ${EndIf}
 FunctionEnd
 
 Function .onInstSuccess
-  ; Refresh shell icons
-  System::Call 'shell32.dll::SHChangeNotify(l, l, p, p) v (0x08000000, 0, 0, 0)'
+ ; Refresh shell icons
+ System::Call 'shell32.dll::SHChangeNotify(l, l, p, p) v (0x08000000, 0, 0, 0)'
 FunctionEnd
 
 ; Uninstaller section.
 Section "Uninstall"
-  ; Remove files
-  Delete "$INSTDIR\\${APP_EXECUTABLE}"
-  Delete "$INSTDIR\\Uninstall.exe"
-  
-  ; Remove assets
-  RMDir /r "$INSTDIR\\assets"
-  
-  ; Remove shortcuts
-  Delete "$DESKTOP\\${APP_NAME}.lnk"
-  
-  ; Remove Start Menu shortcuts
-  !insertmacro MUI_STARTMENU_GETFOLDER Application $StartMenuFolder
-  Delete "$SMPROGRAMS\\$StartMenuFolder\\${APP_NAME}.lnk"
-  Delete "$SMPROGRAMS\\$StartMenuFolder\\Uninstall ${APP_NAME}.lnk"
-  RMDir "$SMPROGRAMS\\$StartMenuFolder"
-  
-  ; Remove file associations
-  DeleteRegKey HKCR ".dreamlauncher"
-  DeleteRegKey HKCR "DreamLauncher.Instance"
-  
-  ; Remove registry keys
-  DeleteRegKey HKLM "${UNINSTALL_REGKEY}"
-  DeleteRegKey HKLM "${APP_REGKEY}"
-  
-  ; Remove installation directory if empty
-  RMDir "$INSTDIR"
-  
-  ; Refresh shell icons
-  System::Call 'shell32.dll::SHChangeNotify(l, l, p, p) v (0x08000000, 0, 0, 0)'
+ ; Remove files
+ Delete "$INSTDIR\\${APP_EXECUTABLE}"
+ Delete "$INSTDIR\\Uninstall.exe"
+
+ ; Remove assets
+ RMDir /r "$INSTDIR\\assets"
+
+ ; Remove shortcuts
+ Delete "$DESKTOP\\${APP_NAME}.lnk"
+
+ ; Remove Start Menu shortcuts
+ !insertmacro MUI_STARTMENU_GETFOLDER Application $StartMenuFolder
+ Delete "$SMPROGRAMS\\$StartMenuFolder\\${APP_NAME}.lnk"
+ Delete "$SMPROGRAMS\\$StartMenuFolder\\Uninstall ${APP_NAME}.lnk"
+ RMDir "$SMPROGRAMS\\$StartMenuFolder"
+
+ ; Remove file associations
+ DeleteRegKey HKCR ".dreamlauncher"
+ DeleteRegKey HKCR "DreamLauncher.Instance"
+
+ ; Remove registry keys
+ DeleteRegKey HKLM "${UNINSTALL_REGKEY}"
+ DeleteRegKey HKLM "${APP_REGKEY}"
+
+ ; Remove installation directory if empty
+ RMDir "$INSTDIR"
+
+ ; Refresh shell icons
+ System::Call 'shell32.dll::SHChangeNotify(l, l, p, p) v (0x08000000, 0, 0, 0)'
 SectionEnd
 
 ; Uninstaller functions.
 Function un.onInit
-  MessageBox MB_YESNO|MB_ICONQUESTION "Are you sure you want to completely remove ${APP_NAME} and all of its components?" IDYES +2
-  Abort
+ MessageBox MB_YESNO|MB_ICONQUESTION "Are you sure you want to completely remove ${APP_NAME} and all of its components?" IDYES +2
+ Abort
 FunctionEnd

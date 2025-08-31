@@ -16,7 +16,6 @@ dependencies = [
  "futures-util",
  "hex",
  "log",
- "once_cell",
  "regex",
  "reqwest",
  "self_update",
