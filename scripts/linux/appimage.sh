@@ -41,27 +41,15 @@ Terminal=false
 StartupWMClass=DreamLauncher
 EOF
 
-# Convert ICNS to PNG if available
-if [[ -f "assets/icons/app_icon.icns" ]]; then
-    # Try to extract PNG from ICNS
-    if command -v icns2png &> /dev/null; then
-        icns2png -x "assets/icons/app_icon.icns"
-        # Find the largest PNG and copy it
-        LARGEST_PNG=$(find . -name "app_icon_*x*.png" | sort -V | tail -1)
-        if [[ -n "$LARGEST_PNG" ]]; then
-            cp "$LARGEST_PNG" "$ICON_FILE"
-            rm app_icon_*.png
-        fi
-    elif command -v convert &> /dev/null; then
-        # Use ImageMagick to convert ICNS to PNG
-        if ! convert "assets/icons/app_icon.icns[0]" "$ICON_FILE" 2>/dev/null; then
-            echo "Warning: Failed to convert ICNS to PNG"
-        fi
-    else
-        echo "Warning: No tool found to convert ICNS to PNG"
-    fi
+# Copy PNG icon from iconset
+if [[ -f "assets/icons/app_icon.iconset/icon_256x256.png" ]]; then
+    cp "assets/icons/app_icon.iconset/icon_256x256.png" "$ICON_FILE"
+    echo "Using 256x256 PNG icon from iconset"
+elif [[ -f "assets/icons/app_icon.iconset/icon_512x512.png" ]]; then
+    cp "assets/icons/app_icon.iconset/icon_512x512.png" "$ICON_FILE"
+    echo "Using 512x512 PNG icon from iconset"
 else
-    echo "Warning: No app icon found at assets/icons/app_icon.icns"
+    echo "Warning: No suitable PNG icon found in iconset"
 fi
 
 # Copy icon to hicolor theme location
