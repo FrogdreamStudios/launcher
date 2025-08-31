@@ -70,12 +70,8 @@ EOF
 
 chmod +x "$APP_DIR/AppRun"
 
-# Desktop file is already created in the correct location
-
-# Copy icon to root of AppDir
-if [[ -f "$ICON_FILE" ]]; then
-    cp "$ICON_FILE" "$APP_DIR/"
-fi
+# Note: desktop file is already created in the correct location.
+# Icon is already copied to the correct locations.
 
 # Download appimagetool if not available
 if ! command -v appimagetool &> /dev/null; then
