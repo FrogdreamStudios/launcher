@@ -191,8 +191,6 @@ jobs:
         if: matrix.os == 'macos-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: DreamLauncher-${{ runner.os }}
+          name: DreamLauncher-macOS
           path: |
-            DreamLauncher-Windows.zip
-            DreamLauncher-Linux.zip
             DreamLauncher-macOS.zip

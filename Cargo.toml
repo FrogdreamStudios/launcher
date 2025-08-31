@@ -50,7 +50,7 @@ desktop = ["dioxus/desktop"]
 minimal = []
 
 [[bin]]
-name = "launcher"
+name = "DreamLauncher"
 path = "src/main.rs"
 
 [[bin]]
