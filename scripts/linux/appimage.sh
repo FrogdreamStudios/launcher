@@ -44,17 +44,14 @@ EOF
 # Copy PNG icon from iconset
 if [[ -f "assets/icons/app_icon.iconset/icon_256x256.png" ]]; then
     cp "assets/icons/app_icon.iconset/icon_256x256.png" "$ICON_FILE"
+    cp "assets/icons/app_icon.iconset/icon_256x256.png" "$APP_DIR/usr/share/icons/hicolor/256x256/apps/DreamLauncher.png"
     echo "Using 256x256 PNG icon from iconset"
 elif [[ -f "assets/icons/app_icon.iconset/icon_512x512.png" ]]; then
     cp "assets/icons/app_icon.iconset/icon_512x512.png" "$ICON_FILE"
+    cp "assets/icons/app_icon.iconset/icon_512x512.png" "$APP_DIR/usr/share/icons/hicolor/256x256/apps/DreamLauncher.png"
     echo "Using 512x512 PNG icon from iconset"
 else
     echo "Warning: No suitable PNG icon found in iconset"
-fi
-
-# Copy icon to hicolor theme location
-if [[ -f "$ICON_FILE" ]]; then
-    cp "$ICON_FILE" "$APP_DIR/usr/share/icons/hicolor/256x256/apps/"
 fi
 
 # Create AppRun script
