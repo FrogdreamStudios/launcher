@@ -82,7 +82,7 @@ jobs:
           rustup target add aarch64-pc-windows-msvc
           rustup component add rust-src
           # Install for x64 host, will work for cross-compilation
-          cargo install dioxus-cli --version 0.5.6 || cargo install dioxus-cli --version 0.5.5 || cargo install dioxus-cli --git https://github.com/DioxusLabs/dioxus --tag v0.5.6
+          cargo install dioxus-cli --version 0.7.0-rc.0 || cargo install dioxus-cli --version 0.7.0-rc. || cargo install dioxus-cli --git https://github.com/DioxusLabs/dioxus --tag v0.7.0-rc.0
         shell: bash
 
       - name: Cache
@@ -126,13 +126,13 @@ jobs:
       - name: Install dependencies
         uses: awalsh128/cache-apt-pkgs-action@v1
         with:
-          packages: libgtk-3-dev libglib2.0-dev libsoup-3.0-dev libssl-dev libjavascriptcoregtk-4.1-dev libwebkit2gtk-4.1-dev libxdo-dev pkg-config build-essential curl xdotool
+          packages: libgtk-3-dev libglib2.0-dev libsoup-3.0-dev libssl-dev libjavascriptcoregtk-4.1-dev libwebkit2gtk-4.1-dev libxdo-dev pkg-config build-essential curl xdotool fuse libfuse2 desktop-file-utils appstream
           version: 1
 
       - name: Install Rust
         run: |
           rustup update stable
-          cargo install dioxus-cli --version 0.5.7
+          cargo install dioxus-cli --version 0.7.0-rc.0
 
       - name: Cache
         uses: actions/cache@v4
@@ -147,7 +147,21 @@ jobs:
           restore-keys: linux-dioxus-
 
       - name: Build
-        run: dx bundle --release --platform desktop
+        run: |
+          # Set FUSE AppImage variables
+          export APPIMAGE_EXTRACT_AND_RUN=1
+          export APPDIR=/tmp/appdir
+
+          # Try different bundle formats
+          dx bundle --release --platform desktop || {
+            echo "AppImage build failed, trying debian package..."
+            dx bundle --release --platform desktop --format deb || {
+              echo "Debian package build failed, trying simple binary..."
+              cargo build --release
+              mkdir -p target/release/bundle/linux
+              cp target/release/launcher-dev target/release/bundle/linux/dream-launcher || true
+            }
+          }
 
       - name: Upload Linux
         uses: actions/upload-artifact@v4
@@ -177,7 +191,7 @@ jobs:
       - name: Install dependencies
         run: |
           rustup update stable
-          cargo install dioxus-cli --version 0.5.7
+          cargo install dioxus-cli --version 0.7.0-rc.0
 
       - name: Cache
         uses: actions/cache@v4

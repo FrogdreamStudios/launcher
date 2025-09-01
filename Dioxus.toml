@@ -43,7 +43,7 @@ icon = [
     "assets/icons/app_icon.iconset/icon_256x256.png",
     "assets/icons/app_icon.iconset/icon_256x256@2x.png",
     "assets/icons/app_icon.iconset/icon_512x512.png",
-    "assets/icons/app_icon.iconset/icon_512x512@2x.png"
+    "assets/icons/app_icon.iconset/icon_512x512@2x.png",
 ]
 resources = ["assets", "python"]
 short_description = "A powerful and lightweight Minecraft launcher"
@@ -54,19 +54,14 @@ license_file = "LICENSE"
 
 [bundle.linux]
 app_name = "Dream Launcher"
-icon = [
-    "assets/icons/app_icon.iconset/icon_16x16.png",
-    "assets/icons/app_icon.iconset/icon_32x32.png",
-    "assets/icons/app_icon.iconset/icon_128x128.png",
-    "assets/icons/app_icon.iconset/icon_256x256.png",
-    "assets/icons/app_icon.iconset/icon_512x512.png"
-]
+icon = ["assets/icons/app_icon.iconset/icon_256x256.png"]
 short_description = "A modern Minecraft launcher"
 long_description = "Dream Launcher is a modern, fast, and user-friendly Minecraft launcher with advanced features"
 categories = ["Game"]
 generic_name = "Minecraft Launcher"
 keywords = ["minecraft", "launcher", "java", "gaming", "cross-platform"]
 startup_notify = true
+formats = ["deb"]
 
 [bundle.macos]
 app_name = "Dream Launcher"
