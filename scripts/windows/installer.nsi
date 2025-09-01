@@ -4,6 +4,12 @@
 !ifndef APP_VERSION
   !define APP_VERSION "0.1.0"
 !endif
+!ifndef ARCHITECTURE
+  !define ARCHITECTURE "x64"
+!endif
+!ifndef INSTALLER_NAME
+  !define INSTALLER_NAME "Dream Launcher Setup.exe"
+!endif
 !define APP_PUBLISHER "Frogdream Studios"
 !define APP_URL "https://github.com/FrogdreamStudios/launcher"
 !define APP_EXECUTABLE "DreamLauncher.exe"
@@ -18,8 +24,12 @@
 
 ; General settings.
 Name "${APP_NAME}"
-OutFile "${OUTPUT_DIR}\Dream Launcher Setup.exe"
-InstallDir "$PROGRAMFILES64\\${APP_NAME}"
+OutFile "${OUTPUT_DIR}\${INSTALLER_NAME}"
+!if "${ARCHITECTURE}" == "ARM64"
+  InstallDir "$PROGRAMFILES64\\${APP_NAME}"
+!else
+  InstallDir "$PROGRAMFILES64\\${APP_NAME}"
+!endif
 InstallDirRegKey HKLM "${APP_REGKEY}" "InstallPath"
 RequestExecutionLevel admin
 ShowInstDetails show
@@ -101,7 +111,11 @@ Section "!${APP_NAME} (required)" SecMain
  SetOutPath "$INSTDIR"
 
  ; Copy main executable
- File "..\\..\\target\\release\\${APP_EXECUTABLE}"
+ !ifndef EXE_PATH
+   File "..\\..\\target\\release\\${APP_EXECUTABLE}"
+ !else
+   File "${EXE_PATH}"
+ !endif
 
  ; Copy assets if they exist
  SetOutPath "$INSTDIR\\assets"
