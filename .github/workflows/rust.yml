@@ -15,6 +15,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          sparse-checkout: launcher
+          sparse-checkout-cone-mode: false
+
+      - name: Move launcher contents to root
+        run: |
+          mv launcher/* .
+          mv launcher/.* . 2>/dev/null || true
+          rmdir launcher
+        shell: bash
 
       - name: Install Python
         uses: actions/setup-python@v4
@@ -24,7 +34,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r python/requirements.txt
+          pip install -r requirements.txt
 
       - name: Install dependencies
         run: |
@@ -44,15 +54,13 @@ jobs:
           restore-keys: windows-x64-dioxus-
 
       - name: Build
-        run: |
-          cd launcher
-          dx bundle --release --platform desktop
+        run: dx bundle --release --platform desktop
 
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
           name: windows-installer
-          path: launcher/target/release/bundle/
+          path: target/release/bundle/
 
   build-windows-arm64:
     name: Windows ARM64
@@ -60,6 +68,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          sparse-checkout: launcher
+          sparse-checkout-cone-mode: false
+
+      - name: Move launcher contents to root
+        run: |
+          mv launcher/* .
+          mv launcher/.* . 2>/dev/null || true
+          rmdir launcher
+        shell: bash
 
       - name: Install Python
         uses: actions/setup-python@v4
@@ -69,7 +87,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r python/requirements.txt
+          pip install -r requirements.txt
 
       - name: Install Rust
         run: |
@@ -90,15 +108,13 @@ jobs:
           restore-keys: windows-arm64-dioxus-
 
       - name: Build
-        run: |
-          cd launcher
-          dx bundle --release --platform desktop --target aarch64-pc-windows-msvc
+        run: dx bundle --release --platform desktop --target aarch64-pc-windows-msvc
 
       - name: Upload Windows ARM64 installer
         uses: actions/upload-artifact@v4
         with:
           name: windows-arm64-installer
-          path: launcher/target/aarch64-pc-windows-msvc/release/bundle/
+          path: target/aarch64-pc-windows-msvc/release/bundle/
 
   build-linux:
     name: Linux
@@ -106,6 +122,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          sparse-checkout: launcher
+          sparse-checkout-cone-mode: false
+
+      - name: Move launcher contents to root
+        run: |
+          mv launcher/* .
+          mv launcher/.* . 2>/dev/null || true
+          rmdir launcher
+        shell: bash
 
       - name: Install Python
         uses: actions/setup-python@v4
@@ -115,7 +141,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r python/requirements.txt
+          pip install -r requirements.txt
 
       - name: Install dependencies
         uses: awalsh128/cache-apt-pkgs-action@v1
@@ -141,15 +167,13 @@ jobs:
           restore-keys: linux-dioxus-
 
       - name: Build
-        run: |
-          cd launcher
-          dx bundle --release --platform desktop
+        run: dx bundle --release --platform desktop
 
       - name: Upload Linux
         uses: actions/upload-artifact@v4
         with:
           name: linux-installer
-          path: launcher/target/release/bundle/
+          path: target/release/bundle/
 
   build-macos:
     name: macOS
@@ -159,6 +183,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          sparse-checkout: launcher
+          sparse-checkout-cone-mode: false
+
+      - name: Move launcher contents to root
+        run: |
+          mv launcher/* .
+          mv launcher/.* . 2>/dev/null || true
+          rmdir launcher
+        shell: bash
 
       - name: Install Python
         uses: actions/setup-python@v4
@@ -168,7 +202,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r python/requirements.txt
+          pip install -r requirements.txt
 
       - name: Install dependencies
         run: |
@@ -188,9 +222,7 @@ jobs:
           restore-keys: macos-dioxus-
 
       - name: Build
-        run: |
-          cd launcher
-          dx bundle --release --platform desktop || {
+        run: dx bundle --release --platform desktop || {
             echo "Bundle failed due to xattr issues, trying cargo build as fallback"
             cargo build --release
             mkdir -p target/release/bundle/macos
@@ -201,4 +233,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: macos-installer
-          path: launcher/target/release/bundle/
+          path: target/release/bundle/
