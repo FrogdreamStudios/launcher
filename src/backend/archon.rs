@@ -328,6 +328,20 @@ impl Archon {
                     }
                 }
             }
+            "create_dir" => {
+                match tokio::fs::create_dir_all(&path).await {
+                    Ok(_) => FileResponse {
+                        success: true,
+                        data: None,
+                        error: None,
+                    },
+                    Err(e) => FileResponse {
+                        success: false,
+                        data: None,
+                        error: Some(e.to_string()),
+                    },
+                }
+            }
             _ => FileResponse {
                 success: false,
                 data: None,

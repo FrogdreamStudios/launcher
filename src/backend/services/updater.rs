@@ -694,10 +694,37 @@ pub async fn check_for_updates() {
         }
     };
 
-    let release = match response.json::<Release>().await {
+    // Check response status first
+    if !response.status().is_success() {
+        error!("GitHub API returned error status: {}", response.status());
+        set_update_state(
+            false,
+            0.0,
+            "Failed to fetch update information from server.".to_string(),
+        );
+        return;
+    }
+
+    // Get response text for debugging
+    let response_text = match response.text().await {
+        Ok(text) => text,
+        Err(e) => {
+            error!("Failed to read response body: {e}");
+            set_update_state(
+                false,
+                0.0,
+                "Failed to read update information from server.".to_string(),
+            );
+            return;
+        }
+    };
+
+    // Try to parse JSON
+    let release = match serde_json::from_str::<Release>(&response_text) {
         Ok(release) => release,
         Err(e) => {
             error!("Failed to parse GitHub release info: {e}");
+            error!("Response body: {}", response_text.chars().take(500).collect::<String>());
             set_update_state(
                 false,
                 0.0,
