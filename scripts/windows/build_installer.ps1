@@ -128,11 +128,11 @@ try {
     
     $nsisArgs = @(
         "/DAPP_VERSION=$Version",
-        "/DOUTPUT_DIR=$outputPath",
+        "/DOUTPUT_DIR=`"$outputPath`"",
         "/DARCHITECTURE=$Architecture",
-        "/DINSTALLER_NAME=$installerName",
-        "/DEXE_PATH=$exePath",
-        $nsisScript
+        "/DINSTALLER_NAME=`"$installerName`"",
+        "/DEXE_PATH=`"$exePath`"",
+        "`"$nsisScript`""
     )
     
     $process = Start-Process -FilePath $nsisPath -ArgumentList $nsisArgs -Wait -PassThru -NoNewWindow

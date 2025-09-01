@@ -42,7 +42,7 @@ pre-commit = [
 [target.'cfg(target_os = "macos")']
 rustflags = ["-C", "link-arg=-Wl,-rpath,@loader_path"]
 
-# Native compilation flags (x86_64 and aarch64 on their respective platforms)
+# Native compilation flags
 [target.x86_64-pc-windows-msvc]
 rustflags = ["-C", "target-cpu=native"]
 
@@ -55,7 +55,6 @@ rustflags = ["-C", "target-cpu=native", "-C", "link-arg=-Wl,-rpath,@loader_path"
 [target.aarch64-apple-darwin]
 rustflags = ["-C", "target-cpu=native", "-C", "link-arg=-Wl,-rpath,@loader_path"]
 
-# Cross-compilation targets (no target-cpu=native to avoid warnings)
 [target.aarch64-pc-windows-msvc]
 rustflags = []
 
