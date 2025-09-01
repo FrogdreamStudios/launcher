@@ -24,7 +24,6 @@
 
 ; Additional plugins.
 !addplugindir "."
-!include "nsExec.nsh"
 
 ; Download plugin.
 ReserveFile "${NSISDIR}\Plugins\x86-unicode\inetc.dll"
@@ -112,21 +111,22 @@ InstType "Minimal"
 
 ; Python installation functions.
 Function CheckPython
-  ; Check if Python is installed
-  nsExec::ExecToStack 'python --version'
-  Pop $0 ; Exit code
-  Pop $1 ; Output
-  
-  ${If} $0 == 0
-    ; Python found, check version
-    StrCpy $2 $1 1 7 ; Get major version
-    ${If} $2 >= "3"
-      DetailPrint "Python $1 found"
-      Return
-    ${EndIf}
+  ; Check if Python is installed by looking in registry
+  ReadRegStr $0 HKLM "SOFTWARE\Python\PythonCore" ""
+  ${If} $0 != ""
+    ; Python found in registry
+    DetailPrint "Python found in registry: $0"
+    Return
   ${EndIf}
   
-  ; Python not found or version too old
+  ; Check if python.exe exists in PATH by trying to find it
+  SearchPath $0 "python.exe"
+  ${If} $0 != ""
+    DetailPrint "Python executable found: $0"
+    Return
+  ${EndIf}
+  
+  ; Python not found
   MessageBox MB_YESNO|MB_ICONQUESTION "Python 3.x is required but not found. Do you want to download and install Python?" IDYES InstallPython IDNO SkipPython
   
   InstallPython:
