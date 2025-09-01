@@ -3,7 +3,6 @@
 use anyhow::Result;
 use log::{error, info};
 use pyo3::prelude::*;
-use pyo3::types::PyString;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::path::Path;
@@ -58,80 +57,32 @@ pub struct EmbeddedPythonBridge {
 
 impl EmbeddedPythonBridge {
     /// Create a new embedded Python bridge.
-    pub fn new() -> Result<Self> {
-        info!("Initializing embedded Python interpreter");
-
-        // Initialize Python interpreter
+    pub fn new() -> anyhow::Result<Self> {
+        info!("Initializing Python interpreter");
         Python::initialize();
-
-        // Install required packages
-        Self::install_dependencies()?;
-
-        Ok(Self { initialized: true })
+        Ok(EmbeddedPythonBridge { initialized: true })
     }
 
     /// Install Python dependencies.
-    pub fn install_dependencies() -> Result<()> {
-        Python::attach(|py| -> Result<()> {
-            info!("Installing Python dependencies");
-
-            // Try to import minecraft_launcher_lib first
-            match py.import("minecraft_launcher_lib") {
-                Ok(_) => {
-                    info!("minecraft_launcher_lib already installed");
-                    return Ok(());
-                }
-                Err(_) => {
-                    info!("minecraft_launcher_lib not found, installing...");
-                }
-            }
-
-            // Install minecraft-launcher-lib using pip
-            let subprocess = py.import("subprocess")?;
-            let sys = py.import("sys")?;
-
-            let args = vec![
-                sys.getattr("executable")?,
-                PyString::new(py, "-m").into_any(),
-                PyString::new(py, "pip").into_any(),
-                PyString::new(py, "install").into_any(),
-                PyString::new(py, "minecraft-launcher-lib").into_any(),
-            ];
-
-            let result = subprocess.call_method1("run", (args,))?;
-            let returncode = result.getattr("returncode")?;
-
-            if returncode.extract::<i32>()? != 0 {
-                error!("Failed to install minecraft-launcher-lib");
-                return Err(anyhow::anyhow!("Failed to install minecraft-launcher-lib"));
-            }
-
-            info!("Successfully installed minecraft-launcher-lib");
+    pub fn install_dependencies() -> anyhow::Result<()> {
+        info!("Installing Python dependencies");
+        Python::attach(|py| {
+            let pip_install = py.import("subprocess")?;
+            pip_install.call_method1(
+                "run",
+                (["pip", "install", "minecraft-launcher-lib"],),
+            )?;
             Ok(())
         })
     }
 
     /// Install a Minecraft version.
-    pub fn install_version(&self, version: &str, minecraft_dir: &Path) -> Result<bool> {
-        if !self.initialized {
-            return Err(anyhow::anyhow!("Python bridge not initialized"));
-        }
-
-        Python::attach(|py| -> Result<bool> {
-            info!("Installing Minecraft version: {version}");
-
-            let _mll = py.import("minecraft_launcher_lib")?;
-
-            // Simple installation without callback
-            // Use the install module to install Minecraft version
-            let install_module = py.import("minecraft_launcher_lib.install")?;
-            let _result = install_module.call_method1(
-                "install_minecraft_version",
-                (version, minecraft_dir.to_string_lossy().to_string()),
-            )?;
-
-            info!("Minecraft version {version} installed successfully");
-            Ok(true)
+    pub fn install_version(&self, version: &str, path: &str) -> Result<()> {
+        info!("Installing Minecraft version: {version}");
+        Python::attach(|py| {
+            let launcher_lib = py.import("minecraft_launcher_lib")?;
+            launcher_lib.call_method1("install_minecraft_version", (version, path))?;
+            Ok(())
         })
     }
 
