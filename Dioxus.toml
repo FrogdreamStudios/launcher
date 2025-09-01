@@ -33,4 +33,4 @@ hardened_runtime = false
 webview2_install_mode = "embedbootstrapper"
 webview2_user_data_folder = ".dream-launcher"
 console_subsystem = false
-webview2_additional_args = "--memory-pressure-off --max_old_space_size=512 --optimize-for-size --no-sandbox --disable-dev-shm-usage"
+webview2_additional_args = "--memory-pressure-off --max_old_space_size=256 --optimize-for-size --no-sandbox --disable-dev-shm-usage"
