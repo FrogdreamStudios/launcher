@@ -89,6 +89,9 @@ dioxus-desktop = { version = "0.7.0-rc.0", default-features = false, features = 
     "tokio_runtime",
 ] }
 
+[target.'cfg(all(windows, target_arch = "aarch64"))'.dependencies]
+pyo3 = { version = "0.26.0", optional = false }
+
 [package.metadata.bundle]
 name = "Dream Launcher"
 identifier = "com.frogdream.launcher"
