@@ -13,14 +13,10 @@ jobs:
     name: Windows x64
     runs-on: windows-2025
     env:
-      RUSTFLAGS: "-C link-args=/DEFAULTLIB:advapi32.lib"
-      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      CARGO_NET_RETRY: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Windows SDK
-        uses: microsoft/setup-msbuild@v1.3
 
       - name: Install Python
         uses: actions/setup-python@v4
@@ -36,9 +32,9 @@ jobs:
         run: |
           rustup update stable
           rustup component add rust-src
-          $env:RUSTFLAGS="-C link-args=/DEFAULTLIB:advapi32.lib /DEFAULTLIB:shell32.lib /DEFAULTLIB:user32.lib"
-          cargo install dioxus-cli --version 0.5.7 --locked
-        shell: powershell
+          # Try different installation strategies
+          cargo install dioxus-cli --version 0.5.6 || cargo install dioxus-cli --version 0.5.5 || cargo install dioxus-cli --git https://github.com/DioxusLabs/dioxus --tag v0.5.6
+        shell: bash
 
       - name: Cache
         uses: actions/cache@v4
@@ -65,14 +61,10 @@ jobs:
     name: Windows ARM64
     runs-on: windows-2025
     env:
-      RUSTFLAGS: "-C link-args=/DEFAULTLIB:advapi32.lib"
-      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      CARGO_NET_RETRY: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Windows SDK
-        uses: microsoft/setup-msbuild@v1.3
 
       - name: Install Python
         uses: actions/setup-python@v4
@@ -89,9 +81,9 @@ jobs:
           rustup update stable
           rustup target add aarch64-pc-windows-msvc
           rustup component add rust-src
-          $env:RUSTFLAGS="-C link-args=/DEFAULTLIB:advapi32.lib /DEFAULTLIB:shell32.lib /DEFAULTLIB:user32.lib"
-          cargo install dioxus-cli --version 0.5.7 --locked
-        shell: powershell
+          # Install for x64 host, will work for cross-compilation
+          cargo install dioxus-cli --version 0.5.6 || cargo install dioxus-cli --version 0.5.5 || cargo install dioxus-cli --git https://github.com/DioxusLabs/dioxus --tag v0.5.6
+        shell: bash
 
       - name: Cache
         uses: actions/cache@v4
@@ -140,7 +132,7 @@ jobs:
       - name: Install Rust
         run: |
           rustup update stable
-          cargo install dioxus-cli --version 0.5.7 --locked || cargo install dioxus-cli --version 0.5.6 --locked || cargo install dioxus-cli --version 0.5.5 --locked
+          cargo install dioxus-cli --version 0.5.7
 
       - name: Cache
         uses: actions/cache@v4
@@ -185,7 +177,7 @@ jobs:
       - name: Install dependencies
         run: |
           rustup update stable
-          cargo install dioxus-cli --version 0.5.7 --locked || cargo install dioxus-cli --version 0.5.6 --locked || cargo install dioxus-cli --version 0.5.5 --locked
+          cargo install dioxus-cli --version 0.5.7
 
       - name: Cache
         uses: actions/cache@v4
