@@ -24,8 +24,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r python/requirements.txt
-        working-directory: launcher
+          pip install -r launcher/python/requirements.txt
 
       - name: Install dependencies
         run: |
@@ -45,8 +44,9 @@ jobs:
           restore-keys: windows-x64-dioxus-
 
       - name: Build
-        run: dx bundle --release --platform desktop
-        working-directory: launcher
+        run: |
+          cd launcher
+          dx bundle --release --platform desktop
 
       - name: Upload installer
         uses: actions/upload-artifact@v4
@@ -69,8 +69,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r python/requirements.txt
-        working-directory: launcher
+          pip install -r launcher/python/requirements.txt
 
       - name: Install Rust
         run: |
@@ -91,8 +90,9 @@ jobs:
           restore-keys: windows-arm64-dioxus-
 
       - name: Build
-        run: dx bundle --release --platform desktop --target aarch64-pc-windows-msvc
-        working-directory: launcher
+        run: |
+          cd launcher
+          dx bundle --release --platform desktop --target aarch64-pc-windows-msvc
 
       - name: Upload Windows ARM64 installer
         uses: actions/upload-artifact@v4
@@ -115,8 +115,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r python/requirements.txt
-        working-directory: launcher
+          pip install -r launcher/python/requirements.txt
 
       - name: Install dependencies
         uses: awalsh128/cache-apt-pkgs-action@v1
@@ -142,8 +141,9 @@ jobs:
           restore-keys: linux-dioxus-
 
       - name: Build
-        run: dx bundle --release --platform desktop
-        working-directory: launcher
+        run: |
+          cd launcher
+          dx bundle --release --platform desktop
 
       - name: Upload Linux
         uses: actions/upload-artifact@v4
@@ -168,8 +168,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r python/requirements.txt
-        working-directory: launcher
+          pip install -r launcher/python/requirements.txt
 
       - name: Install dependencies
         run: |
@@ -190,13 +189,13 @@ jobs:
 
       - name: Build
         run: |
+          cd launcher
           dx bundle --release --platform desktop || {
             echo "Bundle failed due to xattr issues, trying cargo build as fallback"
             cargo build --release
             mkdir -p target/release/bundle/macos
             echo "Fallback build completed, but .app bundle not available"
           }
-        working-directory: launcher
 
       - name: Upload macOS
         uses: actions/upload-artifact@v4
