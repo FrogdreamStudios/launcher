@@ -5,6 +5,7 @@ param(
     [string]$Version = "0.1.0",
     [string]$BuildDir = "target/release",
     [string]$OutputDir = "dist",
+    [string]$Architecture = "x64",
     [switch]$Clean = $false
 )
 
@@ -80,13 +81,21 @@ try {
     # Resolve paths
     $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
     $projectRoot = Resolve-Path (Join-Path $scriptDir "../..")
-    $buildPath = Join-Path $projectRoot $BuildDir
+    
+    # Adjust build path for ARM64
+    if ($Architecture -eq "ARM64") {
+        $buildPath = Join-Path $projectRoot "target/aarch64-pc-windows-msvc/release"
+    } else {
+        $buildPath = Join-Path $projectRoot $BuildDir
+    }
+    
     $outputPath = Join-Path $projectRoot $OutputDir
     $nsisScript = Join-Path $scriptDir "installer.nsi"
     
     Write-Info "Project root: $projectRoot"
     Write-Info "Build directory: $buildPath"
     Write-Info "Output directory: $outputPath"
+    Write-Info "Architecture: $Architecture"
     
     # Check if executable exists
     $exePath = Join-Path $buildPath "DreamLauncher.exe"
@@ -114,16 +123,22 @@ try {
     # Build installer
     Write-Info "Building installer with NSIS..."
     
+    # Set installer name based on architecture
+    $installerName = if ($Architecture -eq "ARM64") { "Dream Launcher Setup ARM64.exe" } else { "Dream Launcher Setup.exe" }
+    
     $nsisArgs = @(
         "/DAPP_VERSION=$Version",
         "/DOUTPUT_DIR=$outputPath",
+        "/DARCHITECTURE=$Architecture",
+        "/DINSTALLER_NAME=$installerName",
+        "/DEXE_PATH=$exePath",
         $nsisScript
     )
     
     $process = Start-Process -FilePath $nsisPath -ArgumentList $nsisArgs -Wait -PassThru -NoNewWindow
     
     if ($process.ExitCode -eq 0) {
-        $installerPath = Join-Path $outputPath "Dream Launcher Setup.exe"
+        $installerPath = Join-Path $outputPath $installerName
         if (Test-Path $installerPath) {
             $fileSize = [math]::Round((Get-Item $installerPath).Length / 1MB, 2)
             Write-Success "Installer built successfully!"
