@@ -40,6 +40,8 @@ fi
 
 [[ ! -f "$EXECUTABLE_PATH" ]] && exit 1
 
+# Python is now embedded in the application - no external installation needed
+
 rm -rf "$APP_PATH"
 mkdir -p "$APP_PATH/Contents/MacOS" "$APP_PATH/Contents/Resources"
 
@@ -76,8 +78,4 @@ cat > "$APP_PATH/Contents/Info.plist" << EOF
 </plist>
 EOF
 
-# Copy app icon if it exists.
-if [[ -f "assets/icons/app_icon.icns" ]]; then
-    cp "assets/icons/app_icon.icns" "$APP_PATH/Contents/Resources/"
-    plutil -insert CFBundleIconFile -string "app_icon.icns" "$APP_PATH/Contents/Info.plist"
-fi
+# Note: App icon is now embedded in the executable, no need to copy external files

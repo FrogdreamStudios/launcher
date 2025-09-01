@@ -2,8 +2,8 @@
 
 // #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod backend;
-mod frontend;
+pub mod backend;
+pub mod frontend;
 
 use std::sync::OnceLock;
 
@@ -11,10 +11,14 @@ use dioxus::{LaunchBuilder, prelude::*};
 use dioxus_desktop::{Config, LogicalSize, WindowBuilder};
 use dioxus_router::Router;
 
+use crate::backend::Archon;
 use crate::backend::utils::application::Route;
+use log::{error, info};
+use std::sync::Arc;
 use tokio::runtime::Runtime;
 
 static RUNTIME: OnceLock<Runtime> = OnceLock::new();
+static ARCHON: OnceLock<Arc<Archon>> = OnceLock::new();
 
 /// Main function for starting the application.
 fn main() {
@@ -41,10 +45,29 @@ fn main() {
             .enable_all()
             .build()
             .unwrap_or_else(|_| {
-                log::error!("Failed to create tokio runtime, exiting");
+                error!("Failed to create tokio runtime, exiting");
                 std::process::exit(1);
             })
     });
+
+    // Initialize Archon
+    let archon = runtime.block_on(async {
+        match Archon::new().await {
+            Ok(archon) => {
+                info!("Archon initialized successfully");
+                Arc::new(archon)
+            }
+            Err(e) => {
+                error!("Failed to create Archon: {e}");
+                std::process::exit(1);
+            }
+        }
+    });
+
+    if ARCHON.set(archon.clone()).is_err() {
+        error!("Failed to set global Archon instance, exiting...");
+        std::process::exit(1);
+    }
 
     // Run the updater in a separate thread
     runtime.spawn(async {
@@ -53,12 +76,26 @@ fn main() {
 
     // Initialize the launcher in a separate thread
     runtime.spawn(async {
-        frontend::services::launcher::init_launcher().await;
+        let _ = frontend::services::launcher::init_launcher().await;
 
         // Refresh version manifest after initialization
         if let Err(e) = frontend::services::launcher::refresh_version_manifest().await {
-            log::error!("Failed to refresh version manifest: {e}");
+            error!("Failed to refresh version manifest: {e}");
         }
+    });
+
+    // Setup graceful shutdown handler
+    let archon_shutdown = archon.clone();
+    runtime.spawn(async move {
+        if let Err(e) = tokio::signal::ctrl_c().await {
+            error!("Failed to listen for ctrl+c: {e}");
+            return;
+        }
+        info!("Received shutdown signal, shutting down Archon...");
+        if let Err(e) = archon_shutdown.shutdown().await {
+            error!("Error during shutdown: {e}");
+        }
+        std::process::exit(0);
     });
 
     // Dioxus
@@ -98,13 +135,21 @@ fn main() {
                 std::env::set_var("WEBVIEW2_USER_DATA_FOLDER", &user_data_dir);
                 std::env::set_var(
                     "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
-                    format!("--user-data-dir={}", user_data_dir.display()),
+                    format!(
+                        "--user-data-dir={} --memory-pressure-off --max_old_space_size=512 --optimize-for-size --no-sandbox --disable-dev-shm-usage --disable-gpu --disable-software-rasterizer --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding",
+                        user_data_dir.display()
+                    ),
                 );
             }
         }
     }
 
     LaunchBuilder::new().with_cfg(config).launch(AppRoot);
+}
+
+/// Get the global Archon instance.
+pub fn get_archon() -> Option<Arc<Archon>> {
+    ARCHON.get().cloned()
 }
 
 /// Set icon on macOS.

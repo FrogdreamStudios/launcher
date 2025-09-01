@@ -1,12 +1,13 @@
 //! Minecraft version selector component.
 
 use crate::{
-    backend::launcher::models::VersionInfo,
+    backend::services::VersionInfo,
     backend::utils::css::ResourceLoader,
     frontend::services::{instances::InstanceManager, launcher},
 };
 
 use dioxus::prelude::*;
+use log::error;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct SelectorProps {
@@ -36,7 +37,7 @@ pub fn Selector(props: SelectorProps) -> Element {
                         let versions: Vec<VersionInfo> = manifest.versions;
                         available_versions.set(versions);
                     }
-                    Err(e) => log::error!("Failed to get version manifest: {e}"),
+                    Err(e) => error!("Failed to get version manifest: {e}"),
                 }
                 is_loading.set(false);
             });
@@ -90,7 +91,7 @@ pub fn Selector(props: SelectorProps) -> Element {
         let version = selected_version.read().clone();
         match InstanceManager::create_instance_with_version(&version) {
             Some(_) => {}
-            None => log::error!("Failed to create instance"),
+            None => error!("Failed to create instance"),
         }
         show.set(false);
     };

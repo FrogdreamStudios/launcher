@@ -21,14 +21,14 @@ pub fn Auth() -> Element {
     let logo = ResourceLoader::get_asset("logo");
     let microsoft = ResourceLoader::get_asset("microsoft");
 
-    // Function to handle keypress events
-    let on_keypress = {
+    // Function to handle keydown events
+    let on_keydown = {
         let username = username;
         let show_error = show_error;
 
         move |e: KeyboardEvent| {
             if e.key() == Key::Enter {
-                let username_value = username.read().clone();
+                let username_value = username.read().trim().to_string();
                 let mut auth = auth;
                 let nav = nav;
                 let mut show_error = show_error;
@@ -125,10 +125,11 @@ pub fn Auth() -> Element {
                                         value: "{username()}",
                                         maxlength: "16",
                                         oninput: move |e| {
-                                            username.set(e.value());
+                                            let value = e.value().trim().to_string();
+                                            username.set(value);
                                             show_error.set(false);
                                         },
-                                        onkeypress: on_keypress,
+                                        onkeydown: on_keydown,
                                         placeholder: "Enter nickname...",
                                         autofocus: true,
                                         onmounted: move |element| {

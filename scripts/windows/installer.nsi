@@ -22,6 +22,9 @@
 !include "WinVer.nsh"
 !include "x64.nsh"
 
+; Additional plugins.
+!addplugindir "."
+
 ; General settings.
 Name "${APP_NAME}"
 OutFile "${OUTPUT_DIR}\${INSTALLER_NAME}"
@@ -103,6 +106,8 @@ Var StartMenuFolder
 InstType "Full"
 InstType "Minimal"
 
+; Python is now embedded in the application - no external installation needed
+
 ; Sections.
 Section "!${APP_NAME} (required)" SecMain
  SectionIn RO 1 2
@@ -116,10 +121,6 @@ Section "!${APP_NAME} (required)" SecMain
  !else
    File "${EXE_PATH}"
  !endif
-
- ; Copy assets if they exist
- SetOutPath "$INSTDIR\\assets"
- File /r /x ".git*" "..\\..\\assets\\*"
 
  ; Store installation folder
  WriteRegStr HKLM "${APP_REGKEY}" "InstallPath" "$INSTDIR"
@@ -162,6 +163,8 @@ Section "Start Menu Shortcuts" SecStartMenu
  !insertmacro MUI_STARTMENU_WRITE_END
 SectionEnd
 
+; Python Runtime section removed - Python is now embedded in the application
+
 Section "File Associations" SecFileAssoc
  SectionIn 1
 
@@ -175,6 +178,7 @@ SectionEnd
 ; Section descriptions.
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
  !insertmacro MUI_DESCRIPTION_TEXT ${SecMain} "The core ${APP_NAME} application files. This component is required."
+ !insertmacro MUI_DESCRIPTION_TEXT ${SecPython} "Checks for Python installation and installs it if needed. Required for ${APP_NAME} to function."
  !insertmacro MUI_DESCRIPTION_TEXT ${SecDesktop} "Creates a shortcut on the desktop for easy access to ${APP_NAME}."
  !insertmacro MUI_DESCRIPTION_TEXT ${SecStartMenu} "Creates shortcuts in the Start Menu."
  !insertmacro MUI_DESCRIPTION_TEXT ${SecFileAssoc} "Associates .dreamlauncher files with ${APP_NAME}."
@@ -212,9 +216,6 @@ Section "Uninstall"
  ; Remove files
  Delete "$INSTDIR\\${APP_EXECUTABLE}"
  Delete "$INSTDIR\\Uninstall.exe"
-
- ; Remove assets
- RMDir /r "$INSTDIR\\assets"
 
  ; Remove shortcuts
  Delete "$DESKTOP\\${APP_NAME}.lnk"

@@ -1,13 +1,15 @@
 #!/bin/bash
 
-# Script to create AppImage for Dream Launcher
+# Script to create AppImage for Dream Launcher.
 
 set -e
 
-# Check if FUSE is available
+# Check if FUSE is available.
 if ! command -v fusermount &> /dev/null; then
     echo "Warning: fusermount not found"
 fi
+
+# Python is now embedded in the application - no external installation needed
 
 APP_NAME="Dream Launcher"
 EXECUTABLE_NAME="DreamLauncher"
@@ -17,18 +19,18 @@ ICON_FILE="$APP_DIR/DreamLauncher.png"
 
 echo "Creating AppImage for $APP_NAME..."
 
-# Clean up any existing AppDir
+# Clean up any existing AppDir.
 rm -rf "$APP_DIR"
 
-# Create AppDir structure
+# Create AppDir structure.
 mkdir -p "$APP_DIR/usr/bin"
 mkdir -p "$APP_DIR/usr/share/applications"
 mkdir -p "$APP_DIR/usr/share/icons/hicolor/256x256/apps"
 
-# Copy the executable
+# Copy the executable.
 cp "target/release/$EXECUTABLE_NAME" "$APP_DIR/usr/bin/"
 
-# Create desktop file
+# Create desktop file.
 cat > "$DESKTOP_FILE" << EOF
 [Desktop Entry]
 Type=Application
@@ -41,7 +43,7 @@ Terminal=false
 StartupWMClass=DreamLauncher
 EOF
 
-# Copy PNG icon from iconset
+# Copy PNG icon from iconset.
 if [[ -f "assets/icons/app_icon.iconset/icon_256x256.png" ]]; then
     cp "assets/icons/app_icon.iconset/icon_256x256.png" "$ICON_FILE"
     cp "assets/icons/app_icon.iconset/icon_256x256.png" "$APP_DIR/usr/share/icons/hicolor/256x256/apps/DreamLauncher.png"
@@ -54,7 +56,7 @@ else
     echo "Warning: No suitable PNG icon found in iconset"
 fi
 
-# Create AppRun script
+# Create AppRun script.
 cat > "$APP_DIR/AppRun" << 'EOF'
 #!/bin/bash
 
@@ -90,11 +92,11 @@ else
     APPIMAGETOOL="appimagetool"
 fi
 
-# Create AppImage
+# Create AppImage.
 echo "Creating AppImage..."
 "$APPIMAGETOOL" "$APP_DIR" "Dream Launcher.AppImage"
 
-# Clean up
+# Clean up.
 rm -rf "$APP_DIR"
 if [[ -f "./appimagetool" ]]; then
     rm ./appimagetool

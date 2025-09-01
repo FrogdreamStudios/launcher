@@ -2,6 +2,11 @@
 name = "Dream Launcher"
 default_platform = "desktop"
 
+[desktop]
+memory_limit = 512
+optimize_for_size = true
+disable_dev_tools = true
+
 [web.app]
 title = "Dream Launcher"
 
@@ -28,3 +33,4 @@ hardened_runtime = false
 webview2_install_mode = "embedbootstrapper"
 webview2_user_data_folder = ".dream-launcher"
 console_subsystem = false
+webview2_additional_args = "--memory-pressure-off --max_old_space_size=256 --optimize-for-size --no-sandbox --disable-dev-shm-usage"

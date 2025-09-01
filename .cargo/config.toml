@@ -39,7 +39,6 @@ pre-commit = [
 ]
 
 # Target-specific configurations.
-# Native compilation flags
 [target.x86_64-pc-windows-msvc]
 rustflags = ["-C", "target-cpu=native"]
 
@@ -48,6 +47,8 @@ rustflags = ["-C", "target-cpu=native"]
 
 [target.aarch64-pc-windows-msvc]
 rustflags = []
+
+
 
 # Environment variables for the build process.
 [env]

@@ -11,7 +11,7 @@ env:
 jobs:
   build-windows:
     name: Windows x64
-    runs-on: windows-latest
+    runs-on: windows-2025
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -66,7 +66,7 @@ jobs:
 
   build-windows-arm64:
     name: Windows ARM64
-    runs-on: windows-latest
+    runs-on: windows-2025
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -80,6 +80,18 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r python/requirements.txt
+
+      - name: Install Python libs path
+        shell: pwsh
+        run: |
+          $pythonRoot = (python -c "import sys; print(sys.base_prefix)")
+          $libPath = Join-Path $pythonRoot "libs"
+          echo "Python libs path: $libPath"
+          echo "LIB=$libPath;$env:LIB" | Out-File -FilePath $env:GITHUB_ENV -Append
+          if (!(Test-Path (Join-Path $libPath "python3.lib"))) {
+            Write-Host "python3.lib not found in $libPath"
+            exit 1
+          }
 
       - name: Install Rust ARM64 target
         run: rustup target add aarch64-pc-windows-msvc
@@ -117,7 +129,7 @@ jobs:
 
   build-linux:
     name: Linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -179,7 +191,7 @@ jobs:
 
   build-macos:
     name: macOS
-    runs-on: macos-latest
+    runs-on: macos-15
     steps:
       - name: Checkout
         uses: actions/checkout@v4

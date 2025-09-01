@@ -118,6 +118,7 @@ impl ResourceLoader {
             .unwrap_or("")
     }
 
+    #[must_use]
     pub fn combine_css(styles: &[&str]) -> String {
         styles
             .iter()
@@ -127,6 +128,7 @@ impl ResourceLoader {
             .join("\n")
     }
 
+    #[must_use]
     pub fn get_combined_main_css() -> String {
         Self::combine_css(&[
             "base",
@@ -162,9 +164,10 @@ impl ResourceLoader {
             .get_or_init(Self::get_all_fonts)
             .get(name)
             .cloned()
-            .unwrap_or_else(|| String::new())
+            .unwrap_or_else(String::new)
     }
 
+    #[must_use]
     pub fn get_embedded_css_with_fonts() -> String {
         let fonts_css = format!(
             r#"
@@ -188,6 +191,7 @@ impl ResourceLoader {
         format!("{}\n{}", fonts_css, Self::get_combined_main_css())
     }
 
+    #[must_use]
     pub fn get_auth_css_with_fonts() -> String {
         let fonts_css = format!(
             r#"
