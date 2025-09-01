@@ -42,6 +42,7 @@ semver = "1.0.26"
 sha2 = "0.11.0-rc.0"
 regex = "1.11.2"
 hex = "0.4.3"
+pyo3 = { version = "0.26.0", features = ["auto-initialize", "abi3-py38"] }
 
 [features]
 default = ["desktop"]
@@ -83,7 +84,6 @@ split-debuginfo = "off"
 [profile.release.package."*"]
 opt-level = "z"
 
-# Windows ARM64 specific dependencies with native-tls
 [target.'cfg(all(windows, target_arch = "aarch64"))'.dependencies]
 reqwest = { version = "0.12.23", features = ["json", "stream", "native-tls"], default-features = false }
 self_update = { version = "0.42.0", features = [
@@ -92,9 +92,7 @@ self_update = { version = "0.42.0", features = [
     "compression-flate2",
 ], default-features = false }
 
-# PyO3 and TLS dependencies for all platforms except Windows ARM64
 [target.'cfg(not(all(windows, target_arch = "aarch64")))'.dependencies]
-pyo3 = { version = "0.26.0", features = ["auto-initialize", "abi3-py38"] }
 reqwest = { version = "0.12.23", features = ["json", "stream", "rustls-tls"], default-features = false }
 self_update = { version = "0.42.0", features = [
     "archive-zip",
