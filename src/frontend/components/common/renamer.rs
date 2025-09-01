@@ -57,7 +57,7 @@ pub fn RenameDialog(props: RenameDialogProps) -> Element {
         e.stop_propagation();
         let can_rename = !new_name().trim().is_empty() && new_name().trim() != current_name();
         if can_rename && let Some(id) = instance_id() {
-            InstanceManager::rename_instance(id, new_name().trim());
+            let _ = InstanceManager::rename_instance(id, new_name().trim());
             show.set(false);
         }
     };
@@ -73,7 +73,7 @@ pub fn RenameDialog(props: RenameDialogProps) -> Element {
                 && !new_name().trim().is_empty()
                 && new_name().trim() != current_name()
             {
-                InstanceManager::rename_instance(id, new_name().trim());
+                let _ = InstanceManager::rename_instance(id, new_name().trim());
                 show.set(false);
             }
         }

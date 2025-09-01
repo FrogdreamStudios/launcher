@@ -9,59 +9,7 @@ if ! command -v fusermount &> /dev/null; then
     echo "Warning: fusermount not found"
 fi
 
-# Function to check and install Python.
-check_python() {
-    echo "Checking Python installation..."
-    
-    # Check if Python 3 is available
-    if command -v python3 >/dev/null 2>&1; then
-        PYTHON_VERSION=$(python3 --version 2>&1 | cut -d' ' -f2)
-        echo "Python $PYTHON_VERSION found"
-        return 0
-    elif command -v python >/dev/null 2>&1; then
-        PYTHON_VERSION=$(python --version 2>&1 | cut -d' ' -f2)
-        if [[ "$PYTHON_VERSION" == 3.* ]]; then
-            echo "Python $PYTHON_VERSION found"
-            return 0
-        fi
-    fi
-    
-    echo "Python 3.x not found. Attempting to install..."
-    
-    # Try different package managers
-    if command -v apt-get >/dev/null 2>&1; then
-        echo "Installing Python via apt-get..."
-        sudo apt-get update && sudo apt-get install -y python3 python3-pip
-    elif command -v yum >/dev/null 2>&1; then
-        echo "Installing Python via yum..."
-        sudo yum install -y python3 python3-pip
-    elif command -v dnf >/dev/null 2>&1; then
-        echo "Installing Python via dnf..."
-        sudo dnf install -y python3 python3-pip
-    elif command -v pacman >/dev/null 2>&1; then
-        echo "Installing Python via pacman..."
-        sudo pacman -S --noconfirm python python-pip
-    elif command -v zypper >/dev/null 2>&1; then
-        echo "Installing Python via zypper..."
-        sudo zypper install -y python3 python3-pip
-    else
-        echo "No supported package manager found. Please install Python manually: https://www.python.org/downloads/"
-        return 1
-    fi
-    
-    # Verify installation
-    if command -v python3 >/dev/null 2>&1; then
-        PYTHON_VERSION=$(python3 --version 2>&1 | cut -d' ' -f2)
-        echo "Python $PYTHON_VERSION installed successfully"
-        return 0
-    else
-        echo "Python installation failed"
-        return 1
-    fi
-}
-
-# Check Python before creating AppImage.
-check_python
+# Python is now embedded in the application - no external installation needed
 
 APP_NAME="Dream Launcher"
 EXECUTABLE_NAME="DreamLauncher"

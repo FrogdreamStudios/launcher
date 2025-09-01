@@ -1,5 +1,6 @@
 //! Service that checks for updates and downloads them automatically.
 
+use log::{error, info, warn};
 use self_update::cargo_crate_version;
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
@@ -171,19 +172,20 @@ async fn download_file_to_disk(
                 expected, computed_hash
             ));
         }
-        log::info!("SHA256 verification passed: {computed_hash}");
+        info!("SHA256 verification passed: {computed_hash}");
     }
 
     Ok(())
 }
 
-/// Try to find SHA256 hash for an asset from release body or asset label
+/// Try to find SHA256 hash for an asset from release body or asset label.
 fn find_asset_sha256(asset: &ReleaseAsset, release_body: Option<&str>) -> Option<String> {
     // First, check if the asset label contains a SHA256 hash
     if let Some(label) = &asset.label
-        && let Some(hash) = extract_sha256_from_text(label) {
-            return Some(hash);
-        }
+        && let Some(hash) = extract_sha256_from_text(label)
+    {
+        return Some(hash);
+    }
 
     // Then check the release body for SHA256 hashes
     if let Some(body) = release_body {
@@ -193,10 +195,11 @@ fn find_asset_sha256(asset: &ReleaseAsset, release_body: Option<&str>) -> Option
         // Split body into lines and look for our asset
         for line in body.lines() {
             if line.contains(asset_name)
-                && let Some(hash) = extract_sha256_from_text(line) {
-                    return Some(hash);
-                }
+                && let Some(hash) = extract_sha256_from_text(line)
+            {
+                return Some(hash);
             }
+        }
 
         // Also look for a separate .sha256 file asset
         let _sha256_filename = format!("{asset_name}.sha256");
@@ -209,7 +212,7 @@ fn find_asset_sha256(asset: &ReleaseAsset, release_body: Option<&str>) -> Option
     None
 }
 
-/// Extract SHA256 hash from text (64 hex characters)
+/// Extract SHA256 hash from text (64 hex characters).
 fn extract_sha256_from_text(text: &str) -> Option<String> {
     use regex::Regex;
 
@@ -253,7 +256,7 @@ fn replace_executable_windows(current_exe: &Path, new_content: &[u8]) -> Result<
     std::fs::write(&temp_path, new_content)
         .map_err(|e| format!("Failed to write new executable: {e}"))?;
 
-    log::info!(
+    info!(
         "Starting Windows updater helper: {}",
         updater_path.display()
     );
@@ -265,7 +268,7 @@ fn replace_executable_windows(current_exe: &Path, new_content: &[u8]) -> Result<
 
     match cmd.spawn() {
         Ok(_) => {
-            log::info!("Updater helper started successfully. Main process will exit now.");
+            info!("Updater helper started successfully. Main process will exit now.");
             Ok(())
         }
         Err(e) => {
@@ -301,9 +304,10 @@ fn replace_executable_unix(current_exe: &PathBuf, new_content: &[u8]) -> Result<
 
     // On macOS, bypass security restrictions
     if std::env::consts::OS == "macos"
-        && let Err(e) = bypass_macos_security(current_exe) {
-            log::info!("Warning: Could not bypass macOS security restrictions: {e}");
-        }
+        && let Err(e) = bypass_macos_security(current_exe)
+    {
+        info!("Warning: Could not bypass macOS security restrictions: {e}");
+    }
 
     Ok(())
 }
@@ -311,7 +315,7 @@ fn replace_executable_unix(current_exe: &PathBuf, new_content: &[u8]) -> Result<
 fn bypass_macos_security(executable_path: &PathBuf) -> Result<(), String> {
     use std::process::Command;
 
-    log::info!("Removing macOS security restrictions for executable...");
+    info!("Removing macOS security restrictions for executable...");
 
     // Remove quarantine attributes
     let xattr_output = Command::new("xattr")
@@ -322,15 +326,13 @@ fn bypass_macos_security(executable_path: &PathBuf) -> Result<(), String> {
     match xattr_output {
         Ok(output) => {
             if output.status.success() {
-                log::info!("Successfully removed quarantine attributes");
+                info!("Successfully removed quarantine attributes");
             } else {
-                log::info!(
-                    "Note: Could not remove quarantine attributes (normal if not quarantined)"
-                );
+                info!("Note: Could not remove quarantine attributes (normal if not quarantined)");
             }
         }
         Err(e) => {
-            log::info!("Warning: Failed to run xattr command: {e}");
+            info!("Warning: Failed to run xattr command: {e}");
         }
     }
 
@@ -341,9 +343,9 @@ fn bypass_macos_security(executable_path: &PathBuf) -> Result<(), String> {
         if let Ok(mut perms) = std::fs::metadata(executable_path).map(|m| m.permissions()) {
             perms.set_mode(0o755);
             if let Err(e) = std::fs::set_permissions(executable_path, perms) {
-                log::info!("Warning: Could not set executable permissions: {e}");
+                info!("Warning: Could not set executable permissions: {e}");
             } else {
-                log::info!("Successfully set executable permissions");
+                info!("Successfully set executable permissions");
             }
         }
     }
@@ -390,10 +392,10 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
         ));
     }
 
-    log::info!("DMG mounted successfully at: {}", mount_point.display());
+    info!("DMG mounted successfully at: {}", mount_point.display());
 
     // Find the app bundle in the mounted DMG
-    log::info!("Looking for .app bundle in: {}", mount_point.display());
+    info!("Looking for .app bundle in: {}", mount_point.display());
 
     let app_entries = std::fs::read_dir(&mount_point).map_err(|e| {
         format!(
@@ -404,10 +406,10 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
     })?;
 
     let entries: Vec<_> = app_entries.flatten().collect();
-    log::info!("Found {} entries in DMG", entries.len());
+    info!("Found {} entries in DMG", entries.len());
 
     for entry in &entries {
-        log::info!("DMG entry: {}", entry.path().display());
+        info!("DMG entry: {}", entry.path().display());
     }
 
     let app_bundle = entries
@@ -419,7 +421,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
                 .and_then(|ext| ext.to_str())
                 .map(|ext| ext == "app")
                 .unwrap_or(false);
-            log::info!("Checking {}: is_app = {}", entry.path().display(), is_app);
+            info!("Checking {}: is_app = {}", entry.path().display(), is_app);
             is_app
         })
         .ok_or("No .app bundle found in DMG")?;
@@ -434,7 +436,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
 
     // Ensure ~/Applications exists
     if let Err(e) = std::fs::create_dir_all(&user_apps_dir) {
-        log::warn!("Could not create ~/Applications directory: {e}");
+        warn!("Could not create ~/Applications directory: {e}");
     }
 
     let (app_destination, needs_admin) = if user_apps_dir.exists() {
@@ -443,7 +445,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
         (system_apps_dir.join(&app_name), true)
     };
 
-    log::info!(
+    info!(
         "Installing app from {} to {} (admin required: {})",
         app_source.display(),
         app_destination.display(),
@@ -452,7 +454,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
 
     // Remove an existing app if it exists
     if app_destination.exists() {
-        log::info!("Removing existing app at {}", app_destination.display());
+        info!("Removing existing app at {}", app_destination.display());
         let remove_result = if needs_admin {
             // Try with admin privileges using osascript
             Command::new("osascript")
@@ -473,21 +475,23 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
 
         match remove_result {
             Ok(output) if output.status.success() => {
-                log::info!("Successfully removed existing app");
+                info!("Successfully removed existing app");
             }
             Ok(output) => {
                 let error_msg = String::from_utf8_lossy(&output.stderr);
-                log::warn!("Could not remove existing app: {error_msg}");
+                warn!("Could not remove existing app: {error_msg}");
             }
             Err(e) => {
-                log::warn!("Failed to remove existing app: {e}");
+                warn!("Failed to remove existing app: {e}");
             }
         }
     }
 
     // Copy the app to Applications
-    let target_dir = app_destination.parent().unwrap();
-    log::info!("Copying app to {} folder...", target_dir.display());
+    let target_dir = app_destination
+        .parent()
+        .ok_or_else(|| "Failed to get parent directory of app destination".to_string())?;
+    info!("Copying app to {} folder...", target_dir.display());
 
     let cp_result = if needs_admin {
         // Try with admin privileges using osascript
@@ -511,11 +515,11 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
 
     match cp_result {
         Ok(output) if output.status.success() => {
-            log::info!("Successfully copied app to {}", target_dir.display());
+            info!("Successfully copied app to {}", target_dir.display());
         }
         Ok(output) => {
             let error_msg = String::from_utf8_lossy(&output.stderr);
-            log::error!("cp command failed: {error_msg}");
+            error!("cp command failed: {error_msg}");
             // Unmount before returning error
             let _ = Command::new("hdiutil")
                 .args(["detach", "-quiet"])
@@ -531,7 +535,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
                 ));
             } else {
                 // If user installation failed, try system installation
-                log::info!(
+                info!(
                     "User installation failed, trying system installation with admin privileges..."
                 );
                 // Fallback to system installation with admin privileges
@@ -545,9 +549,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
 
                 match system_cp_result {
                     Ok(output) if output.status.success() => {
-                        log::info!(
-                            "Successfully copied app to /Applications with admin privileges"
-                        );
+                        info!("Successfully copied app to /Applications with admin privileges");
                         // Continue with the rest of the installation process
                     }
                     Ok(output) => {
@@ -584,7 +586,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
     }
 
     // Remove macOS security restrictions
-    log::info!("Removing macOS security restrictions...");
+    info!("Removing macOS security restrictions...");
 
     // Remove quarantine attributes
     let xattr_result = if needs_admin {
@@ -604,15 +606,15 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
     match xattr_result {
         Ok(output) => {
             if output.status.success() {
-                log::info!("Successfully removed quarantine attributes");
+                info!("Successfully removed quarantine attributes");
             } else {
-                log::info!(
+                info!(
                     "Warning: Could not remove quarantine attributes (this is normal if app wasn't quarantined)"
                 );
             }
         }
         Err(e) => {
-            log::info!("Warning: Failed to run xattr command: {e}");
+            info!("Warning: Failed to run xattr command: {e}");
         }
     }
 
@@ -634,15 +636,15 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
     match spctl_result {
         Ok(output) => {
             if output.status.success() {
-                log::info!("Successfully added app to Gatekeeper exceptions");
+                info!("Successfully added app to Gatekeeper exceptions");
             } else {
-                log::info!(
+                info!(
                     "Warning: Could not add to Gatekeeper exceptions (may require admin privileges)"
                 );
             }
         }
         Err(e) => {
-            log::info!("Warning: Failed to run spctl command: {e}");
+            info!("Warning: Failed to run spctl command: {e}");
         }
     }
 
@@ -654,7 +656,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
         .map_err(|e| format!("Failed to unmount DMG: {e}"))?;
 
     if !detach_output.status.success() {
-        log::info!("Warning: Failed to unmount DMG, but installation completed");
+        info!("Warning: Failed to unmount DMG, but installation completed");
     }
 
     // Clean up temp directory
@@ -666,7 +668,7 @@ async fn install_dmg(dmg_content: &[u8], version: &str) -> Result<(), String> {
 pub async fn check_for_updates() {
     use crate::frontend::services::states::set_update_state;
 
-    log::info!("Checking for updates...");
+    info!("Checking for updates...");
     set_update_state(true, 0.0, "Checking for updates...".to_string());
 
     // We'll find the platform asset later after getting the release info
@@ -682,7 +684,7 @@ pub async fn check_for_updates() {
     {
         Ok(res) => res,
         Err(e) => {
-            log::error!("Failed to fetch release info from GitHub: {e}");
+            error!("Failed to fetch release info from GitHub: {e}");
             set_update_state(
                 false,
                 0.0,
@@ -695,7 +697,7 @@ pub async fn check_for_updates() {
     let release = match response.json::<Release>().await {
         Ok(release) => release,
         Err(e) => {
-            log::error!("Failed to parse GitHub release info: {e}");
+            error!("Failed to parse GitHub release info: {e}");
             set_update_state(
                 false,
                 0.0,
@@ -711,9 +713,7 @@ pub async fn check_for_updates() {
     let latest_version = release.tag_name.trim_start_matches('v');
 
     if !is_version_newer(latest_version, current_version) {
-        log::info!(
-            "No newer version available: latest {latest_version}, current {current_version}"
-        );
+        info!("No newer version available: latest {latest_version}, current {current_version}");
         set_update_state(
             false,
             0.0,
@@ -722,7 +722,7 @@ pub async fn check_for_updates() {
         return;
     }
 
-    log::info!("New version available: {latest_version} (current: {current_version})");
+    info!("New version available: {latest_version} (current: {current_version})");
     set_update_state(
         true,
         25.0,
@@ -733,7 +733,7 @@ pub async fn check_for_updates() {
     let asset = if let Some(asset) = find_platform_asset(&release.assets) {
         asset
     } else {
-        log::error!(
+        error!(
             "No compatible binary found for platform: {} {}",
             std::env::consts::OS,
             std::env::consts::ARCH
@@ -750,9 +750,9 @@ pub async fn check_for_updates() {
         return;
     };
 
-    log::info!("Found compatible asset: {}", asset.name);
+    info!("Found compatible asset: {}", asset.name);
 
-    log::info!("Downloading update from: {}", asset.browser_download_url);
+    info!("Downloading update from: {}", asset.browser_download_url);
     set_update_state(true, 30.0, "Starting download...".to_string());
 
     // Create temp file path
@@ -762,9 +762,9 @@ pub async fn check_for_updates() {
     // Try to find SHA256 hash for integrity verification
     let expected_sha256 = find_asset_sha256(asset, release.body.as_deref());
     if let Some(ref hash) = expected_sha256 {
-        log::info!("Found SHA256 hash for verification: {hash}");
+        info!("Found SHA256 hash for verification: {hash}");
     } else {
-        log::warn!(
+        warn!(
             "No SHA256 hash found for asset {}. File integrity will not be verified.",
             asset.name
         );
@@ -779,27 +779,27 @@ pub async fn check_for_updates() {
     .await
     {
         Ok(_) => {
-            log::info!("Download completed successfully");
+            info!("Download completed successfully");
         }
         Err(e) => {
-            log::error!("Failed to download update: {e}");
+            error!("Failed to download update: {e}");
             set_update_state(false, 0.0, format!("Download failed: {e}"));
             return;
         }
     }
 
-    log::info!("Download completed. Installing update...");
+    info!("Download completed. Installing update...");
     set_update_state(true, 95.0, "Installing update...".to_string());
 
     // Handle DMG files on macOS (automatic installation)
     if asset.name.to_lowercase().ends_with(".dmg") {
-        log::info!("DMG file detected. Installing automatically...");
+        info!("DMG file detected. Installing automatically...");
 
         // Read DMG content for install_dmg function
         let dmg_content = match tokio::fs::read(&temp_file).await {
             Ok(content) => content,
             Err(e) => {
-                log::error!("Failed to read DMG file: {e}");
+                error!("Failed to read DMG file: {e}");
                 set_update_state(false, 0.0, format!("Failed to read DMG: {e}"));
                 let _ = tokio::fs::remove_file(&temp_file).await;
                 return;
@@ -808,8 +808,8 @@ pub async fn check_for_updates() {
 
         match install_dmg(&dmg_content, &release.tag_name).await {
             Ok(_) => {
-                log::info!("DMG installation completed successfully!");
-                log::info!("The application has been updated to version {latest_version}");
+                info!("DMG installation completed successfully!");
+                info!("The application has been updated to version {latest_version}");
                 set_update_state(
                     true,
                     100.0,
@@ -820,13 +820,13 @@ pub async fn check_for_updates() {
                 set_update_state(false, 0.0, String::new());
 
                 // Restart the launcher
-                log::info!("Restarting launcher...");
+                info!("Restarting launcher...");
                 restart_launcher();
                 return;
             }
             Err(e) => {
-                log::error!("Failed to install DMG automatically: {e}");
-                log::info!(
+                error!("Failed to install DMG automatically: {e}");
+                info!(
                     "Please download and install manually from: {}",
                     asset.browser_download_url
                 );
@@ -845,7 +845,7 @@ pub async fn check_for_updates() {
     let file_content = match tokio::fs::read(&temp_file).await {
         Ok(content) => content,
         Err(e) => {
-            log::error!("Failed to read downloaded file: {e}");
+            error!("Failed to read downloaded file: {e}");
             set_update_state(false, 0.0, format!("Failed to read file: {e}"));
             let _ = tokio::fs::remove_file(&temp_file).await;
             return;
@@ -854,24 +854,24 @@ pub async fn check_for_updates() {
 
     match replace_executable(&file_content) {
         Ok(_) => {
-            log::info!("Update installed successfully!");
+            info!("Update installed successfully!");
             set_update_state(true, 100.0, format!("Update to {latest_version} completed"));
             let _ = tokio::fs::remove_file(&temp_file).await;
 
             // On Windows, the helper will restart the app, so we just exit
             // On other platforms, we restart manually
             if std::env::consts::OS == "windows" {
-                log::info!("Windows updater helper will restart the application");
+                info!("Windows updater helper will restart the application");
                 tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
                 std::process::exit(0);
             } else {
-                log::info!("The application will now restart with version {latest_version}");
+                info!("The application will now restart with version {latest_version}");
                 tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
                 restart_launcher();
             }
         }
         Err(e) => {
-            log::error!("Failed to install update: {e}");
+            error!("Failed to install update: {e}");
             set_update_state(false, 0.0, format!("Installation failed: {e}"));
             let _ = tokio::fs::remove_file(&temp_file).await;
         }
@@ -889,11 +889,7 @@ fn is_version_newer(new: &str, current: &str) -> bool {
         (Ok(new_ver), Ok(current_ver)) => new_ver > current_ver,
         _ => {
             // Fallback to simple string comparison if semver parsing fails
-            log::warn!(
-                "Failed to parse versions as semver: '{}' vs '{}', using fallback",
-                new,
-                current
-            );
+            warn!("Failed to parse versions as semver: '{new}' vs '{current}', using fallback");
             let parse_version =
                 |v: &str| -> Vec<u32> { v.split('.').filter_map(|s| s.parse().ok()).collect() };
             let new_parts = parse_version(new_clean);
@@ -911,12 +907,12 @@ fn restart_launcher() {
     let current_exe = match std::env::current_exe() {
         Ok(exe) => exe,
         Err(e) => {
-            log::error!("Failed to get current executable path: {e}");
+            error!("Failed to get current executable path: {e}");
             return;
         }
     };
 
-    log::info!("Restarting launcher from: {current_exe:?}");
+    info!("Restarting launcher from: {current_exe:?}");
 
     #[cfg(target_os = "macos")]
     {
@@ -930,7 +926,7 @@ fn restart_launcher() {
                 .spawn()
             {
                 Ok(mut child) => {
-                    log::info!("Successfully launched new instance from Applications");
+                    info!("Successfully launched new instance from Applications");
 
                     // Give the new process time to start before we exit
                     std::thread::sleep(Duration::from_millis(500));
@@ -938,20 +934,20 @@ fn restart_launcher() {
                     // Check if the new process is still running
                     match child.try_wait() {
                         Ok(Some(status)) => {
-                            log::warn!("New process exited immediately with status: {status}");
+                            warn!("New process exited immediately with status: {status}");
                         }
                         Ok(None) => {
-                            log::info!("New process is running, exiting old instance");
+                            info!("New process is running, exiting old instance");
                             std::process::exit(0);
                         }
                         Err(e) => {
-                            log::warn!("Could not check new process status: {e}");
+                            warn!("Could not check new process status: {e}");
                             std::process::exit(0);
                         }
                     }
                 }
                 Err(e) => {
-                    log::error!("Failed to launch from Applications: {e}");
+                    error!("Failed to launch from Applications: {e}");
                 }
             }
         }
@@ -960,7 +956,7 @@ fn restart_launcher() {
     // Fallback: launch the current executable directly
     match Command::new(&current_exe).spawn() {
         Ok(mut child) => {
-            log::info!("Successfully launched new instance");
+            info!("Successfully launched new instance");
 
             // Give the new process time to start before we exit
             std::thread::sleep(Duration::from_millis(500));
@@ -968,21 +964,21 @@ fn restart_launcher() {
             // Check if the new process is still running
             match child.try_wait() {
                 Ok(Some(status)) => {
-                    log::error!("New process exited immediately with status: {status}");
-                    log::error!("Failed to restart launcher - new process did not start properly");
+                    error!("New process exited immediately with status: {status}");
+                    error!("Failed to restart launcher - new process did not start properly");
                 }
                 Ok(None) => {
-                    log::info!("New process is running, exiting old instance");
+                    info!("New process is running, exiting old instance");
                     std::process::exit(0);
                 }
                 Err(e) => {
-                    log::warn!("Could not check new process status: {e}, assuming success");
+                    warn!("Could not check new process status: {e}, assuming success");
                     std::process::exit(0);
                 }
             }
         }
         Err(e) => {
-            log::error!("Failed to restart launcher: {e}");
+            error!("Failed to restart launcher: {e}");
         }
     }
 }

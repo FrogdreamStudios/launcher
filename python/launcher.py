@@ -33,6 +33,13 @@ def needs_rosetta(minecraft_version):
         return False
     
     try:
+        # Handle snapshot versions (e.g., 25w35a)
+        if 'w' in minecraft_version and minecraft_version[0:2].isdigit():
+            # Extract year from snapshot (e.g., "25" from "25w35a")
+            year = int(minecraft_version[0:2])
+            # Snapshots from 2023 (23w) and later support ARM64 natively
+            return year < 23
+        
         # Versions before 1.20.2 need Rosetta on Apple Silicon
         return pkg_version.parse(minecraft_version) < pkg_version.parse("1.20.2")
     except:
@@ -78,37 +85,47 @@ def install_minecraft_version(version, minecraft_directory):
 def launch_minecraft(username, version, minecraft_directory, game_dir=None):
     """Launch Minecraft and stream logs to stdout"""
     try:
+        # Generate Minecraft launch command using minecraft_launcher_lib
+        options = {
+            "username": username,
+            "uuid": str(uuid.uuid4()),
+            "token": "dummy_token",
+            "gameDirectory": game_dir or minecraft_directory,
+            "jvmArguments": ["-Xmx2G", "-Xms1G"]
+        }
+        
+        # For older versions that need Rosetta, use x86_64 Java
+        if needs_rosetta(version) and is_apple_silicon():
+            # Use x86_64 Java 8 for older Minecraft versions
+            java_8_path = "/Library/Java/JavaVirtualMachines/jdk1.8.0_351.jdk/Contents/Home/bin/java"
+            if Path(java_8_path).exists():
+                options["executablePath"] = java_8_path
+                logging.info(f"Using x86_64 Java 8 for {version}")
+            else:
+                logging.warning(f"x86_64 Java 8 not found, using system Java with Rosetta")
+        
+        command = minecraft_launcher_lib.command.get_minecraft_command(
+            version, minecraft_directory, options
+        )
         
         # Check if Rosetta is needed for older versions on Apple Silicon
         if needs_rosetta(version):
             logging.info(f"Launching {version} with Rosetta compatibility")
-        
-        # Create launch options
-        options = {
-            "username": username,
-            "uuid": str(uuid.uuid4()),
-            "token": "",  # Offline mode
-        }
-        if game_dir:
-            options["gameDirectory"] = game_dir
-
-        # Get launch command
-        command = minecraft_launcher_lib.command.get_minecraft_command(
-            version=version,
-            minecraft_directory=minecraft_directory,
-            options=options
-        )
+            # Prepend arch -x86_64 to the entire command
+            command = ["arch", "-x86_64"] + command
 
         logging.info(f"Launching Minecraft {version} for user {username}")
+        logging.info(f"Command: {' '.join(command)}")
 
         # Launch Minecraft with stdout/stderr capture
         process = subprocess.Popen(
             command, 
             stdout=subprocess.PIPE, 
-            stderr=subprocess.STDOUT, 
+            stderr=subprocess.PIPE,  # Separate stderr to capture all logs
             text=True, 
-            bufsize=1,
-            universal_newlines=True
+            bufsize=0,  # Unbuffered for real-time logs
+            universal_newlines=True,
+            shell=False
         )
         
         # Send initial success message
@@ -119,21 +136,47 @@ def launch_minecraft(username, version, minecraft_directory, game_dir=None):
             "message": f"Minecraft {version} launched successfully"
         }), flush=True)
         
-        # Stream logs in real-time
-        try:
-            for line in iter(process.stdout.readline, ''):
-                if line:
-                    # Send log line to Rust
-                    print(json.dumps({
-                        "type": "log",
-                        "line": line.strip(),
-                        "pid": process.pid
-                    }), flush=True)
-        except Exception as e:
-            logging.error(f"Error reading logs: {e}")
+        # Stream logs in real-time from both stdout and stderr
+        import threading
         
+        def read_stdout():
+            try:
+                for line in iter(process.stdout.readline, ''):
+                    if line:
+                        print(json.dumps({
+                            "type": "log",
+                            "line": line.strip(),
+                            "pid": process.pid
+                        }), flush=True)
+            except Exception as e:
+                logging.error(f"Error reading stdout: {e}")
+        
+        def read_stderr():
+            try:
+                for line in iter(process.stderr.readline, ''):
+                    if line:
+                        print(json.dumps({
+                            "type": "log",
+                            "line": f"[STDERR] {line.strip()}",
+                            "pid": process.pid
+                        }), flush=True)
+            except Exception as e:
+                logging.error(f"Error reading stderr: {e}")
+        
+        # Start reading threads
+        stdout_thread = threading.Thread(target=read_stdout)
+        stderr_thread = threading.Thread(target=read_stderr)
+        stdout_thread.daemon = True
+        stderr_thread.daemon = True
+        stdout_thread.start()
+        stderr_thread.start()
+
         # Wait for process to complete and get exit code
         exit_code = process.wait()
+        
+        # Wait for reading threads to complete
+        stdout_thread.join(timeout=5)
+        stderr_thread.join(timeout=5)
         
         # Send final status
         print(json.dumps({

@@ -14,6 +14,7 @@ impl Default for GameStatus {
     }
 }
 
+#[must_use]
 pub fn use_game_state() -> Signal<GameStatus> {
     use_signal(|| GameStatus::Idle)
 }

@@ -1,9 +1,7 @@
 //! User configuration.
 
-use crate::backend::utils::paths::get_cache_dir;
+use crate::backend::communicator::communicator::Communicator;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
-use tokio::fs;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserConfig {
@@ -12,49 +10,43 @@ pub struct UserConfig {
 
 impl UserConfig {
     /// Creates a new user config with the given username.
+    #[must_use]
     pub fn new(username: String) -> Self {
         Self { username }
     }
 
     /// Validates if a username meets the requirements.
+    #[must_use]
     pub fn is_valid_username(username: &str) -> bool {
-        (3..=16).contains(&username.len())
-            && username
+        let trimmed = username.trim();
+        (3..=16).contains(&trimmed.len())
+            && trimmed
                 .chars()
                 .all(|c| c.is_ascii_alphanumeric() || c == '_')
     }
 
-    /// Gets the path to the user config file.
-    pub fn get_config_path() -> PathBuf {
-        get_cache_dir()
-            .unwrap_or_else(|_| PathBuf::from("Dream Launcher/cache"))
-            .join("user_config.json")
-    }
-
-    /// Saves the user config to disk.
+    /// Saves the user config to a file.
     pub async fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let config_path = Self::get_config_path();
+        let archon = crate::get_archon().ok_or("Archon not available")?;
+        let communicator = Communicator::new(archon)
+            .await
+            .map_err(|e| format!("Failed to initialize communicator: {e}"))?;
 
-        // Ensure parent directory exists
-        if let Some(parent) = config_path.parent() {
-            fs::create_dir_all(parent).await?;
-        }
-
-        let json = serde_json::to_string_pretty(self)?;
-        fs::write(config_path, json).await?;
+        let json = serde_json::to_string(self)?;
+        communicator
+            .save_user_config(&json)
+            .await
+            .map_err(|e| format!("Failed to save config: {e}"))?;
 
         Ok(())
     }
 
-    /// Loads the user config from disk.
+    /// Loads the user config from a file.
     pub async fn load() -> Option<Self> {
-        let config_path = Self::get_config_path();
+        let archon = crate::get_archon()?;
+        let communicator = Communicator::new(archon).await.ok()?;
 
-        if !config_path.exists() {
-            return None;
-        }
-
-        match fs::read_to_string(config_path).await {
+        match communicator.load_user_config().await {
             Ok(json) => serde_json::from_str(&json).ok(),
             Err(_) => None,
         }
@@ -62,10 +54,16 @@ impl UserConfig {
 
     /// Deletes the user config file.
     pub async fn delete() -> Result<(), Box<dyn std::error::Error>> {
-        let config_path = Self::get_config_path();
-        if config_path.exists() {
-            fs::remove_file(config_path).await?;
-        }
+        let archon = crate::get_archon().ok_or("Archon not available")?;
+        let communicator = Communicator::new(archon)
+            .await
+            .map_err(|e| format!("Failed to initialize communicator: {e}"))?;
+
+        communicator
+            .delete_user_config()
+            .await
+            .map_err(|e| format!("Failed to delete config: {e}"))?;
+
         Ok(())
     }
 }

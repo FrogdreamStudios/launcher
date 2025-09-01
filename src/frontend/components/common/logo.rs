@@ -2,6 +2,7 @@
 
 use crate::backend::utils::css::ResourceLoader;
 use dioxus::prelude::*;
+use log::error;
 
 #[component]
 pub fn Logo(animations_played: bool) -> Element {
@@ -9,7 +10,7 @@ pub fn Logo(animations_played: bool) -> Element {
 
     let handle_click = move |_| {
         if let Err(e) = webbrowser::open("https://github.com/FrogdreamStudios/launcher") {
-            log::error!("Failed to open GitHub link: {e}");
+            error!("Failed to open GitHub link: {e}");
         }
     };
 

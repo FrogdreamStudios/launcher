@@ -1,6 +1,10 @@
 //! Core services.
 
+pub mod instance;
+pub mod launcher;
+pub mod tracker;
 pub mod updater;
-pub mod visit_tracker;
 
-pub use visit_tracker::VisitTracker;
+pub use instance::{Instance, InstanceService};
+pub use launcher::{LaunchResult, LauncherService, VersionInfo, VersionManifest};
+pub use tracker::VisitTracker;

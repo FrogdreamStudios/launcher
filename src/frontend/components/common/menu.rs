@@ -11,6 +11,7 @@ use crate::{
     },
 };
 use dioxus::prelude::*;
+use log::{error, info};
 
 #[derive(Props, Clone, PartialEq, Eq)]
 pub struct ContextMenuProps {
@@ -65,34 +66,30 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
     let handle_run_click = move |e: Event<MouseData>| {
         e.stop_propagation();
         if let Some(id) = instance_id() {
-            log::info!("Instance ID: {id}");
+            info!("Instance ID: {id}");
 
             // Get the instance version
             let version = {
                 let instances = INSTANCES.read();
-                log::info!("Total instances loaded: {}", instances.len());
+                info!("Total instances loaded: {}", instances.len());
 
                 // Debug
                 for (inst_id, inst) in instances.iter() {
-                    log::info!(
+                    info!(
                         "Instance {}: name='{}', version='{}'",
-                        inst_id,
-                        inst.name,
-                        inst.version
+                        inst_id, inst.name, inst.version
                     );
                 }
 
                 if let Some(instance) = instances.get(&id) {
-                    log::info!(
+                    info!(
                         "Found target instance {}: name='{}', version='{}'",
-                        id,
-                        instance.name,
-                        instance.version
+                        id, instance.name, instance.version
                     );
                     instance.version.clone()
                 } else {
-                    log::error!("Instance {id} not found in loaded instances");
-                    log::error!(
+                    error!("Instance {id} not found in loaded instances");
+                    error!(
                         "Available instance IDs: {:?}",
                         instances.keys().collect::<Vec<_>>()
                     );
@@ -118,14 +115,12 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
     let handle_folder_click = move |e: Event<MouseData>| {
         e.stop_propagation();
         if let Some(id) = instance_id() {
-            log::info!("Folder clicked - opening instance {id} folder");
+            info!("Folder clicked - opening instance {id} folder");
             show.set(false);
             // Open instance folder after menu closes
             spawn(async move {
                 tokio::time::sleep(std::time::Duration::from_millis(160)).await;
-                if let Err(e) = open_instance_folder(id).await {
-                    log::error!("Failed to open instance {id} folder: {e}");
-                }
+                open_instance_folder(id);
             });
         }
     };
@@ -133,7 +128,7 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
     let handle_change_click = move |e: Event<MouseData>| {
         e.stop_propagation();
         if let Some(id) = instance_id() {
-            log::info!("Change clicked for instance {id}");
+            info!("Change clicked for instance {id}");
 
             // Get the current instance name and set up the rename dialog
             let instances = INSTANCES.read();
@@ -149,8 +144,8 @@ pub fn ContextMenu(props: ContextMenuProps) -> Element {
     let handle_delete_click = move |e: Event<MouseData>| {
         e.stop_propagation();
         if let Some(id) = instance_id() {
-            log::info!("Delete clicked for instance {id}");
-            InstanceManager::delete_instance(id);
+            info!("Delete clicked for instance {id}");
+            let _ = InstanceManager::delete_instance(id);
             // Clear the instance ID to prevent further access
             instance_id.set(None);
         }

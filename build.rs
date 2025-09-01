@@ -1,7 +1,7 @@
 //! Build script for the `Dream Launcher`.
 
+use log::{error, info, warn};
 use std::{env, fs, path::Path, process::Command};
-use log::{info, warn, error};
 
 fn main() {
     info!("cargo:rerun-if-changed=assets/icons/app_icon.icns");
@@ -16,12 +16,7 @@ fn main() {
     let css_in = "assets/styles/pages/main.css";
     let css_out = "assets/styles/other/output.css";
     let status = Command::new("npx")
-        .args([
-            "tailwindcss",
-            "-i", css_in,
-            "-o", css_out,
-            "--minify",
-        ])
+        .args(["tailwindcss", "-i", css_in, "-o", css_out, "--minify"])
         .status();
 
     match status {
@@ -45,7 +40,10 @@ fn main() {
         let mut res = winres::WindowsResource::new();
         res.set_icon("assets/images/other/icon.ico");
         res.set("ProductName", "Dream Launcher");
-        res.set("FileDescription", "A powerful and lightweight Minecraft launcher");
+        res.set(
+            "FileDescription",
+            "A powerful and lightweight Minecraft launcher",
+        );
         res.set("CompanyName", "Frogdream Studios");
         res.set("ProductVersion", env!("CARGO_PKG_VERSION"));
         let _ = res.compile();
@@ -53,18 +51,26 @@ fn main() {
 }
 
 fn embed_fonts() {
-    use base64::{engine::general_purpose, Engine as _};
+    use base64::{Engine as _, engine::general_purpose};
 
     let fonts = [
         ("gilroy_medium", "assets/fonts/Gilroy/Gilroy-Medium.ttf"),
         ("gilroy_bold", "assets/fonts/Gilroy/Gilroy-Bold.ttf"),
     ];
 
-    let out_dir = env::var("OUT_DIR").unwrap();
+    let out_dir = match env::var("OUT_DIR") {
+        Ok(dir) => dir,
+        Err(e) => {
+            error!("Failed to get OUT_DIR environment variable: {e}");
+            return;
+        }
+    };
     let dest_path = Path::new(&out_dir).join("fonts.rs");
 
     let mut content = String::from("// Font constants\n\n");
-    content.push_str("pub fn get_fonts() -> std::collections::HashMap<&'static str, &'static str> {\n");
+    content.push_str(
+        "pub fn get_fonts() -> std::collections::HashMap<&'static str, &'static str> {\n",
+    );
     content.push_str("    let mut fonts = std::collections::HashMap::new();\n");
 
     for (name, path) in fonts {
