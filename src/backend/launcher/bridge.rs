@@ -1,6 +1,7 @@
 //! Rust-Python bridge.
 
 use crate::backend::utils::paths::get_shared_dir;
+use crate::backend::utils::python::{get_launcher_script_path, check_python_availability, install_python_dependencies};
 use crate::frontend::services::instances::get_instance_directory;
 use serde::{Deserialize, Serialize};
 use serde_json;
@@ -18,7 +19,7 @@ pub struct MinecraftLaunchResult {
     pub message: String,
 }
 
-/// Log message from Python Minecraft process.
+/// Log message from the Python Minecraft process.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum MinecraftLogMessage {
@@ -62,29 +63,39 @@ pub struct PythonMinecraftBridge {
 }
 
 impl PythonMinecraftBridge {
-    pub fn new() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
-        let possible_paths = vec![
-            std::env::current_dir()?.join("python").join("launcher.py"),
-            std::env::current_exe()?
-                .parent()
-                .unwrap()
-                .join("python")
-                .join("launcher.py"),
-            std::env::current_dir()?
-                .join("launcher")
-                .join("python")
-                .join("launcher.py"),
-        ];
-
-        for script_path in possible_paths {
-            if script_path.exists() {
-                return Ok(Self {
-                    python_script_path: script_path,
-                });
+    /// Get the appropriate Python command for the current OS.
+    fn get_python_command() -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+        match check_python_availability() {
+            Ok(cmd) => Ok(cmd),
+            Err(e) => {
+                log::error!("Python availability check failed: {e}");
+                // Fallback to default commands
+                if cfg!(target_os = "windows") {
+                    Ok("python".to_string())
+                } else {
+                    Ok("python3".to_string())
+                }
             }
         }
+    }
 
-        Err("Python script launcher.py not found in any expected location".into())
+    pub fn new() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+        // Try to install Python dependencies first
+        if let Err(e) = install_python_dependencies() {
+            log::warn!("Failed to install Python dependencies: {e}");
+        }
+        
+        // Create the temporary launcher script from embedded content
+        let temp_launcher = get_launcher_script_path()?;
+        let launcher_path = temp_launcher.path().to_path_buf();
+        
+        // Keep the temporary file alive by storing it in a static location
+        // This prevents the file from being deleted while the bridge is in use
+        std::mem::forget(temp_launcher);
+        
+        Ok(Self {
+            python_script_path: launcher_path,
+        })
     }
 
     /// Install a specific Minecraft version.
@@ -98,7 +109,8 @@ impl PythonMinecraftBridge {
 
         let result = task::spawn_blocking(
             move || -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
-                let output = std::process::Command::new("python3")
+                let python_cmd = Self::get_python_command()?;
+                let output = std::process::Command::new(&python_cmd)
                     .arg(&script_path)
                     .arg("install")
                     .arg(&version)
@@ -138,7 +150,8 @@ impl PythonMinecraftBridge {
         let game_dir = instance_dir;
         tokio::fs::create_dir_all(&game_dir).await?;
 
-        let mut command = TokioCommand::new("python3")
+        let python_cmd = Self::get_python_command()?;
+        let mut command = TokioCommand::new(&python_cmd)
             .arg(&script_path)
             .arg("launch")
             .arg(&username)

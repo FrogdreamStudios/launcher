@@ -36,11 +36,12 @@ futures-util = "0.3.31"
 anyhow = "1.0.99"
 log = "0.4.27"
 env_logger = "0.11.8"
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { version = "0.4.41", features = ["serde"] }
 semver = "1.0.26"
 sha2 = "0.11.0-rc.0"
 regex = "1.11.2"
 hex = "0.4.3"
+tempfile = "3.21.0"
 
 [features]
 default = ["desktop"]
@@ -77,16 +78,6 @@ split-debuginfo = "off"
 
 [profile.release.package."*"]
 opt-level = "z"
-
-[profile.wasm-dev]
-inherits = "dev"
-opt-level = 1
-
-[profile.server-dev]
-inherits = "dev"
-
-[profile.android-dev]
-inherits = "dev"
 
 [target.'cfg(windows)'.dependencies]
 dioxus-desktop = { version = "0.7.0-rc.0", default-features = false, features = [

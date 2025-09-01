@@ -41,18 +41,8 @@ Terminal=false
 StartupWMClass=DreamLauncher
 EOF
 
-# Copy PNG icon from iconset
-if [[ -f "assets/icons/app_icon.iconset/icon_256x256.png" ]]; then
-    cp "assets/icons/app_icon.iconset/icon_256x256.png" "$ICON_FILE"
-    cp "assets/icons/app_icon.iconset/icon_256x256.png" "$APP_DIR/usr/share/icons/hicolor/256x256/apps/DreamLauncher.png"
-    echo "Using 256x256 PNG icon from iconset"
-elif [[ -f "assets/icons/app_icon.iconset/icon_512x512.png" ]]; then
-    cp "assets/icons/app_icon.iconset/icon_512x512.png" "$ICON_FILE"
-    cp "assets/icons/app_icon.iconset/icon_512x512.png" "$APP_DIR/usr/share/icons/hicolor/256x256/apps/DreamLauncher.png"
-    echo "Using 512x512 PNG icon from iconset"
-else
-    echo "Warning: No suitable PNG icon found in iconset"
-fi
+# Note: App icons are now embedded in the executable, no need to copy external files
+# AppImage will use the embedded icon from the executable
 
 # Create AppRun script
 cat > "$APP_DIR/AppRun" << 'EOF'

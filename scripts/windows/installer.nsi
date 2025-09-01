@@ -117,10 +117,6 @@ Section "!${APP_NAME} (required)" SecMain
    File "${EXE_PATH}"
  !endif
 
- ; Copy assets if they exist
- SetOutPath "$INSTDIR\\assets"
- File /r /x ".git*" "..\\..\\assets\\*"
-
  ; Store installation folder
  WriteRegStr HKLM "${APP_REGKEY}" "InstallPath" "$INSTDIR"
  WriteRegStr HKLM "${APP_REGKEY}" "Version" "${APP_VERSION}"
@@ -212,9 +208,6 @@ Section "Uninstall"
  ; Remove files
  Delete "$INSTDIR\\${APP_EXECUTABLE}"
  Delete "$INSTDIR\\Uninstall.exe"
-
- ; Remove assets
- RMDir /r "$INSTDIR\\assets"
 
  ; Remove shortcuts
  Delete "$DESKTOP\\${APP_NAME}.lnk"
