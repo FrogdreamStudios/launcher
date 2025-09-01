@@ -59,6 +59,8 @@ path = "src/bin/updater.rs"
 
 [build-dependencies]
 winres = "0.1.12"
+log = "0.4.27"
+base64 = "0.22.1"
 
 [profile.dev]
 incremental = true

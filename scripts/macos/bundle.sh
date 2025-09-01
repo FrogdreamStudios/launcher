@@ -40,6 +40,48 @@ fi
 
 [[ ! -f "$EXECUTABLE_PATH" ]] && exit 1
 
+# Function to check and install Python
+check_python() {
+    echo "Checking Python installation..."
+    
+    # Check if Python 3 is available
+    if command -v python3 >/dev/null 2>&1; then
+        PYTHON_VERSION=$(python3 --version 2>&1 | cut -d' ' -f2)
+        echo "Python $PYTHON_VERSION found"
+        return 0
+    elif command -v python >/dev/null 2>&1; then
+        PYTHON_VERSION=$(python --version 2>&1 | cut -d' ' -f2)
+        if [[ "$PYTHON_VERSION" == 3.* ]]; then
+            echo "Python $PYTHON_VERSION found"
+            return 0
+        fi
+    fi
+    
+    echo "Python 3.x not found. Checking if Homebrew is available..."
+    
+    # Check if Homebrew is installed
+    if command -v brew >/dev/null 2>&1; then
+        echo "Installing Python via Homebrew..."
+        brew install python3
+        if [ $? -eq 0 ]; then
+            echo "Python installation completed"
+            return 0
+        else
+            echo "Failed to install Python via Homebrew"
+        fi
+    else
+        echo "Homebrew not found. Please install Python manually:"
+        echo "1. Install Homebrew: /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+        echo "2. Install Python: brew install python3"
+        echo "Or download Python from: https://www.python.org/downloads/macos/"
+    fi
+    
+    return 1
+}
+
+# Check Python before creating bundle
+check_python
+
 rm -rf "$APP_PATH"
 mkdir -p "$APP_PATH/Contents/MacOS" "$APP_PATH/Contents/Resources"
 

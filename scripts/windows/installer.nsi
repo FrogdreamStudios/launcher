@@ -22,6 +22,13 @@
 !include "WinVer.nsh"
 !include "x64.nsh"
 
+; Additional plugins.
+!addplugindir "."
+!include "nsExec.nsh"
+
+; Download plugin.
+ReserveFile "${NSISDIR}\Plugins\x86-unicode\inetc.dll"
+
 ; General settings.
 Name "${APP_NAME}"
 OutFile "${OUTPUT_DIR}\${INSTALLER_NAME}"
@@ -103,6 +110,45 @@ Var StartMenuFolder
 InstType "Full"
 InstType "Minimal"
 
+; Python installation functions.
+Function CheckPython
+  ; Check if Python is installed
+  nsExec::ExecToStack 'python --version'
+  Pop $0 ; Exit code
+  Pop $1 ; Output
+  
+  ${If} $0 == 0
+    ; Python found, check version
+    StrCpy $2 $1 1 7 ; Get major version
+    ${If} $2 >= "3"
+      DetailPrint "Python $1 found"
+      Return
+    ${EndIf}
+  ${EndIf}
+  
+  ; Python not found or version too old
+  MessageBox MB_YESNO|MB_ICONQUESTION "Python 3.x is required but not found. Do you want to download and install Python?" IDYES InstallPython IDNO SkipPython
+  
+  InstallPython:
+    DetailPrint "Downloading Python installer..."
+    inetc::get "https://www.python.org/ftp/python/3.13.0/python-3.13.0-amd64.exe" "$TEMP\python-installer.exe"
+    Pop $0
+    ${If} $0 == "OK"
+      DetailPrint "Installing Python..."
+      ExecWait '"$TEMP\python-installer.exe" /quiet InstallAllUsers=1 PrependPath=1'
+      Delete "$TEMP\python-installer.exe"
+      DetailPrint "Python installation completed"
+    ${Else}
+      MessageBox MB_OK|MB_ICONSTOP "Failed to download Python installer. Please install Python manually from https://www.python.org/"
+    ${EndIf}
+    Goto EndPython
+  
+  SkipPython:
+    MessageBox MB_OK|MB_ICONEXCLAMATION "${APP_NAME} requires Python to function properly. You can install it later from https://www.python.org/"
+  
+  EndPython:
+FunctionEnd
+
 ; Sections.
 Section "!${APP_NAME} (required)" SecMain
  SectionIn RO 1 2
@@ -158,6 +204,13 @@ Section "Start Menu Shortcuts" SecStartMenu
  !insertmacro MUI_STARTMENU_WRITE_END
 SectionEnd
 
+Section "Python Runtime" SecPython
+ SectionIn 1 2
+ 
+ ; Check and install Python if needed
+ Call CheckPython
+SectionEnd
+
 Section "File Associations" SecFileAssoc
  SectionIn 1
 
@@ -171,6 +224,7 @@ SectionEnd
 ; Section descriptions.
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
  !insertmacro MUI_DESCRIPTION_TEXT ${SecMain} "The core ${APP_NAME} application files. This component is required."
+ !insertmacro MUI_DESCRIPTION_TEXT ${SecPython} "Checks for Python installation and installs it if needed. Required for ${APP_NAME} to function."
  !insertmacro MUI_DESCRIPTION_TEXT ${SecDesktop} "Creates a shortcut on the desktop for easy access to ${APP_NAME}."
  !insertmacro MUI_DESCRIPTION_TEXT ${SecStartMenu} "Creates shortcuts in the Start Menu."
  !insertmacro MUI_DESCRIPTION_TEXT ${SecFileAssoc} "Associates .dreamlauncher files with ${APP_NAME}."

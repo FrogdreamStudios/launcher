@@ -48,7 +48,15 @@ pub fn check_python_availability() -> Result<String> {
         }
     }
     
-    Err(anyhow::anyhow!("Python not found in system PATH. Please install Python from https://www.python.org/ or Microsoft Store"))
+    let error_msg = if cfg!(target_os = "windows") {
+        "Python not found in system path. Try to install Python manually from https://www.python.org/downloads/windows or Microsoft Store"
+    } else if cfg!(target_os = "macos") {
+        "Python not found in system path. Try to install Python manually from https://www.python.org/downloads/macos/"
+    } else {
+        "Python not found in system path. Try to install Python manually from https://www.python.org/downloads/"
+    };
+    
+    Err(anyhow::anyhow!(error_msg))
 }
 
 /// Install Python dependencies from embedded requirements.txt.
