@@ -14,68 +14,7 @@ jobs:
     runs-on: windows-2025
     strategy:
       matrix:
-        format: [ windows ]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup icon
-        run: |
-          mkdir -p icons
-          cp assets/icons/app_icon.ico icons/icon.ico
-        shell: bash
-
-      - name: Install Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.13"
-
-      - name: Install Python deps
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r python/requirements.txt
-
-      - name: Cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.rustup
-            ~/.cargo/bin
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: win-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: win-
-
-      - name: Install cargo-binstall
-        shell: pwsh
-        run: |
-          $BinDir = "$env:USERPROFILE\.cargo\bin"
-          if (!(Test-Path $BinDir)) { New-Item -ItemType Directory -Path $BinDir | Out-Null }
-          iwr https://github.com/cargo-bins/cargo-binstall/releases/latest/download/cargo-binstall-x86_64-pc-windows-msvc.zip -OutFile binstall.zip
-          Expand-Archive binstall.zip -DestinationPath $BinDir -Force
-          echo "$BinDir" | Out-File -FilePath $env:GITHUB_PATH -Append
-
-      - name: Install dx
-        shell: pwsh
-        run: cargo binstall dioxus-cli --version 0.7.0-rc.0 -y
-
-      - name: Build
-        run: |
-          dx bundle --release --platform desktop
-
-      - name: Upload
-        uses: actions/upload-artifact@v4
-        with:
-          name: dreamlauncher-${{ matrix.format }}
-          path: target/dx/DreamLauncher/bundle/windows/nsis/*
-
-  windows-arm:
-    name: Windows
-    runs-on: windows-2025
-    strategy:
-      matrix:
-        format: [ arm ]
+        format: [ x64, arm64 ]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -97,6 +36,7 @@ jobs:
           pip install -r python/requirements.txt
 
       - name: Setup Python libs
+        if: matrix.format == 'arm64'
         shell: pwsh
         run: |
           $pythonRoot = (python -c "import sys; print(sys.base_prefix)")
@@ -112,8 +52,8 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: win-arm-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: win-arm-
+          key: win-${{ matrix.format }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: win-${{ matrix.format }}-
 
       - name: Install cargo-binstall
         shell: pwsh
@@ -124,7 +64,8 @@ jobs:
           Expand-Archive binstall.zip -DestinationPath $BinDir -Force
           echo "$BinDir" | Out-File -FilePath $env:GITHUB_PATH -Append
 
-      - name: Install Rust ARM
+      - name: Install Rust
+        if: matrix.format == 'arm64'
         run: |
           rustup update stable
           rustup target add aarch64-pc-windows-msvc
@@ -136,14 +77,19 @@ jobs:
 
       - name: Build
         run: |
-          dx bundle --release --platform desktop --target aarch64-pc-windows-msvc
+          if [ "${{ matrix.format }}" = "arm64" ]; then
+            dx bundle --release --platform desktop --target aarch64-pc-windows-msvc
+          else
+            dx bundle --release --platform desktop
+          fi
         shell: bash
 
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: dreamlauncher-windows-${{ matrix.format }}
-          path: target/dx/DreamLauncher/bundle/nsis/*
+          path: |
+            ${{ matrix.format == 'arm64' && 'target/dx/DreamLauncher/bundle/nsis/*' || 'target/dx/DreamLauncher/bundle/windows/nsis/*' }}
 
   linux:
     name: Linux
