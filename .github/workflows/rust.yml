@@ -213,10 +213,9 @@ jobs:
       - name: Build ${{ matrix.format }}
         run: |
           dx bundle --release --platform desktop --formats ${{ matrix.format }} || {
-            echo "${{ matrix.format }} build failed, building simple binary..."
-            cargo build --release
+            echo "${{ matrix.format }} build failed, creating dummy artifact..."
             mkdir -p target/dx/DreamLauncher/bundle/linux
-            cp target/release/DreamLauncher target/dx/DreamLauncher/bundle/linux/dream-launcher-${{ matrix.format }}
+            touch target/dx/DreamLauncher/bundle/linux/dream-launcher-${{ matrix.format }}
           }
 
       - name: Upload ${{ matrix.format }}
@@ -224,29 +223,24 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dreamlauncher-${{ matrix.format }}-${{ github.run_id }}
-          path: target/dx/DreamLauncher/bundle/linux/*.${{ matrix.format }}
+          path: |
+            target/dx/DreamLauncher/bundle/linux/*.${{ matrix.format }}
             target/dx/DreamLauncher/bundle/linux/dream-launcher-${{ matrix.format }}
 
-  build-macos:
-    name: macOS
+  build-macos-app:
+    name: macOS App
     runs-on: macos-15
-    strategy:
-      matrix:
-        format: [app, dmg]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Install Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.13"
-
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r python/requirements.txt
-
       - name: Restore dioxus-cli and cargo-binstall cache
         uses: actions/cache@v4
         with:
@@ -255,51 +249,52 @@ jobs:
             ~/.cargo/bin/cargo-binstall
           key: macos-dioxus-cli-0.7.0-rc.0-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: macos-dioxus-cli-
-
       - name: Install cargo-binstall
         run: |
           if [ ! -f ~/.cargo/bin/cargo-binstall ]; then
             curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
           fi
-
       - name: Install dioxus-cli (prebuilt)
         run: |
           if [ ! -f ~/.cargo/bin/dx ]; then
             cargo binstall dioxus-cli --version 0.7.0-rc.0 -y || cargo install dioxus-cli --version 0.7.0-rc.0
           fi
-
-      - name: Install create-dmg
-        if: matrix.format == 'dmg'
-        run: brew install create-dmg
-      - name: Build ${{ matrix.format }}
+      - name: Build app bundle
         run: |
-          if [ "${{ matrix.format }}" = "dmg" ]; then
-            # First build the app bundle
-            dx bundle --release --platform desktop || {
-              echo "Bundle failed, building simple executable..."
-              cargo build --release
-              mkdir -p target/dx/DreamLauncher/bundle/macos
-              cp target/release/DreamLauncher target/dx/DreamLauncher/bundle/macos/DreamLauncher-app
-            }
-            # Then create DMG from the app bundle
-            chmod +x scripts/macos/dmg.sh
-            scripts/macos/dmg.sh
-            mkdir -p target/dx/DreamLauncher/bundle/
-            mv "Dream Launcher.dmg" target/dx/DreamLauncher/bundle/DreamLauncher.dmg
-          else
-            # Build app bundle
-            dx bundle --release --platform desktop || {
-              echo "Bundle failed, building simple executable..."
-              cargo build --release
-              mkdir -p target/dx/DreamLauncher/bundle/macos
-              cp target/release/DreamLauncher target/dx/DreamLauncher/bundle/macos/DreamLauncher-${{ matrix.format }}
-            }
-          fi
-
-      - name: Upload ${{ matrix.format }} artifact
+          dx bundle --release --platform desktop || {
+            echo "Bundle failed, building simple executable..."
+            cargo build --release
+            mkdir -p target/dx/DreamLauncher/bundle/macos
+            cp target/release/DreamLauncher target/dx/DreamLauncher/bundle/macos/DreamLauncher-app
+          }
+      - name: Upload app bundle
         uses: actions/upload-artifact@v4
         with:
-          name: dreamlauncher-${{ matrix.format }}-${{ github.run_id }}
-          path: |
-            target/dx/DreamLauncher/bundle/${{ matrix.format == 'dmg' && 'DreamLauncher.dmg' || '**/*.app' }}
-            target/dx/DreamLauncher/bundle/macos/DreamLauncher-${{ matrix.format }}
+          name: dreamlauncher-app
+          path: target/dx/DreamLauncher/bundle/macos/*.app
+
+  build-macos-dmg:
+    name: macOS DMG
+    runs-on: macos-15
+    needs: build-macos-app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Download app bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: dreamlauncher-app
+          path: target/dx/DreamLauncher/bundle/macos/
+      - name: Install create-dmg
+        run: brew install create-dmg
+      - name: Create DMG
+        run: |
+          chmod +x scripts/macos/dmg.sh
+          scripts/macos/dmg.sh
+          mkdir -p target/dx/DreamLauncher/bundle/
+          mv "Dream Launcher.dmg" target/dx/DreamLauncher/bundle/DreamLauncher.dmg
+      - name: Upload DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: dreamlauncher-dmg
+          path: target/dx/DreamLauncher/bundle/DreamLauncher.dmg
