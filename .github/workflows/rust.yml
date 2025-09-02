@@ -182,10 +182,43 @@ jobs:
 
       - name: Build
         run: |
-            dx bundle --release --platform desktop --package-types dmg
+          dx bundle --release --platform desktop --package-types dmg
+      
+      - name: Embed Python Framework
+        run: |
+          # Find the DMG file
+          DMG_PATH=$(find target/dx/DreamLauncher/bundle/macos/bundle/dmg -name "*.dmg" | head -1)
+          if [ -n "$DMG_PATH" ]; then
+            # Mount DMG and find app inside
+            hdiutil attach "$DMG_PATH" -mountpoint /tmp/dmg_mount
+            APP_PATH="/tmp/dmg_mount/DreamLauncher.app"
+            
+            # Create Frameworks directory
+            mkdir -p "$APP_PATH/Contents/Frameworks"
+            
+            # Copy Python framework
+            PYTHON_FRAMEWORK="/Library/Frameworks/Python.framework"
+            if [ -d "$PYTHON_FRAMEWORK" ]; then
+              cp -R "$PYTHON_FRAMEWORK" "$APP_PATH/Contents/Frameworks/"
+            else
+              # Use the Python from GitHub Actions
+              PYTHON_ROOT=$(python -c "import sys; print(sys.base_prefix)")
+              mkdir -p "$APP_PATH/Contents/Frameworks/Python.framework/Versions/3.13"
+              cp -R "$PYTHON_ROOT"/* "$APP_PATH/Contents/Frameworks/Python.framework/Versions/3.13/"
+              ln -sf "3.13" "$APP_PATH/Contents/Frameworks/Python.framework/Versions/Current"
+              ln -sf "Versions/Current/Python" "$APP_PATH/Contents/Frameworks/Python.framework/Python"
+            fi
+            
+            # Update install names to use embedded framework
+            install_name_tool -change "/Library/Frameworks/Python.framework/Versions/3.13/Python" "@executable_path/../Frameworks/Python.framework/Versions/3.13/Python" "$APP_PATH/Contents/MacOS/DreamLauncher"
+            
+            # Unmount and recreate DMG with embedded Python
+            hdiutil detach /tmp/dmg_mount
+            rm "$DMG_PATH"
+            hdiutil create -srcfolder "$APP_PATH" -format UDZO "$DMG_PATH"
+          fi
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: dreamlauncher-macos-${{ matrix.format }}
-          path: |
-            ${{ matrix.format == 'dmg' && 'target/dx/DreamLauncher/bundle/macos/bundle/dmg/*.dmg' || 'target/dx/DreamLauncher/bundle/macos/bundle/macos/*.app' }}
+          path: target/dx/DreamLauncher/bundle/macos/bundle/dmg/*.dmg
