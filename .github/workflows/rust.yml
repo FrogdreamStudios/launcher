@@ -212,11 +212,7 @@ jobs:
 
       - name: Build ${{ matrix.format }}
         run: |
-          dx bundle --release --platform desktop --package-types ${{ matrix.format }} || {
-            echo "${{ matrix.format }} build failed, creating dummy artifact..."
-            mkdir -p target/dx/DreamLauncher/bundle/linux
-            touch target/dx/DreamLauncher/bundle/linux/dream-launcher-${{ matrix.format }}
-          }
+          dx bundle --release --platform desktop --package-types ${{ matrix.format }}
 
       - name: Upload ${{ matrix.format }}
         if: matrix.format != 'installer'
@@ -224,8 +220,7 @@ jobs:
         with:
           name: dreamlauncher-${{ matrix.format }}-${{ github.run_id }}
           path: |
-            target/dx/DreamLauncher/bundle/linux/*.${{ matrix.format }}
-            target/dx/DreamLauncher/bundle/linux/dream-launcher-${{ matrix.format }}
+            target/dx/DreamLauncher/bundle/linux/bundle/${{ matrix.format }}/*.${{ matrix.format }}
 
   build-macos-app:
     name: macOS App
