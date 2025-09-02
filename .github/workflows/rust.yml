@@ -199,11 +199,19 @@ jobs:
       - name: Install Rust
         run: rustup update stable
 
+      - name: Setup AppImage environment
+        if: matrix.format == 'appimage'
+        run: |
+          mkdir -p ~/.cache/tauri
+          wget -O linuxdeploy-x86_64.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          chmod +x linuxdeploy-x86_64.AppImage
+          mv linuxdeploy-x86_64.AppImage ~/.cache/tauri/
+
       - name: Debug AppImage
+        if: matrix.format == 'appimage'
         run: |
           ls -l ~/.cache/tauri/
           file ~/.cache/tauri/linuxdeploy-x86_64.AppImage
-          chmod +x ~/.cache/tauri/linuxdeploy-x86_64.AppImage
           export APPIMAGE_EXTRACT_AND_RUN=1
           ~/.cache/tauri/linuxdeploy-x86_64.AppImage --appimage-version || true
 
