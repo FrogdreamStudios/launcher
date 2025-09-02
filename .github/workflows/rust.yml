@@ -227,12 +227,6 @@ jobs:
           path: target/dx/DreamLauncher/bundle/linux/*.${{ matrix.format }}
             target/dx/DreamLauncher/bundle/linux/dream-launcher-${{ matrix.format }}
 
-      - name: Upload Linux
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-installer
-          path: target/dx/DreamLauncher/bundle/
-
   build-macos:
     name: macOS
     runs-on: macos-15
@@ -280,21 +274,32 @@ jobs:
       - name: Build ${{ matrix.format }}
         run: |
           if [ "${{ matrix.format }}" = "dmg" ]; then
-            chmod +x scripts/macos/dmg.sh 
+            # First build the app bundle
+            dx bundle --release --platform desktop || {
+              echo "Bundle failed, building simple executable..."
+              cargo build --release
+              mkdir -p target/dx/DreamLauncher/bundle/macos
+              cp target/release/DreamLauncher target/dx/DreamLauncher/bundle/macos/DreamLauncher-app
+            }
+            # Then create DMG from the app bundle
+            chmod +x scripts/macos/dmg.sh
             scripts/macos/dmg.sh
             mkdir -p target/dx/DreamLauncher/bundle/
             mv "Dream Launcher.dmg" target/dx/DreamLauncher/bundle/DreamLauncher.dmg
+          else
+            # Build app bundle
+            dx bundle --release --platform desktop || {
+              echo "Bundle failed, building simple executable..."
+              cargo build --release
+              mkdir -p target/dx/DreamLauncher/bundle/macos
+              cp target/release/DreamLauncher target/dx/DreamLauncher/bundle/macos/DreamLauncher-${{ matrix.format }}
+            }
           fi
-      - name: Upload ${{ matrix.format }}
+
+      - name: Upload ${{ matrix.format }} artifact
         uses: actions/upload-artifact@v4
         with:
           name: dreamlauncher-${{ matrix.format }}-${{ github.run_id }}
-          path: target/dx/DreamLauncher/bundle/${{ matrix.format == 'dmg' && 'DreamLauncher.dmg' || 'Dream Launcher.app' }}
-            target/dx/DreamLauncher/bundle/macos/*.${{ matrix.format }}
+          path: |
+            target/dx/DreamLauncher/bundle/${{ matrix.format == 'dmg' && 'DreamLauncher.dmg' || '**/*.app' }}
             target/dx/DreamLauncher/bundle/macos/DreamLauncher-${{ matrix.format }}
-
-      - name: Upload macOS
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-installer
-          path: target/dx/DreamLauncher/bundle/
