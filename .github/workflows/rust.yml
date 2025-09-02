@@ -33,7 +33,7 @@ jobs:
           rustup update stable
           rustup component add rust-src
           # Try different installation strategies
-          cargo install dioxus-cli --version 0.5.6 || cargo install dioxus-cli --version 0.5.5 || cargo install dioxus-cli --git https://github.com/DioxusLabs/dioxus --tag v0.5.6
+          cargo install dioxus-cli --version 0.7.0-rc.0 || cargo install dioxus-cli --version 0.7.0-rc.0 || cargo install dioxus-cli --git https://github.com/DioxusLabs/dioxus --tag v0.7.0-rc.0
         shell: bash
 
       - name: Cache
