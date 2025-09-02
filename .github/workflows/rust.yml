@@ -176,13 +176,24 @@ jobs:
           packages: libgtk-3-dev libglib2.0-dev libsoup-3.0-dev libssl-dev libjavascriptcoregtk-4.1-dev libwebkit2gtk-4.1-dev libxdo-dev pkg-config build-essential curl xdotool fuse libfuse2 desktop-file-utils appstream file
           version: 1
 
+      - name: Download linuxdeploy AppImage
+        run: wget -O /home/runner/.cache/tauri/linuxdeploy-x86_64.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/latest/download/linuxdeploy-x86_64.AppImage
+
+      - name: Make AppImage executable
+        run: chmod +x /home/runner/.cache/tauri/linuxdeploy-x86_64.AppImage
+
+      - name: Install FUSE
+        run: sudo apt-get update && sudo apt-get install -y fuse
+
+      - name: Test AppImage
+        run: /home/runner/.cache/tauri/linuxdeploy-x86_64.AppImage --version
+
       - name: Setup AppImage environment
         if: matrix.format == 'appimage'
         run: |
-          wget -O linuxdeploy-x86_64.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
-          chmod +x linuxdeploy-x86_64.AppImage
-          mkdir -p ~/.cache/tauri
-          mv linuxdeploy-x86_64.AppImage ~/.cache/tauri/
+          mkdir -p $HOME/.cache/tauri
+          wget -O $HOME/.cache/tauri/linuxdeploy-x86_64.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          chmod +x $HOME/.cache/tauri/linuxdeploy-x86_64.AppImage
 
       - name: Cache
         uses: actions/cache@v4
@@ -210,10 +221,10 @@ jobs:
       - name: Debug AppImage
         if: matrix.format == 'appimage'
         run: |
-          ls -l ~/.cache/tauri/
-          file ~/.cache/tauri/linuxdeploy-x86_64.AppImage
+          ls -l $HOME/.cache/tauri/
+          file $HOME/.cache/tauri/linuxdeploy-x86_64.AppImage
           export APPIMAGE_EXTRACT_AND_RUN=1
-          ~/.cache/tauri/linuxdeploy-x86_64.AppImage --appimage-version || true
+          $HOME/.cache/tauri/linuxdeploy-x86_64.AppImage --appimage-version || true
 
       - name: Build
         run: |
