@@ -212,9 +212,8 @@ jobs:
         run: rustup update stable
 
       - name: Build ${{ matrix.format }}
-        env:
-          NO_STRIP: true
         run: |
+          export NO_STRIP=true
           dx bundle --release --platform desktop --package-types ${{ matrix.format }}
 
       - name: Upload ${{ matrix.format }}
