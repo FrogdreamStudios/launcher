@@ -182,6 +182,17 @@ jobs:
           mkdir -p ~/.cache/tauri
           wget -O ~/.cache/tauri/linuxdeploy-x86_64.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/latest/download/linuxdeploy-x86_64.AppImage
           chmod +x ~/.cache/tauri/linuxdeploy-x86_64.AppImage
+          
+          export APPIMAGE_EXTRACT_AND_RUN=1
+          
+          ~/.cache/tauri/linuxdeploy-x86_64.AppImage --appimage-version || echo "AppImage test failed, will extract and run"
+
+          if ! ~/.cache/tauri/linuxdeploy-x86_64.AppImage --appimage-version >/dev/null 2>&1; then
+            cd ~/.cache/tauri
+            ./linuxdeploy-x86_64.AppImage --appimage-extract >/dev/null 2>&1
+            mv squashfs-root linuxdeploy-extracted
+            chmod +x linuxdeploy-extracted/AppRun
+          fi
 
       - name: Cache
         uses: actions/cache@v4
@@ -203,6 +214,11 @@ jobs:
           export NO_STRIP=true
           if [ "${{ matrix.format }}" = "appimage" ]; then
             export APPIMAGE_EXTRACT_AND_RUN=1
+          
+            if [ -d ~/.cache/tauri/linuxdeploy-extracted ]; then
+              echo "Using extracted linuxdeploy"
+              export LINUXDEPLOY_PATH=~/.cache/tauri/linuxdeploy-extracted/AppRun
+            fi
           fi
           dx bundle --release --platform desktop --package-types ${{ matrix.format }}
 
