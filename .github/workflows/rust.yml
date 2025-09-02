@@ -1,5 +1,3 @@
-# .github/workflows/ci.yml
-
 name: CI
 
 on: [push, pull_request]
@@ -80,7 +78,7 @@ jobs:
           if [ "${{ matrix.format }}" = "arm64" ]; then
             dx bundle --release --platform desktop --target aarch64-pc-windows-msvc
           else
-            dx bundle --release --platform desktop
+            dx bundle --release --platform desktop --target x86_64-pc-windows-msvc
           fi
         shell: bash
 
@@ -89,7 +87,7 @@ jobs:
         with:
           name: dreamlauncher-windows-${{ matrix.format }}
           path: |
-            ${{ matrix.format == 'arm64' && 'target/dx/DreamLauncher/bundle/nsis/*' || 'target/dx/DreamLauncher/bundle/windows/nsis/*' }}
+            ${{ matrix.format == 'arm64' && 'target/aarch64-pc-windows-msvc/desktop-release/bundle/nsis/*' || 'target/x86_64-pc-windows-msvc/desktop-release/bundle/nsis/*' }}
 
   linux:
     name: Linux
