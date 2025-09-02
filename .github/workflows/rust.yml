@@ -189,9 +189,12 @@ jobs:
           # Find the DMG file
           DMG_PATH=$(find target/dx/DreamLauncher/bundle/macos/bundle/dmg -name "*.dmg" | head -1)
           if [ -n "$DMG_PATH" ]; then
-            # Mount DMG and find app inside
+            # Mount DMG and copy app to temporary location
             hdiutil attach "$DMG_PATH" -mountpoint /tmp/dmg_mount
-            APP_PATH="/tmp/dmg_mount/DreamLauncher.app"
+            cp -R "/tmp/dmg_mount/DreamLauncher.app" "/tmp/DreamLauncher_modified.app"
+            hdiutil detach /tmp/dmg_mount
+            
+            APP_PATH="/tmp/DreamLauncher_modified.app"
             
             # Create Frameworks directory
             mkdir -p "$APP_PATH/Contents/Frameworks"
@@ -212,10 +215,12 @@ jobs:
             # Update install names to use embedded framework
             install_name_tool -change "/Library/Frameworks/Python.framework/Versions/3.13/Python" "@executable_path/../Frameworks/Python.framework/Versions/3.13/Python" "$APP_PATH/Contents/MacOS/DreamLauncher"
             
-            # Unmount and recreate DMG with embedded Python
-            hdiutil detach /tmp/dmg_mount
+            # Recreate DMG with embedded Python
             rm "$DMG_PATH"
-            hdiutil create -srcfolder "$APP_PATH" -format UDZO "$DMG_PATH"
+            hdiutil create -volname "DreamLauncher" -srcfolder "$APP_PATH" -ov -format UDZO "$DMG_PATH"
+            
+            # Clean up temporary app
+            rm -rf "$APP_PATH"
           fi
       - name: Upload
         uses: actions/upload-artifact@v4
