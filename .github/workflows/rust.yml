@@ -75,26 +75,14 @@ jobs:
 
       - name: Build
         run: |
-          if [ "${{ matrix.format }}" = "arm64" ]; then
-            dx bundle --release --platform desktop --target aarch64-pc-windows-msvc
-          else
-            dx bundle --release --platform desktop --target x86_64-pc-windows-msvc
-          fi
+            dx bundle --release --platform desktop
         shell: bash
 
       - name: Upload
-        if: matrix.format == 'x64'
         uses: actions/upload-artifact@v4
         with:
-          name: dreamlauncher-windows-x64
-          path: target/dx/DreamLauncher/bundle/windows/x86_64-pc-windows-msvc/*.exe
-
-      - name: Upload
-        if: matrix.format == 'arm64'
-        uses: actions/upload-artifact@v4
-        with:
-          name: dreamlauncher-windows-arm64
-          path: target/dx/DreamLauncher/bundle/windows/aarch64-pc-windows-msvc/*.exe
+          name: dreamlauncher-windows-${{ matrix.format }}
+          path: target/dx/DreamLauncher/bundle/windows/*.exe
 
   linux:
     name: Linux
@@ -153,7 +141,7 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: dreamlauncher-linux--${{ matrix.format }}
+          name: dreamlauncher-linux-${{ matrix.format }}
           path: target/dx/DreamLauncher/bundle/linux/bundle/${{ matrix.format }}/*.${{ matrix.format }}
 
   macos-app:
