@@ -1,6 +1,6 @@
 # .github/workflows/ci.yml
 
-name: Rust CI
+name: CI
 
 on: [push, pull_request]
 
@@ -9,8 +9,8 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  build-windows:
-    name: Windows x64
+  windows:
+    name: Windows
     runs-on: windows-2025
     strategy:
       matrix:
@@ -21,7 +21,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup icon path for Windows
+      - name: Setup icon
         run: |
           mkdir -p icons
           cp assets/icons/app_icon.ico icons/icon.ico
@@ -32,12 +32,12 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Install Python dependencies
+      - name: Install Python deps
         run: |
           python -m pip install --upgrade pip
           pip install -r python/requirements.txt
 
-      - name: Restore cache
+      - name: Cache
         uses: actions/cache@v4
         with:
           path: |
@@ -46,8 +46,8 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: windows-x64-dioxus-cli-0.7.0-rc.0-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: windows-x64-dioxus-cli-
+          key: win-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: win-
 
       - name: Install cargo-binstall
         shell: pwsh
@@ -57,28 +57,28 @@ jobs:
           iwr https://github.com/cargo-bins/cargo-binstall/releases/latest/download/cargo-binstall-x86_64-pc-windows-msvc.zip -OutFile binstall.zip
           Expand-Archive binstall.zip -DestinationPath $BinDir -Force
           echo "$BinDir" | Out-File -FilePath $env:GITHUB_PATH -Append
-          Get-ChildItem $BinDir
 
-      - name: Install dioxus-cli (prebuilt)
+      - name: Install dx
         shell: pwsh
         run: cargo binstall dioxus-cli --version 0.7.0-rc.0 -y
 
-      - name: Build ${{ matrix.format }}
+      - name: Build
         run: |
           dx bundle --release --platform desktop || {
-            echo "Bundle failed, building simple executable..."
+            echo "Bundle failed, building exe..."
             cargo build --release
             mkdir -p target/dx/DreamLauncher/bundle/windows
             cp target/release/DreamLauncher.exe target/dx/DreamLauncher/bundle/windows/DreamLauncher-${{ matrix.format }}.exe
           }
-      - name: Upload ${{ matrix.format }}
+
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: dreamlauncher-${{ matrix.format }}
+          name: windows
           path: target/dx/DreamLauncher/bundle/windows/*.exe
 
-  build-windows-arm64:
-    name: Windows ARM64
+  windows-arm:
+    name: Windows ARM
     runs-on: windows-2025
     env:
       CARGO_NET_RETRY: 10
@@ -86,7 +86,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup icon path for Windows
+      - name: Setup icon
         run: |
           mkdir -p icons
           cp assets/icons/app_icon.ico icons/icon.ico
@@ -97,24 +97,19 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Install Python dependencies
+      - name: Install Python deps
         run: |
           python -m pip install --upgrade pip
           pip install -r python/requirements.txt
 
-      - name: Install Python libs path
+      - name: Setup Python libs
         shell: pwsh
         run: |
           $pythonRoot = (python -c "import sys; print(sys.base_prefix)")
           $libPath = Join-Path $pythonRoot "libs"
-          echo "Python libs path: $libPath"
           echo "LIB=$libPath;$env:LIB" | Out-File -FilePath $env:GITHUB_ENV -Append
-          if (!(Test-Path (Join-Path $libPath "python3.lib"))) {
-            Write-Host "python3.lib not found in $libPath"
-            exit 1
-          }
 
-      - name: Restore cache
+      - name: Cache
         uses: actions/cache@v4
         with:
           path: |
@@ -123,8 +118,8 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: windows-arm64-dioxus-cli-0.7.0-rc.0-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: windows-arm64-dioxus-cli-
+          key: win-arm-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: win-arm-
 
       - name: Install cargo-binstall
         shell: pwsh
@@ -134,35 +129,34 @@ jobs:
           iwr https://github.com/cargo-bins/cargo-binstall/releases/latest/download/cargo-binstall-x86_64-pc-windows-msvc.zip -OutFile binstall.zip
           Expand-Archive binstall.zip -DestinationPath $BinDir -Force
           echo "$BinDir" | Out-File -FilePath $env:GITHUB_PATH -Append
-          Get-ChildItem $BinDir
 
-      - name: Install Rust
+      - name: Install Rust ARM
         run: |
           rustup update stable
           rustup target add aarch64-pc-windows-msvc
           rustup component add rust-src
 
-      - name: Install dioxus-cli (prebuilt)
+      - name: Install dx
         shell: pwsh
         run: cargo binstall dioxus-cli --version 0.7.0-rc.0 -y
 
       - name: Build
         run: |
           dx bundle --release --platform desktop --target aarch64-pc-windows-msvc || {
-            echo "Bundle failed, building simple executable for ARM64..."
+            echo "Bundle failed, building exe..."
             cargo build --release --target aarch64-pc-windows-msvc
             mkdir -p target/dx/DreamLauncher/bundle/windows
             cp target/aarch64-pc-windows-msvc/release/DreamLauncher.exe target/dx/DreamLauncher/bundle/windows/DreamLauncher.exe
           }
         shell: bash
 
-      - name: Upload Windows ARM64 installer
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: windows-arm64-installer
+          name: windows-arm
           path: target/dx/DreamLauncher/bundle/
 
-  build-linux:
+  linux:
     name: Linux
     runs-on: ubuntu-24.04
     continue-on-error: true
@@ -178,7 +172,7 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Install Python dependencies
+      - name: Install Python deps
         run: |
           python -m pip install --upgrade pip
           pip install -r python/requirements.txt
@@ -187,16 +181,16 @@ jobs:
         run: |
           curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
 
-      - name: Install dioxus-cli (prebuilt)
+      - name: Install dx
         run: cargo binstall dioxus-cli --version 0.7.0-rc.0 -y
 
-      - name: Install dependencies
+      - name: Install deps
         uses: awalsh128/cache-apt-pkgs-action@v1
         with:
           packages: libgtk-3-dev libglib2.0-dev libsoup-3.0-dev libssl-dev libjavascriptcoregtk-4.1-dev libwebkit2gtk-4.1-dev libxdo-dev pkg-config build-essential curl xdotool fuse libfuse2 desktop-file-utils appstream
           version: 1
 
-      - name: Restore cache
+      - name: Cache
         uses: actions/cache@v4
         with:
           path: |
@@ -205,26 +199,24 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: linux-dioxus-cli-0.7.0-rc.0-${{ hashFiles('**/Cargo.lock') }}-${{ matrix.format }}-${{ github.run_id }}
-          restore-keys: linux-dioxus-cli-
+          key: linux-${{ hashFiles('**/Cargo.lock') }}-${{ matrix.format }}-${{ github.run_id }}
+          restore-keys: linux-
 
       - name: Install Rust
         run: rustup update stable
 
-      - name: Build ${{ matrix.format }}
+      - name: Build
         run: |
           export NO_STRIP=true
           dx bundle --release --platform desktop --package-types ${{ matrix.format }}
 
-      - name: Upload ${{ matrix.format }}
-        if: matrix.format != 'installer'
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: dreamlauncher-${{ matrix.format }}-${{ github.run_id }}
-          path: |
-            target/dx/DreamLauncher/bundle/linux/bundle/${{ matrix.format }}/*.${{ matrix.format }}
+          name: linux-${{ matrix.format }}
+          path: target/dx/DreamLauncher/bundle/linux/bundle/${{ matrix.format }}/*.${{ matrix.format }}
 
-  build-macos-app:
+  macos-app:
     name: macOS App
     runs-on: macos-15
     steps:
@@ -234,53 +226,55 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: "3.13"
-      - name: Install Python dependencies
+      - name: Install Python deps
         run: |
           python -m pip install --upgrade pip
           pip install -r python/requirements.txt
-      - name: Restore dioxus-cli and cargo-binstall cache
+      - name: Cache
         uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/dx
             ~/.cargo/bin/cargo-binstall
-          key: macos-dioxus-cli-0.7.0-rc.0-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: macos-dioxus-cli-
+          key: macos-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: macos-
       - name: Install cargo-binstall
         run: |
           if [ ! -f ~/.cargo/bin/cargo-binstall ]; then
             curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
           fi
-      - name: Install dioxus-cli (prebuilt)
+      - name: Install dx
         run: |
           if [ ! -f ~/.cargo/bin/dx ]; then
             cargo binstall dioxus-cli --version 0.7.0-rc.0 -y || cargo install dioxus-cli --version 0.7.0-rc.0
           fi
-      - name: Build app bundle
+      - name: Build
         run: |
           dx bundle --release --platform desktop || {
-            echo "Bundle failed, building simple executable..."
+            echo "Bundle failed, building executable..."
             cargo build --release
             mkdir -p target/dx/DreamLauncher/bundle/macos
-            cp target/release/DreamLauncher target/dx/DreamLauncher/bundle/macos/DreamLauncher-app
+            # Создаем фиктивную папку .app для совместимости
+            mkdir -p "target/dx/DreamLauncher/bundle/macos/DreamLauncher.app/Contents/MacOS"
+            cp target/release/DreamLauncher "target/dx/DreamLauncher/bundle/macos/DreamLauncher.app/Contents/MacOS/DreamLauncher"
           }
-      - name: Upload app bundle
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: dreamlauncher-app
+          name: macos-app
           path: target/dx/DreamLauncher/bundle/macos/*.app
 
-  build-macos-dmg:
+  macos-dmg:
     name: macOS DMG
     runs-on: macos-15
-    needs: build-macos-app
+    needs: macos-app
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Download app bundle
+      - name: Download app
         uses: actions/download-artifact@v4
         with:
-          name: dreamlauncher-app
+          name: macos-app
           path: target/dx/DreamLauncher/bundle/macos/
       - name: Install create-dmg
         run: brew install create-dmg
@@ -293,5 +287,5 @@ jobs:
       - name: Upload DMG
         uses: actions/upload-artifact@v4
         with:
-          name: dreamlauncher-dmg
+          name: macos-dmg
           path: target/dx/DreamLauncher/bundle/DreamLauncher.dmg
