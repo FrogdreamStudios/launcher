@@ -14,7 +14,7 @@ jobs:
     runs-on: windows-2025
     strategy:
       matrix:
-        format: [installer]
+        format: [ windows ]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -67,12 +67,15 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: windows
-          path: target/dx/DreamLauncher/bundle/windows/*.exe
+          name: dreamlauncher-${{ matrix.format }}
+          path: target/dx/DreamLauncher/bundle/windows/nsis/*
 
   windows-arm:
-    name: Windows ARM
+    name: Windows
     runs-on: windows-2025
+    strategy:
+      matrix:
+        format: [ arm ]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -139,8 +142,8 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: windows-arm
-          path: target/dx/DreamLauncher/bundle/
+          name: dreamlauncher-windows-${{ matrix.format }}
+          path: target/dx/DreamLauncher/bundle/nsis/*
 
   linux:
     name: Linux
@@ -148,7 +151,7 @@ jobs:
     continue-on-error: true
     strategy:
       matrix:
-        format: [deb, rpm]
+        format: [ deb, rpm ]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -199,12 +202,15 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: linux-${{ matrix.format }}
+          name: dreamlauncher-linux--${{ matrix.format }}
           path: target/dx/DreamLauncher/bundle/linux/bundle/${{ matrix.format }}/*.${{ matrix.format }}
 
   macos-app:
     name: macOS
     runs-on: macos-15
+    strategy:
+      matrix:
+        format: [ app, dmg ]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -234,21 +240,26 @@ jobs:
           if [ ! -f ~/.cargo/bin/dx ]; then
             cargo binstall dioxus-cli --version 0.7.0-rc.0 -y || cargo install dioxus-cli --version 0.7.0-rc.0
           fi
+      - name: Install create-dmg
+        if: matrix.format == 'dmg'
+        run: brew install create-dmg
       - name: Build
         run: |
-          dx bundle --release --platform desktop || {
-            echo "Bundle failed, building executable..."
-            cargo build --release
-            mkdir -p target/dx/DreamLauncher/bundle/macos/bundle/macos/DreamLauncher.app/Contents/MacOS
-            cp target/release/DreamLauncher target/dx/DreamLauncher/bundle/macos/bundle/macos/DreamLauncher.app/Contents/MacOS/DreamLauncher
-          }
-      - name: Upload app
+          dx bundle --release --platform desktop
+          # Ensure executable is copied even if bundle succeeds
+          if [ -f target/release/DreamLauncher ] && [ -d target/dx/DreamLauncher/release/macos/DreamLauncher.app/Contents/MacOS ]; then
+            cp target/release/DreamLauncher target/dx/DreamLauncher/release/macos/DreamLauncher.app/Contents/MacOS/DreamLauncher
+          fi
+          # Build DMG if needed
+          if [ "${{ matrix.format }}" = "dmg" ]; then
+            chmod +x scripts/macos/dmg.sh
+            ./scripts/macos/dmg.sh
+            mkdir -p target/dx/DreamLauncher/release/macos/
+            mv "Dream Launcher.dmg" target/dx/DreamLauncher/release/macos/DreamLauncher.dmg
+          fi
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: macos-app
-          path: target/dx/DreamLauncher/bundle/macos/bundle/macos/*.app
-      - name: Upload dmg
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-dmg
-          path: target/dx/DreamLauncher/bundle/macos/bundle/dmg/*.dmg
+          name: dreamlauncher-macos-${{ matrix.format }}
+          path: |
+            ${{ matrix.format == 'dmg' && 'target/dx/DreamLauncher/release/macos/DreamLauncher.dmg' || 'target/dx/DreamLauncher/release/macos/*.app' }}
