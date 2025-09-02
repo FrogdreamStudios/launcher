@@ -45,7 +45,11 @@ hex = "0.4.3"
 pyo3 = { version = "0.26.0", features = ["auto-initialize", "abi3-py38"] }
 
 [target.'cfg(all(windows, target_arch = "aarch64"))'.dependencies]
-reqwest = { version = "0.12.23", features = ["json", "stream", "native-tls"], default-features = false }
+reqwest = { version = "0.12.23", features = [
+    "json",
+    "stream",
+    "native-tls",
+], default-features = false }
 self_update = { version = "0.42.0", features = [
     "archive-zip",
     "archive-tar",
@@ -53,7 +57,11 @@ self_update = { version = "0.42.0", features = [
 ], default-features = false }
 
 [target.'cfg(not(all(windows, target_arch = "aarch64")))'.dependencies]
-reqwest = { version = "0.12.23", features = ["json", "stream", "rustls-tls"], default-features = false }
+reqwest = { version = "0.12.23", features = [
+    "json",
+    "stream",
+    "rustls-tls",
+], default-features = false }
 self_update = { version = "0.42.0", features = [
     "archive-zip",
     "archive-tar",

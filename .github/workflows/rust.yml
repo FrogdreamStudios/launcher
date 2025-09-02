@@ -219,10 +219,10 @@ jobs:
 
       - name: Build
         run: dx bundle --release --platform desktop || {
-          echo "Bundle failed due to xattr issues, trying cargo build as fallback"
-          cargo build --release
-          mkdir -p target/release/bundle/macos
-          echo "Fallback build completed, but .app bundle not available"
+          echo "Bundle failed due to xattr issues, trying cargo build as fallback";
+          cargo build --release;
+          mkdir -p target/release/bundle/macos;
+          echo "Fallback build completed, but .app bundle not available";
           }
 
       - name: Upload macOS
