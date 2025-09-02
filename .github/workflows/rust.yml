@@ -199,9 +199,10 @@ jobs:
             # Create Frameworks directory
             mkdir -p "$APP_PATH/Contents/Frameworks"
             
-            # Copy only the Python dynamic library
+            # Copy Python framework
             PYTHON_VERSION=$(python3 --version | cut -d' ' -f2 | cut -d'.' -f1-2)
-            FRAMEWORK_PATH="$APP_PATH/Contents/Frameworks/Python.framework/Versions/$PYTHON_VERSION"
+            FRAMEWORK_ROOT="$APP_PATH/Contents/Frameworks/Python.framework"
+            FRAMEWORK_PATH="$FRAMEWORK_ROOT/Versions/$PYTHON_VERSION"
             mkdir -p "$FRAMEWORK_PATH"
             
             if [ -d "/Library/Frameworks/Python.framework" ]; then
@@ -221,19 +222,20 @@ jobs:
             else
               # Use the Python from GitHub Actions
               PYTHON_ROOT=$(python -c "import sys; print(sys.base_prefix)")
-              mkdir -p "$FRAMEWORK_PATH"
               # Copy only the dynamic library, not everything
               find "$PYTHON_ROOT" -name "libpython$PYTHON_VERSION*.dylib" -exec cp {} "$FRAMEWORK_PATH/Python" \; 2>/dev/null || true
               if [ ! -f "$FRAMEWORK_PATH/Python" ]; then
                 cp "$PYTHON_ROOT/bin/python$PYTHON_VERSION" "$FRAMEWORK_PATH/Python" 2>/dev/null || true
               fi
-              ln -sf "$PYTHON_VERSION" "$APP_PATH/Contents/Frameworks/Python.framework/Versions/Current"
-              ln -sf "Versions/Current/Python" "$APP_PATH/Contents/Frameworks/Python.framework/Python"
             fi
             
-            # Sign the Python library with ad-hoc signature
+            # Create framework structure
             if [ -f "$FRAMEWORK_PATH/Python" ]; then
-              # Always remove any existing signature first to avoid conflicts
+              cd "$FRAMEWORK_ROOT"
+              ln -sf "$PYTHON_VERSION" "Versions/Current"
+              ln -sf "Versions/Current/Python" "Python"
+              
+              # Sign the Python library with ad-hoc signature
               echo "Removing any existing signature from Python library"
               codesign --remove-signature "$FRAMEWORK_PATH/Python" 2>/dev/null || true
               codesign -s - "$FRAMEWORK_PATH/Python"
@@ -250,6 +252,11 @@ jobs:
             # Update install names
             EXECUTABLE="$APP_PATH/Contents/MacOS/DreamLauncher"
             install_name_tool -change "/Library/Frameworks/Python.framework/Versions/3.13/Python" "@executable_path/../Frameworks/Python.framework/Versions/3.13/Python" "$EXECUTABLE"
+            
+            # Sign the entire application with ad-hoc signature (no runtime)
+            echo "Signing the application bundle"
+            codesign --remove-signature "$APP_PATH" 2>/dev/null || true
+            codesign -s - --deep "$APP_PATH"
             
             # Rename the app to "Dream Launcher.app"
             mv "$APP_PATH" "/tmp/Dream Launcher.app"
