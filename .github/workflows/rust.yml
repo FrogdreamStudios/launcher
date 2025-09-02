@@ -271,6 +271,8 @@ jobs:
             codesign --remove-signature "$FRAMEWORK_PATH/Python" 2>/dev/null || true
             codesign -s - "$FRAMEWORK_PATH/Python"
             
+            echo "Removing any existing signature from Python framework"
+            codesign --remove-signature "$FRAMEWORK_ROOT" 2>/dev/null || true
             codesign -s - "$FRAMEWORK_ROOT"
           fi
           
