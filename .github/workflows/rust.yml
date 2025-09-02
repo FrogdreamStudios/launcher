@@ -199,6 +199,14 @@ jobs:
       - name: Install Rust
         run: rustup update stable
 
+      - name: Debug AppImage
+        run: |
+          ls -l ~/.cache/tauri/
+          file ~/.cache/tauri/linuxdeploy-x86_64.AppImage
+          chmod +x ~/.cache/tauri/linuxdeploy-x86_64.AppImage
+          export APPIMAGE_EXTRACT_AND_RUN=1
+          ~/.cache/tauri/linuxdeploy-x86_64.AppImage --appimage-version || true
+
       - name: Build
         run: |
           export NO_STRIP=true
