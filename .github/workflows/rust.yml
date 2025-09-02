@@ -205,6 +205,20 @@ jobs:
       - name: Install Rust
         run: rustup update stable
 
+      - name: Prepare linuxdeploy AppImage
+        if: matrix.format == 'appimage'
+        run: |
+          APPIMAGE_PATH="$HOME/.cache/tauri/linuxdeploy-x86_64.AppImage"
+          if [ -f "$APPIMAGE_PATH" ]; then
+            echo "linuxdeploy-x86_64.AppImage found"
+            ls -l "$APPIMAGE_PATH"
+            file "$APPIMAGE_PATH"
+            chmod +x "$APPIMAGE_PATH"
+            "$APPIMAGE_PATH" --version || echo "AppImage failed to run"
+          else
+            echo "linuxdeploy-x86_64.AppImage not found"
+          fi
+
       - name: Build
         run: |
           export NO_STRIP=true
