@@ -48,7 +48,7 @@ categories = ["Game"]
 generic_name = "Minecraft Launcher"
 keywords = ["minecraft", "launcher", "java", "gaming", "cross-platform"]
 startup_notify = true
-formats = ["deb"]
+formats = ["deb", "appimage", "rpm", "flatpak"]
 
 [bundle.macos]
 app_name = "Dream Launcher"
