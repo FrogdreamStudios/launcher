@@ -205,9 +205,7 @@ jobs:
 
       - name: Install cargo-binstall
         run: |
-          curl -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binary.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          ls -l $HOME/.cargo/bin
+          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
 
       - name: Install Rust
         run: rustup update stable
@@ -265,9 +263,7 @@ jobs:
 
       - name: Install cargo-binstall
         run: |
-          curl -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binary.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          ls -l $HOME/.cargo/bin
+          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
 
       - name: Install Rust
         run: rustup update stable
