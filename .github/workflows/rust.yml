@@ -56,10 +56,6 @@ jobs:
           echo "$BinDir" | Out-File -FilePath $env:GITHUB_PATH -Append
           Get-ChildItem $BinDir
 
-      - name: Check cargo-binstall
-        shell: pwsh
-        run: cargo binstall --version
-
       - name: Install dioxus-cli (prebuilt)
         shell: pwsh
         run: cargo binstall dioxus-cli --version 0.7.0-rc.0 -y
@@ -139,10 +135,6 @@ jobs:
           echo "$BinDir" | Out-File -FilePath $env:GITHUB_PATH -Append
           Get-ChildItem $BinDir
 
-      - name: Check cargo-binstall
-        shell: pwsh
-        run: cargo binstall --version
-
       - name: Install Rust
         run: |
           rustup update stable
@@ -186,6 +178,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r python/requirements.txt
 
+      - name: Install cargo-binstall
+        run: |
+          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+
+      - name: Install dioxus-cli (prebuilt)
+        run: cargo binstall dioxus-cli --version 0.7.0-rc.0 -y
+
       - name: Install dependencies
         uses: awalsh128/cache-apt-pkgs-action@v1
         with:
@@ -210,19 +209,16 @@ jobs:
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
           ls -l $HOME/.cargo/bin
 
-      - name: Check cargo-binstall
-        run: cargo binstall --version
-
       - name: Install Rust
         run: rustup update stable
 
-      - name: Install dioxus-cli (prebuilt)
-        run: cargo binstall dioxus-cli --version 0.7.0-rc.0 -y
-
       - name: Build
         run: |
+          # Set FUSE AppImage variables
           export APPIMAGE_EXTRACT_AND_RUN=1
           export APPDIR=/tmp/appdir
+
+          # Try AppImage build, fallback to simple binary
           dx bundle --release --platform desktop || {
             echo "AppImage build failed, building simple binary..."
             cargo build --release
@@ -272,9 +268,6 @@ jobs:
           curl -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binary.sh | sh
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
           ls -l $HOME/.cargo/bin
-
-      - name: Check cargo-binstall
-        run: cargo binstall --version
 
       - name: Install Rust
         run: rustup update stable
