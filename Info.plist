@@ -7,7 +7,7 @@
 	<key>CFBundleExecutable</key>
 	<string>DreamLauncher</string>
 	<key>CFBundleIconFile</key>
-	<string>app_icon.icns</string>
+	<string>icon.icns</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.dreamlauncher.app</string>
 	<key>CFBundleInfoDictionaryVersion</key>

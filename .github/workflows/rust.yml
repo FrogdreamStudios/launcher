@@ -233,22 +233,34 @@ jobs:
             
             # Sign the Python library with ad-hoc signature
             if [ -f "$FRAMEWORK_PATH/Python" ]; then
+              # Check if already signed, if so remove signature first
+              if codesign -v "$FRAMEWORK_PATH/Python" 2>/dev/null; then
+                codesign --remove-signature "$FRAMEWORK_PATH/Python"
+              fi
               codesign -s - "$FRAMEWORK_PATH/Python"
             fi
+            
+            # Copy icon file to Resources
+            cp "assets/icons/app_icon.icns" "$APP_PATH/Contents/Resources/icon.icns"
+            
+            # Update Info.plist to fix app name and icon
+            /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName 'Dream Launcher'" "$APP_PATH/Contents/Info.plist"
+            /usr/libexec/PlistBuddy -c "Set :CFBundleName 'Dream Launcher'" "$APP_PATH/Contents/Info.plist"
+            /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile icon.icns" "$APP_PATH/Contents/Info.plist"
             
             # Update install names
             EXECUTABLE="$APP_PATH/Contents/MacOS/DreamLauncher"
             install_name_tool -change "/Library/Frameworks/Python.framework/Versions/3.13/Python" "@executable_path/../Frameworks/Python.framework/Versions/3.13/Python" "$EXECUTABLE"
             
-            # Rename the app back to original name
-            mv "$APP_PATH" "/tmp/DreamLauncher.app"
+            # Rename the app to "Dream Launcher.app"
+            mv "$APP_PATH" "/tmp/Dream Launcher.app"
             
             # Recreate DMG with embedded Python
             rm "$DMG_PATH"
-            hdiutil create -volname "DreamLauncher" -srcfolder "/tmp/DreamLauncher.app" -ov -format UDZO "$DMG_PATH"
+            hdiutil create -volname "Dream Launcher" -srcfolder "/tmp/Dream Launcher.app" -ov -format UDZO "$DMG_PATH"
             
             # Clean up temporary app
-            rm -rf "/tmp/DreamLauncher.app"
+            rm -rf "/tmp/Dream Launcher.app"
           fi
       - name: Upload
         uses: actions/upload-artifact@v4
