@@ -233,8 +233,6 @@ jobs:
   build-macos:
     name: macOS
     runs-on: macos-15
-    env:
-      TAURI_SKIP_XATTR: 1
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -249,36 +247,36 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r python/requirements.txt
 
-      - name: Restore cache
+      - name: Restore dioxus-cli and cargo-binstall cache
         uses: actions/cache@v4
         with:
           path: |
-            ~/.rustup
-            ~/.cargo/bin
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
+            ~/.cargo/bin/dx
+            ~/.cargo/bin/cargo-binstall
           key: macos-dioxus-cli-0.7.0-rc.0-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: macos-dioxus-cli-
 
       - name: Install cargo-binstall
         run: |
-          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
-
-      - name: Install Rust
-        run: rustup update stable
+          if [ ! -f ~/.cargo/bin/cargo-binstall ]; then
+            curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+          fi
 
       - name: Install dioxus-cli (prebuilt)
-        run: cargo binstall dioxus-cli --version 0.7.0-rc.0 -y
+        run: |
+          if [ ! -f ~/.cargo/bin/dx ]; then
+            cargo binstall dioxus-cli --version 0.7.0-rc.0 -y || cargo install dioxus-cli --version 0.7.0-rc.0
+          fi
 
       - name: Build
         run: |
           dx bundle --release --platform desktop || {
-            echo "Bundle failed due to xattr issues, trying cargo build as fallback"
+            echo "Bundle failed, building simple executable..."
             cargo build --release
             mkdir -p target/dx/DreamLauncher/bundle/macos
             cp target/release/DreamLauncher target/dx/DreamLauncher/bundle/macos/DreamLauncher
           }
+        shell: bash
 
       - name: Upload macOS
         uses: actions/upload-artifact@v4
