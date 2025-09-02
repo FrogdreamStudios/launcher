@@ -149,7 +149,7 @@ jobs:
     runs-on: macos-15
     strategy:
       matrix:
-        format: [ app, dmg ]
+        format: [ dmg ]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -179,26 +179,13 @@ jobs:
           if [ ! -f ~/.cargo/bin/dx ]; then
             cargo binstall dioxus-cli --version 0.7.0-rc.0 -y || cargo install dioxus-cli --version 0.7.0-rc.0
           fi
-      - name: Install create-dmg
-        if: matrix.format == 'dmg'
-        run: brew install create-dmg
+
       - name: Build
         run: |
-          dx bundle --release --platform desktop
-          # Ensure executable is copied even if bundle succeeds
-          if [ -f target/release/DreamLauncher ] && [ -d target/dx/DreamLauncher/release/macos/DreamLauncher.app/Contents/MacOS ]; then
-            cp target/release/DreamLauncher target/dx/DreamLauncher/release/macos/DreamLauncher.app/Contents/MacOS/DreamLauncher
-          fi
-          # Build DMG if needed
-          if [ "${{ matrix.format }}" = "dmg" ]; then
-            chmod +x scripts/macos/dmg.sh
-            ./scripts/macos/dmg.sh
-            mkdir -p target/dx/DreamLauncher/release/macos/
-            mv "Dream Launcher.dmg" target/dx/DreamLauncher/release/macos/DreamLauncher.dmg
-          fi
+            dx bundle --release --platform desktop --package-types dmg
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: dreamlauncher-macos-${{ matrix.format }}
           path: |
-            ${{ matrix.format == 'dmg' && 'target/dx/DreamLauncher/release/macos/DreamLauncher.dmg' || 'target/dx/DreamLauncher/release/macos/*.app' }}
+            ${{ matrix.format == 'dmg' && 'target/dx/DreamLauncher/bundle/macos/bundle/dmg/*.dmg' || 'target/dx/DreamLauncher/bundle/macos/bundle/macos/*.app' }}
