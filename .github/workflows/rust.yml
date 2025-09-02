@@ -295,6 +295,7 @@ jobs:
 
           echo "Signing the application bundle"
           codesign --remove-signature "$APP_PATH" 2>/dev/null || true
+          codesign --remove-signature "$EXECUTABLE" 2>/dev/null || true
           
           codesign -s - "$EXECUTABLE"
           
