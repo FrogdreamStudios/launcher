@@ -220,7 +220,7 @@ jobs:
               export LINUXDEPLOY_PATH=~/.cache/tauri/linuxdeploy-extracted/AppRun
             fi
           fi
-          dx bundle --verbose --release --platform desktop --package-types ${{ matrix.format }}
+          dx bundle --verbose --trace --release --platform desktop --package-types ${{ matrix.format }}
 
       - name: Upload
         uses: actions/upload-artifact@v4
