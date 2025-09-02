@@ -233,11 +233,9 @@ jobs:
             
             # Sign the Python library with ad-hoc signature
             if [ -f "$FRAMEWORK_PATH/Python" ]; then
-              # Check if already signed, if so remove signature first
-              if codesign -dv "$FRAMEWORK_PATH/Python" 2>&1 | grep -q "Signature="; then
-                echo "Removing existing signature from Python library"
-                codesign --remove-signature "$FRAMEWORK_PATH/Python"
-              fi
+              # Always remove any existing signature first to avoid conflicts
+              echo "Removing any existing signature from Python library"
+              codesign --remove-signature "$FRAMEWORK_PATH/Python" 2>/dev/null || true
               codesign -s - "$FRAMEWORK_PATH/Python"
             fi
             
