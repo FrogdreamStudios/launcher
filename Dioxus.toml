@@ -31,20 +31,7 @@ watch_path = ["src", "assets"]
 version = "0.1.0"
 identifier = "com.dreamlauncher.app"
 publisher = "Frogdream Studios"
-icon = [
-    "assets/icons/app_icon.icns",
-    "assets/icons/app_icon.ico",
-    "assets/icons/app_icon.iconset/icon_16x16.png",
-    "assets/icons/app_icon.iconset/icon_16x16@2x.png",
-    "assets/icons/app_icon.iconset/icon_32x32.png",
-    "assets/icons/app_icon.iconset/icon_32x32@2x.png",
-    "assets/icons/app_icon.iconset/icon_128x128.png",
-    "assets/icons/app_icon.iconset/icon_128x128@2x.png",
-    "assets/icons/app_icon.iconset/icon_256x256.png",
-    "assets/icons/app_icon.iconset/icon_256x256@2x.png",
-    "assets/icons/app_icon.iconset/icon_512x512.png",
-    "assets/icons/app_icon.iconset/icon_512x512@2x.png",
-]
+icon = ["assets/icons/app_icon.ico"]
 resources = ["assets", "python"]
 short_description = "A powerful and lightweight Minecraft launcher"
 long_description = "A powerful and lightweight Minecraft launcher that will be perfect for every player"

@@ -18,6 +18,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup icon path for Windows
+        run: |
+          mkdir -p icons
+          cp assets/icons/app_icon.ico icons/icon.ico
+        shell: bash
+
       - name: Install Python
         uses: actions/setup-python@v4
         with:
@@ -49,13 +55,20 @@ jobs:
           restore-keys: windows-x64-dioxus-
 
       - name: Build
-        run: dx bundle --release --platform desktop
+        run: |
+          dx bundle --release --platform desktop || {
+            echo "Bundle failed, building simple executable..."
+            cargo build --release
+            mkdir -p target/dx/DreamLauncher/bundle/windows
+            cp target/release/DreamLauncher.exe target/dx/DreamLauncher/bundle/windows/DreamLauncher.exe
+          }
+        shell: bash
 
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
           name: windows-installer
-          path: target/release/bundle/
+          path: target/dx/DreamLauncher/bundle/
 
   build-windows-arm64:
     name: Windows ARM64
@@ -65,6 +78,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup icon path for Windows
+        run: |
+          mkdir -p icons
+          cp assets/icons/app_icon.ico icons/icon.ico
+        shell: bash
 
       - name: Install Python
         uses: actions/setup-python@v4
@@ -110,13 +129,20 @@ jobs:
           restore-keys: windows-arm64-dioxus-
 
       - name: Build
-        run: dx bundle --release --platform desktop --target aarch64-pc-windows-msvc
+        run: |
+          dx bundle --release --platform desktop --target aarch64-pc-windows-msvc || {
+            echo "Bundle failed, building simple executable for ARM64..."
+            cargo build --release --target aarch64-pc-windows-msvc
+            mkdir -p target/dx/DreamLauncher/bundle/windows
+            cp target/aarch64-pc-windows-msvc/release/DreamLauncher.exe target/dx/DreamLauncher/bundle/windows/DreamLauncher.exe
+          }
+        shell: bash
 
       - name: Upload Windows ARM64 installer
         uses: actions/upload-artifact@v4
         with:
           name: windows-arm64-installer
-          path: target/aarch64-pc-windows-msvc/release/bundle/
+          path: target/dx/DreamLauncher/bundle/
 
   build-linux:
     name: Linux
@@ -164,22 +190,19 @@ jobs:
           export APPIMAGE_EXTRACT_AND_RUN=1
           export APPDIR=/tmp/appdir
 
-          # Try different bundle formats
+          # Try AppImage build, fallback to simple binary
           dx bundle --release --platform desktop || {
-            echo "AppImage build failed, trying debian package..."
-            dx bundle --release --platform desktop --format deb || {
-              echo "Debian package build failed, trying simple binary..."
-              cargo build --release
-              mkdir -p target/release/bundle/linux
-              cp target/release/launcher-dev target/release/bundle/linux/dream-launcher || true
-            }
+            echo "AppImage build failed, building simple binary..."
+            cargo build --release
+            mkdir -p target/dx/DreamLauncher/bundle/linux
+            cp target/release/DreamLauncher target/dx/DreamLauncher/bundle/linux/dream-launcher || true
           }
 
       - name: Upload Linux
         uses: actions/upload-artifact@v4
         with:
           name: linux-installer
-          path: target/release/bundle/
+          path: target/dx/DreamLauncher/bundle/
 
   build-macos:
     name: macOS
@@ -218,15 +241,16 @@ jobs:
           restore-keys: macos-dioxus-
 
       - name: Build
-        run: dx bundle --release --platform desktop || {
-          echo "Bundle failed due to xattr issues, trying cargo build as fallback";
-          cargo build --release;
-          mkdir -p target/release/bundle/macos;
-          echo "Fallback build completed, but .app bundle not available";
+        run: |
+          dx bundle --release --platform desktop || {
+            echo "Bundle failed due to xattr issues, trying cargo build as fallback"
+            cargo build --release
+            mkdir -p target/dx/DreamLauncher/bundle/macos
+            cp target/release/DreamLauncher target/dx/DreamLauncher/bundle/macos/DreamLauncher
           }
 
       - name: Upload macOS
         uses: actions/upload-artifact@v4
         with:
           name: macos-installer
-          path: target/release/bundle/
+          path: target/dx/DreamLauncher/bundle/
