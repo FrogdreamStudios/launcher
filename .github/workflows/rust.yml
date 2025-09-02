@@ -199,28 +199,51 @@ jobs:
             # Create Frameworks directory
             mkdir -p "$APP_PATH/Contents/Frameworks"
             
-            # Copy Python framework
-            PYTHON_FRAMEWORK="/Library/Frameworks/Python.framework"
-            if [ -d "$PYTHON_FRAMEWORK" ]; then
-              cp -R "$PYTHON_FRAMEWORK" "$APP_PATH/Contents/Frameworks/"
+            # Copy only the Python dynamic library
+            PYTHON_VERSION=$(python3 --version | cut -d' ' -f2 | cut -d'.' -f1-2)
+            FRAMEWORK_PATH="$APP_PATH/Contents/Frameworks/Python.framework/Versions/$PYTHON_VERSION"
+            mkdir -p "$FRAMEWORK_PATH"
+            
+            if [ -d "/Library/Frameworks/Python.framework" ]; then
+              # Copy only the Python dynamic library
+              cp "/Library/Frameworks/Python.framework/Versions/$PYTHON_VERSION/Python" "$FRAMEWORK_PATH/"
+            elif [ -d "$RUNNER_TOOL_CACHE/Python" ]; then
+              # GitHub Actions Python location - find the dynamic library
+              PYTHON_DIR=$(find "$RUNNER_TOOL_CACHE/Python" -name "$PYTHON_VERSION*" | head -1)
+              if [ -n "$PYTHON_DIR" ]; then
+                # Look for the Python dynamic library
+                find "$PYTHON_DIR" -name "libpython$PYTHON_VERSION*.dylib" -exec cp {} "$FRAMEWORK_PATH/Python" \; 2>/dev/null || true
+                # If not found, try alternative locations
+                if [ ! -f "$FRAMEWORK_PATH/Python" ]; then
+                  find "$PYTHON_DIR" -name "Python" -type f -exec cp {} "$FRAMEWORK_PATH/" \; 2>/dev/null || true
+                fi
+              fi
             else
               # Use the Python from GitHub Actions
               PYTHON_ROOT=$(python -c "import sys; print(sys.base_prefix)")
-              mkdir -p "$APP_PATH/Contents/Frameworks/Python.framework/Versions/3.13"
-              cp -R "$PYTHON_ROOT"/* "$APP_PATH/Contents/Frameworks/Python.framework/Versions/3.13/"
-              ln -sf "3.13" "$APP_PATH/Contents/Frameworks/Python.framework/Versions/Current"
+              mkdir -p "$FRAMEWORK_PATH"
+              # Copy only the dynamic library, not everything
+              find "$PYTHON_ROOT" -name "libpython$PYTHON_VERSION*.dylib" -exec cp {} "$FRAMEWORK_PATH/Python" \; 2>/dev/null || true
+              if [ ! -f "$FRAMEWORK_PATH/Python" ]; then
+                cp "$PYTHON_ROOT/bin/python$PYTHON_VERSION" "$FRAMEWORK_PATH/Python" 2>/dev/null || true
+              fi
+              ln -sf "$PYTHON_VERSION" "$APP_PATH/Contents/Frameworks/Python.framework/Versions/Current"
               ln -sf "Versions/Current/Python" "$APP_PATH/Contents/Frameworks/Python.framework/Python"
             fi
             
-            # Update install names to use embedded framework
-            install_name_tool -change "/Library/Frameworks/Python.framework/Versions/3.13/Python" "@executable_path/../Frameworks/Python.framework/Versions/3.13/Python" "$APP_PATH/Contents/MacOS/DreamLauncher"
+            # Update install names
+            EXECUTABLE="$APP_PATH/Contents/MacOS/DreamLauncher"
+            install_name_tool -change "/Library/Frameworks/Python.framework/Versions/3.13/Python" "@executable_path/../Frameworks/Python.framework/Versions/3.13/Python" "$EXECUTABLE"
+            
+            # Rename the app back to original name
+            mv "$APP_PATH" "/tmp/DreamLauncher.app"
             
             # Recreate DMG with embedded Python
             rm "$DMG_PATH"
-            hdiutil create -volname "DreamLauncher" -srcfolder "$APP_PATH" -ov -format UDZO "$DMG_PATH"
+            hdiutil create -volname "DreamLauncher" -srcfolder "/tmp/DreamLauncher.app" -ov -format UDZO "$DMG_PATH"
             
             # Clean up temporary app
-            rm -rf "$APP_PATH"
+            rm -rf "/tmp/DreamLauncher.app"
           fi
       - name: Upload
         uses: actions/upload-artifact@v4
