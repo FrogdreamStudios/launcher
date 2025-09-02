@@ -12,6 +12,9 @@ jobs:
   build-windows:
     name: Windows x64
     runs-on: windows-2025
+    strategy:
+      matrix:
+        format: [installer]
     env:
       CARGO_NET_RETRY: 10
     steps:
@@ -60,21 +63,19 @@ jobs:
         shell: pwsh
         run: cargo binstall dioxus-cli --version 0.7.0-rc.0 -y
 
-      - name: Build
+      - name: Build ${{ matrix.format }}
         run: |
           dx bundle --release --platform desktop || {
             echo "Bundle failed, building simple executable..."
             cargo build --release
             mkdir -p target/dx/DreamLauncher/bundle/windows
-            cp target/release/DreamLauncher.exe target/dx/DreamLauncher/bundle/windows/DreamLauncher.exe
+            cp target/release/DreamLauncher.exe target/dx/DreamLauncher/bundle/windows/DreamLauncher-${{ matrix.format }}.exe
           }
-        shell: bash
-
-      - name: Upload installer
+      - name: Upload ${{ matrix.format }}
         uses: actions/upload-artifact@v4
         with:
-          name: windows-installer
-          path: target/dx/DreamLauncher/bundle/
+          name: dreamlauncher-${{ matrix.format }}
+          path: target/dx/DreamLauncher/bundle/windows/*.exe
 
   build-windows-arm64:
     name: Windows ARM64
@@ -164,6 +165,9 @@ jobs:
   build-linux:
     name: Linux
     runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        format: [deb, appimage, rpm, flatpak]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -203,26 +207,25 @@ jobs:
           key: linux-dioxus-cli-0.7.0-rc.0-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: linux-dioxus-cli-
 
-      - name: Install cargo-binstall
-        run: |
-          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
-
       - name: Install Rust
         run: rustup update stable
 
-      - name: Build
+      - name: Build ${{ matrix.format }}
         run: |
-          # Set FUSE AppImage variables
-          export APPIMAGE_EXTRACT_AND_RUN=1
-          export APPDIR=/tmp/appdir
-
-          # Try AppImage build, fallback to simple binary
-          dx bundle --release --platform desktop || {
-            echo "AppImage build failed, building simple binary..."
+          dx bundle --release --platform desktop --formats ${{ matrix.format }} || {
+            echo "${{ matrix.format }} build failed, building simple binary..."
             cargo build --release
             mkdir -p target/dx/DreamLauncher/bundle/linux
-            cp target/release/DreamLauncher target/dx/DreamLauncher/bundle/linux/dream-launcher || true
+            cp target/release/DreamLauncher target/dx/DreamLauncher/bundle/linux/dream-launcher-${{ matrix.format }}
           }
+
+      - name: Upload ${{ matrix.format }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: dreamlauncher-${{ matrix.format }}
+          path: |
+            target/dx/DreamLauncher/bundle/linux/*.${{ matrix.format }}
+            target/dx/DreamLauncher/bundle/linux/dream-launcher-${{ matrix.format }}
 
       - name: Upload Linux
         uses: actions/upload-artifact@v4
@@ -233,6 +236,9 @@ jobs:
   build-macos:
     name: macOS
     runs-on: macos-15
+    strategy:
+      matrix:
+        format: [app]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -268,15 +274,21 @@ jobs:
             cargo binstall dioxus-cli --version 0.7.0-rc.0 -y || cargo install dioxus-cli --version 0.7.0-rc.0
           fi
 
-      - name: Build
+      - name: Build ${{ matrix.format }}
         run: |
           dx bundle --release --platform desktop || {
             echo "Bundle failed, building simple executable..."
             cargo build --release
             mkdir -p target/dx/DreamLauncher/bundle/macos
-            cp target/release/DreamLauncher target/dx/DreamLauncher/bundle/macos/DreamLauncher
+            cp target/release/DreamLauncher target/dx/DreamLauncher/bundle/macos/DreamLauncher-${{ matrix.format }}
           }
-        shell: bash
+      - name: Upload ${{ matrix.format }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: dreamlauncher-${{ matrix.format }}
+          path: |
+            target/dx/DreamLauncher/bundle/macos/*.${{ matrix.format }}
+            target/dx/DreamLauncher/bundle/macos/DreamLauncher-${{ matrix.format }}
 
       - name: Upload macOS
         uses: actions/upload-artifact@v4
