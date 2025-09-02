@@ -167,7 +167,7 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        format: [deb, appimage, rpm, flatpak]
+        format: [deb, appimage, rpm]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
