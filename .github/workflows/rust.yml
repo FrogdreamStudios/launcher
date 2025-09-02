@@ -144,9 +144,12 @@ jobs:
           name: dreamlauncher-linux-${{ matrix.format }}
           path: target/dx/DreamLauncher/bundle/linux/bundle/${{ matrix.format }}/*.${{ matrix.format }}
 
-  macos-app:
-    name: macOS App
+  macos:
+    name: macOS
     runs-on: macos-15
+    strategy:
+      matrix:
+        format: [ dmg ]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -182,45 +185,15 @@ jobs:
             cargo binstall dioxus-cli --version 0.7.0-rc.0 -y || cargo install dioxus-cli --version 0.7.0-rc.0
           fi
 
-      - name: Build
-        run: dx bundle --release --platform desktop
-
-      - name: Upload
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-app
-          path: target/dx/DreamLauncher/bundle/macos/bundle/macos/*.app
-
-  macos-dmg:
-    name: macOS DMG
-    runs-on: macos-15
-    needs: macos-app
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.13"
-
-      - name: Install Python deps
+      - name: Build and Create DMG
         run: |
-          python -m pip install --upgrade pip
-          pip install -r python/requirements.txt
-
-      - name: Download macOS app
-        uses: actions/download-artifact@v4
-        with:
-          name: macos-app
-          path: app-bundle/
-
-      - name: Create DMG with embedded Python
-        run: |
-          # Find the .app file
-          APP_SOURCE=$(find app-bundle -name "*.app" | head -1)
+          # Build the app
+          dx bundle --release --platform desktop
+          
+          # Find the built .app file
+          APP_SOURCE=$(find target/dx/DreamLauncher/bundle/macos/bundle/macos -name "*.app" | head -1)
           if [ -z "$APP_SOURCE" ]; then
-            echo "No .app file found in downloaded artifact"
+            echo "No .app file found after build"
             exit 1
           fi
           
@@ -231,61 +204,85 @@ jobs:
           # Create Frameworks directory
           mkdir -p "$APP_PATH/Contents/Frameworks"
           
-          # Copy Python framework
+          # Copy Python framework with proper structure
           PYTHON_VERSION=$(python3 --version | cut -d' ' -f2 | cut -d'.' -f1-2)
           FRAMEWORK_ROOT="$APP_PATH/Contents/Frameworks/Python.framework"
           FRAMEWORK_PATH="$FRAMEWORK_ROOT/Versions/$PYTHON_VERSION"
           mkdir -p "$FRAMEWORK_PATH"
           
-          # Use the Python from GitHub Actions
-          PYTHON_ROOT=$(python -c "import sys; print(sys.base_prefix)")
-          # Copy only the dynamic library, not everything
-          find "$PYTHON_ROOT" -name "libpython$PYTHON_VERSION*.dylib" -exec cp {} "$FRAMEWORK_PATH/Python" \; 2>/dev/null || true
-          if [ ! -f "$FRAMEWORK_PATH/Python" ]; then
-            cp "$PYTHON_ROOT/bin/python$PYTHON_VERSION" "$FRAMEWORK_PATH/Python" 2>/dev/null || true
+          if [ -d "/Library/Frameworks/Python.framework" ]; then
+            # Copy only the Python dynamic library
+            cp "/Library/Frameworks/Python.framework/Versions/$PYTHON_VERSION/Python" "$FRAMEWORK_PATH/"
+          elif [ -d "$RUNNER_TOOL_CACHE/Python" ]; then
+            # GitHub Actions Python location - find the dynamic library
+            PYTHON_DIR=$(find "$RUNNER_TOOL_CACHE/Python" -name "$PYTHON_VERSION*" | head -1)
+            if [ -n "$PYTHON_DIR" ]; then
+              # Look for the Python dynamic library
+              find "$PYTHON_DIR" -name "libpython$PYTHON_VERSION*.dylib" -exec cp {} "$FRAMEWORK_PATH/Python" \; 2>/dev/null || true
+              # If not found, try alternative locations
+              if [ ! -f "$FRAMEWORK_PATH/Python" ]; then
+                find "$PYTHON_DIR" -name "Python" -type f -exec cp {} "$FRAMEWORK_PATH/" \; 2>/dev/null || true
+              fi
+            fi
+          else
+            # Use the Python from GitHub Actions
+            PYTHON_ROOT=$(python -c "import sys; print(sys.base_prefix)")
+            # Copy only the dynamic library, not everything
+            find "$PYTHON_ROOT" -name "libpython$PYTHON_VERSION*.dylib" -exec cp {} "$FRAMEWORK_PATH/Python" \; 2>/dev/null || true
+            if [ ! -f "$FRAMEWORK_PATH/Python" ]; then
+              cp "$PYTHON_ROOT/bin/python$PYTHON_VERSION" "$FRAMEWORK_PATH/Python" 2>/dev/null || true
+            fi
           fi
           
-          # Create framework structure
+          # Create proper framework structure with symbolic links
           if [ -f "$FRAMEWORK_PATH/Python" ]; then
             cd "$FRAMEWORK_ROOT"
             ln -sf "$PYTHON_VERSION" "Versions/Current"
             ln -sf "Versions/Current/Python" "Python"
             
-            # Sign the Python library
+            # Sign the Python library with ad-hoc signature
+            echo "Removing any existing signature from Python library"
             codesign --remove-signature "$FRAMEWORK_PATH/Python" 2>/dev/null || true
+            codesign -s - "$FRAMEWORK_PATH/Python"
           fi
           
           # Copy icon file to Resources
           if [ -f "assets/icons/app_icon.icns" ]; then
             cp "assets/icons/app_icon.icns" "$APP_PATH/Contents/Resources/icon.icns"
+          else
+            echo "Warning: Icon file not found at assets/icons/app_icon.icns"
+            # Try to find the icon file in the workspace
+            ICON_PATH=$(find . -name "app_icon.icns" -type f | head -1)
+            if [ -n "$ICON_PATH" ]; then
+              cp "$ICON_PATH" "$APP_PATH/Contents/Resources/icon.icns"
+            fi
           fi
           
-          # Update Info.plist
-          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName 'Dream Launcher'" "$APP_PATH/Contents/Info.plist" 2>/dev/null || true
-          /usr/libexec/PlistBuddy -c "Set :CFBundleName 'Dream Launcher'" "$APP_PATH/Contents/Info.plist" 2>/dev/null || true
-          /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile icon.icns" "$APP_PATH/Contents/Info.plist" 2>/dev/null || true
+          # Update Info.plist to fix app name and icon
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName 'Dream Launcher'" "$APP_PATH/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleName 'Dream Launcher'" "$APP_PATH/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile icon.icns" "$APP_PATH/Contents/Info.plist"
           
-          # Update install names if Python framework exists
+          # Update install names
           EXECUTABLE="$APP_PATH/Contents/MacOS/DreamLauncher"
-          if [ -f "$FRAMEWORK_PATH/Python" ]; then
-            install_name_tool -change "/Library/Frameworks/Python.framework/Versions/$PYTHON_VERSION/Python" "@executable_path/../Frameworks/Python.framework/Versions/$PYTHON_VERSION/Python" "$EXECUTABLE" 2>/dev/null || true
-          fi
+          install_name_tool -change "/Library/Frameworks/Python.framework/Versions/3.13/Python" "@executable_path/../Frameworks/Python.framework/Versions/3.13/Python" "$EXECUTABLE"
           
-          # Sign the application
+          # Sign the entire application with ad-hoc signature (no runtime)
+          echo "Signing the application bundle"
           codesign --remove-signature "$APP_PATH" 2>/dev/null || true
-          codesign -s - --deep "$APP_PATH" 2>/dev/null || true
+          codesign -s - --deep "$APP_PATH"
           
-          # Create output directory
-          mkdir -p dmg-output
+          # Rename the app to "Dream Launcher.app"
+          mv "$APP_PATH" "/tmp/Dream Launcher.app"
           
-          # Create DMG
-          hdiutil create -volname "Dream Launcher" -srcfolder "$APP_PATH" -ov -format UDZO "dmg-output/DreamLauncher.dmg"
+          # Create DMG with embedded Python
+          hdiutil create -volname "Dream Launcher" -srcfolder "/tmp/Dream Launcher.app" -ov -format UDZO "DreamLauncher.dmg"
           
-          # Clean up
-          rm -rf "$APP_PATH"
+          # Clean up temporary app
+          rm -rf "/tmp/Dream Launcher.app"
 
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: macos-dmg
-          path: dmg-output/*.dmg
+          name: dreamlauncher-macos-dmg
+          path: "*.dmg"
