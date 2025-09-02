@@ -212,7 +212,7 @@ jobs:
 
       - name: Build ${{ matrix.format }}
         run: |
-          dx bundle --release --platform desktop --formats ${{ matrix.format }} || {
+          dx bundle --release --platform desktop --platform ${{ matrix.format }} || {
             echo "${{ matrix.format }} build failed, creating dummy artifact..."
             mkdir -p target/dx/DreamLauncher/bundle/linux
             touch target/dx/DreamLauncher/bundle/linux/dream-launcher-${{ matrix.format }}
