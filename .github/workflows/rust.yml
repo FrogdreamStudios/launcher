@@ -220,11 +220,11 @@ jobs:
           }
 
       - name: Upload ${{ matrix.format }}
+        if: matrix.format != 'installer'
         uses: actions/upload-artifact@v4
         with:
           name: dreamlauncher-${{ matrix.format }}-${{ github.run_id }}
-          path: |
-            target/dx/DreamLauncher/bundle/linux/*.${{ matrix.format }}
+          path: target/dx/DreamLauncher/bundle/linux/*.${{ matrix.format }}
             target/dx/DreamLauncher/bundle/linux/dream-launcher-${{ matrix.format }}
 
       - name: Upload Linux
@@ -277,22 +277,16 @@ jobs:
       - name: Build ${{ matrix.format }}
         run: |
           if [ "${{ matrix.format }}" = "dmg" ]; then
-            scripts/macos/dmg.sh || {
-              echo "DMG build failed, skipping..."
-            }
-          else
-            dx bundle --release --platform desktop || {
-              echo "Bundle failed, building simple executable..."
-              cargo build --release
-              mkdir -p target/dx/DreamLauncher/bundle/macos
-              cp target/release/DreamLauncher target/dx/DreamLauncher/bundle/macos/DreamLauncher-${{ matrix.format }}
-            }
+            chmod +x scripts/macos/dmg.sh 
+            scripts/macos/dmg.sh
+            mkdir -p target/dx/DreamLauncher/bundle/
+            mv "Dream Launcher.dmg" target/dx/DreamLauncher/bundle/DreamLauncher.dmg
           fi
       - name: Upload ${{ matrix.format }}
         uses: actions/upload-artifact@v4
         with:
-          name: dreamlauncher-${{ matrix.format }}
-          path: |
+          name: dreamlauncher-${{ matrix.format }}-${{ github.run_id }}
+          path: target/dx/DreamLauncher/bundle/${{ matrix.format == 'dmg' && 'DreamLauncher.dmg' || 'Dream Launcher.app' }}
             target/dx/DreamLauncher/bundle/macos/*.${{ matrix.format }}
             target/dx/DreamLauncher/bundle/macos/DreamLauncher-${{ matrix.format }}
 
