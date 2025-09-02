@@ -242,7 +242,14 @@ jobs:
             fi
             
             # Copy icon file to Resources
-            cp "assets/icons/app_icon.icns" "$APP_PATH/Contents/Resources/icon.icns"
+            if [ -f "assets/icons/app_icon.icns" ]; then
+              cp "assets/icons/app_icon.icns" "$APP_PATH/Contents/Resources/icon.icns"
+            else
+              ICON_PATH=$(find . -name "app_icon.icns" -type f | head -1)
+              if [ -n "$ICON_PATH" ]; then
+                cp "$ICON_PATH" "$APP_PATH/Contents/Resources/icon.icns"
+              fi
+            fi
             
             # Update Info.plist to fix app name and icon
             /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName 'Dream Launcher'" "$APP_PATH/Contents/Info.plist"
