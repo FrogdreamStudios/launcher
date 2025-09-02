@@ -204,7 +204,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: linux-dioxus-cli-0.7.0-rc.0-${{ hashFiles('**/Cargo.lock') }}
+          key: linux-dioxus-cli-0.7.0-rc.0-${{ hashFiles('**/Cargo.lock') }}-${{ matrix.format }}-${{ github.run_id }}
           restore-keys: linux-dioxus-cli-
 
       - name: Install Rust
@@ -222,7 +222,7 @@ jobs:
       - name: Upload ${{ matrix.format }}
         uses: actions/upload-artifact@v4
         with:
-          name: dreamlauncher-${{ matrix.format }}
+          name: dreamlauncher-${{ matrix.format }}-${{ github.run_id }}
           path: |
             target/dx/DreamLauncher/bundle/linux/*.${{ matrix.format }}
             target/dx/DreamLauncher/bundle/linux/dream-launcher-${{ matrix.format }}
@@ -238,7 +238,7 @@ jobs:
     runs-on: macos-15
     strategy:
       matrix:
-        format: [app]
+        format: [app, dmg]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -276,12 +276,18 @@ jobs:
 
       - name: Build ${{ matrix.format }}
         run: |
-          dx bundle --release --platform desktop || {
-            echo "Bundle failed, building simple executable..."
-            cargo build --release
-            mkdir -p target/dx/DreamLauncher/bundle/macos
-            cp target/release/DreamLauncher target/dx/DreamLauncher/bundle/macos/DreamLauncher-${{ matrix.format }}
-          }
+          if [ "${{ matrix.format }}" = "dmg" ]; then
+            scripts/macos/dmg.sh || {
+              echo "DMG build failed, skipping..."
+            }
+          else
+            dx bundle --release --platform desktop || {
+              echo "Bundle failed, building simple executable..."
+              cargo build --release
+              mkdir -p target/dx/DreamLauncher/bundle/macos
+              cp target/release/DreamLauncher target/dx/DreamLauncher/bundle/macos/DreamLauncher-${{ matrix.format }}
+            }
+          fi
       - name: Upload ${{ matrix.format }}
         uses: actions/upload-artifact@v4
         with:
