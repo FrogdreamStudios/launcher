@@ -51,6 +51,7 @@ jobs:
         run: |
           iwr https://github.com/cargo-bins/cargo-binstall/releases/latest/download/cargo-binstall-x86_64-pc-windows-msvc.zip -OutFile binstall.zip
           Expand-Archive binstall.zip -DestinationPath $env:USERPROFILE\.cargo\bin -Force
+          echo "$env:USERPROFILE\.cargo\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
 
       - name: Install dioxus-cli (prebuilt)
         shell: pwsh
@@ -126,6 +127,7 @@ jobs:
         run: |
           iwr https://github.com/cargo-bins/cargo-binstall/releases/latest/download/cargo-binstall-x86_64-pc-windows-msvc.zip -OutFile binstall.zip
           Expand-Archive binstall.zip -DestinationPath $env:USERPROFILE\.cargo\bin -Force
+          echo "$env:USERPROFILE\.cargo\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
 
       - name: Install Rust
         run: |
@@ -190,7 +192,8 @@ jobs:
 
       - name: Install cargo-binstall
         run: |
-          curl -L https://github.com/cargo-bins/cargo-binstall/releases/latest/download/cargo-binstall-x86_64-unknown-linux-gnu.tgz | tar -xz -C ~/.cargo/bin
+          curl -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binary.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Install Rust
         run: rustup update stable
@@ -248,7 +251,8 @@ jobs:
 
       - name: Install cargo-binstall
         run: |
-          curl -L https://github.com/cargo-bins/cargo-binstall/releases/latest/download/cargo-binstall-x86_64-apple-darwin.tgz | tar -xz -C ~/.cargo/bin
+          curl -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binary.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Install Rust
         run: rustup update stable
