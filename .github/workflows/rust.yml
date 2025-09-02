@@ -1,4 +1,4 @@
-# Dioxus-based workflow to build and package the launcher for Windows, macOS, and Linux.
+# .github/workflows/ci.yml
 
 name: Rust CI
 
@@ -34,15 +34,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r python/requirements.txt
 
-      - name: Install dependencies
-        run: |
-          rustup update stable
-          rustup component add rust-src
-          # Try different installation strategies
-          cargo install dioxus-cli --version 0.7.0-rc.0 || cargo install dioxus-cli --version 0.7.0-rc.0 || cargo install dioxus-cli --git https://github.com/DioxusLabs/dioxus --tag v0.7.0-rc.0
-        shell: bash
-
-      - name: Cache
+      - name: Restore cache
         uses: actions/cache@v4
         with:
           path: |
@@ -51,8 +43,18 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: windows-x64-dioxus-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: windows-x64-dioxus-
+          key: windows-x64-dioxus-cli-0.7.0-rc.0-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: windows-x64-dioxus-cli-
+
+      - name: Install cargo-binstall
+        shell: pwsh
+        run: |
+          iwr https://github.com/cargo-bins/cargo-binstall/releases/latest/download/cargo-binstall-x86_64-pc-windows-msvc.zip -OutFile binstall.zip
+          Expand-Archive binstall.zip -DestinationPath $env:USERPROFILE\.cargo\bin -Force
+
+      - name: Install dioxus-cli (prebuilt)
+        shell: pwsh
+        run: cargo binstall dioxus-cli --version 0.7.0-rc.0 -y
 
       - name: Build
         run: |
@@ -107,16 +109,7 @@ jobs:
             exit 1
           }
 
-      - name: Install Rust
-        run: |
-          rustup update stable
-          rustup target add aarch64-pc-windows-msvc
-          rustup component add rust-src
-          # Install for x64 host, will work for cross-compilation
-          cargo install dioxus-cli --version 0.7.0-rc.0 || cargo install dioxus-cli --version 0.7.0-rc. || cargo install dioxus-cli --git https://github.com/DioxusLabs/dioxus --tag v0.7.0-rc.0
-        shell: bash
-
-      - name: Cache
+      - name: Restore cache
         uses: actions/cache@v4
         with:
           path: |
@@ -125,8 +118,24 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: windows-arm64-dioxus-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: windows-arm64-dioxus-
+          key: windows-arm64-dioxus-cli-0.7.0-rc.0-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: windows-arm64-dioxus-cli-
+
+      - name: Install cargo-binstall
+        shell: pwsh
+        run: |
+          iwr https://github.com/cargo-bins/cargo-binstall/releases/latest/download/cargo-binstall-x86_64-pc-windows-msvc.zip -OutFile binstall.zip
+          Expand-Archive binstall.zip -DestinationPath $env:USERPROFILE\.cargo\bin -Force
+
+      - name: Install Rust
+        run: |
+          rustup update stable
+          rustup target add aarch64-pc-windows-msvc
+          rustup component add rust-src
+
+      - name: Install dioxus-cli (prebuilt)
+        shell: pwsh
+        run: cargo binstall dioxus-cli --version 0.7.0-rc.0 -y
 
       - name: Build
         run: |
@@ -167,12 +176,7 @@ jobs:
           packages: libgtk-3-dev libglib2.0-dev libsoup-3.0-dev libssl-dev libjavascriptcoregtk-4.1-dev libwebkit2gtk-4.1-dev libxdo-dev pkg-config build-essential curl xdotool fuse libfuse2 desktop-file-utils appstream
           version: 1
 
-      - name: Install Rust
-        run: |
-          rustup update stable
-          cargo install dioxus-cli --version 0.7.0-rc.0
-
-      - name: Cache
+      - name: Restore cache
         uses: actions/cache@v4
         with:
           path: |
@@ -181,16 +185,23 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: linux-dioxus-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: linux-dioxus-
+          key: linux-dioxus-cli-0.7.0-rc.0-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: linux-dioxus-cli-
+
+      - name: Install cargo-binstall
+        run: |
+          curl -L https://github.com/cargo-bins/cargo-binstall/releases/latest/download/cargo-binstall-x86_64-unknown-linux-gnu.tgz | tar -xz -C ~/.cargo/bin
+
+      - name: Install Rust
+        run: rustup update stable
+
+      - name: Install dioxus-cli (prebuilt)
+        run: cargo binstall dioxus-cli --version 0.7.0-rc.0 -y
 
       - name: Build
         run: |
-          # Set FUSE AppImage variables
           export APPIMAGE_EXTRACT_AND_RUN=1
           export APPDIR=/tmp/appdir
-
-          # Try AppImage build, fallback to simple binary
           dx bundle --release --platform desktop || {
             echo "AppImage build failed, building simple binary..."
             cargo build --release
@@ -223,12 +234,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r python/requirements.txt
 
-      - name: Install dependencies
-        run: |
-          rustup update stable
-          cargo install dioxus-cli --version 0.7.0-rc.0
-
-      - name: Cache
+      - name: Restore cache
         uses: actions/cache@v4
         with:
           path: |
@@ -237,8 +243,18 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: macos-dioxus-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: macos-dioxus-
+          key: macos-dioxus-cli-0.7.0-rc.0-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: macos-dioxus-cli-
+
+      - name: Install cargo-binstall
+        run: |
+          curl -L https://github.com/cargo-bins/cargo-binstall/releases/latest/download/cargo-binstall-x86_64-apple-darwin.tgz | tar -xz -C ~/.cargo/bin
+
+      - name: Install Rust
+        run: rustup update stable
+
+      - name: Install dioxus-cli (prebuilt)
+        run: cargo binstall dioxus-cli --version 0.7.0-rc.0 -y
 
       - name: Build
         run: |
