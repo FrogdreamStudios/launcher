@@ -274,6 +274,9 @@ jobs:
             cargo binstall dioxus-cli --version 0.7.0-rc.0 -y || cargo install dioxus-cli --version 0.7.0-rc.0
           fi
 
+      - name: Install create-dmg
+        if: matrix.format == 'dmg'
+        run: brew install create-dmg
       - name: Build ${{ matrix.format }}
         run: |
           if [ "${{ matrix.format }}" = "dmg" ]; then
