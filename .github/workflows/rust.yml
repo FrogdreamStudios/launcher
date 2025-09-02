@@ -166,7 +166,7 @@ jobs:
     name: Linux
     runs-on: ubuntu-24.04
     strategy:
-　　　continue-on-error: true
+      continue-on-error: true
       matrix:
         format: [deb, appimage, rpm]
     steps:
