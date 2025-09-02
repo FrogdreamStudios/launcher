@@ -231,6 +231,11 @@ jobs:
               ln -sf "Versions/Current/Python" "$APP_PATH/Contents/Frameworks/Python.framework/Python"
             fi
             
+            # Sign the Python library with ad-hoc signature
+            if [ -f "$FRAMEWORK_PATH/Python" ]; then
+              codesign -s - "$FRAMEWORK_PATH/Python"
+            fi
+            
             # Update install names
             EXECUTABLE="$APP_PATH/Contents/MacOS/DreamLauncher"
             install_name_tool -change "/Library/Frameworks/Python.framework/Versions/3.13/Python" "@executable_path/../Frameworks/Python.framework/Versions/3.13/Python" "$EXECUTABLE"
