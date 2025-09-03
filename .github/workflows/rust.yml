@@ -201,118 +201,72 @@ jobs:
           cp -R "$APP_SOURCE" "/tmp/DreamLauncher.app"
           APP_PATH="/tmp/DreamLauncher.app"
           
-          codesign --remove-signature "$APP_PATH" 2>/dev/null || true
+          # Remove ALL existing signatures recursively first
+          echo "Removing all existing signatures..."
+          find "$APP_PATH" -name "*.dylib" -exec codesign --remove-signature {} \; 2>/dev/null || true
+          find "$APP_PATH" -name "*.so" -exec codesign --remove-signature {} \; 2>/dev/null || true
           codesign --remove-signature "$APP_PATH/Contents/MacOS/DreamLauncher" 2>/dev/null || true
+          codesign --remove-signature "$APP_PATH" 2>/dev/null || true
           
           # Create Frameworks directory
           mkdir -p "$APP_PATH/Contents/Frameworks"
           
-          # Copy Python framework with proper structure
+          # Copy Python framework
           PYTHON_VERSION=$(python3 --version | cut -d' ' -f2 | cut -d'.' -f1-2)
           FRAMEWORK_ROOT="$APP_PATH/Contents/Frameworks/Python.framework"
           FRAMEWORK_PATH="$FRAMEWORK_ROOT/Versions/$PYTHON_VERSION"
           mkdir -p "$FRAMEWORK_PATH"
           
-          if [ -d "/Library/Frameworks/Python.framework" ]; then
-            # Copy only the Python dynamic library
-            cp "/Library/Frameworks/Python.framework/Versions/$PYTHON_VERSION/Python" "$FRAMEWORK_PATH/"
-          elif [ -d "$RUNNER_TOOL_CACHE/Python" ]; then
-            # GitHub Actions Python location - find the dynamic library
-            PYTHON_DIR=$(find "$RUNNER_TOOL_CACHE/Python" -name "$PYTHON_VERSION*" | head -1)
-            if [ -n "$PYTHON_DIR" ]; then
-              # Look for the Python dynamic library
-              find "$PYTHON_DIR" -name "libpython$PYTHON_VERSION*.dylib" -exec cp {} "$FRAMEWORK_PATH/Python" \; 2>/dev/null || true
-              # If not found, try alternative locations
-              if [ ! -f "$FRAMEWORK_PATH/Python" ]; then
-                find "$PYTHON_DIR" -name "Python" -type f -exec cp {} "$FRAMEWORK_PATH/" \; 2>/dev/null || true
-              fi
-            fi
-          else
-            # Use the Python from GitHub Actions
-            PYTHON_ROOT=$(python -c "import sys; print(sys.base_prefix)")
-            # Copy only the dynamic library, not everything
-            find "$PYTHON_ROOT" -name "libpython$PYTHON_VERSION*.dylib" -exec cp {} "$FRAMEWORK_PATH/Python" \; 2>/dev/null || true
-            if [ ! -f "$FRAMEWORK_PATH/Python" ]; then
-              cp "$PYTHON_ROOT/bin/python$PYTHON_VERSION" "$FRAMEWORK_PATH/Python" 2>/dev/null || true
-            fi
+          # Use the Python from GitHub Actions
+          PYTHON_ROOT=$(python -c "import sys; print(sys.base_prefix)")
+          # Copy only the dynamic library, not everything
+          find "$PYTHON_ROOT" -name "libpython$PYTHON_VERSION*.dylib" -exec cp {} "$FRAMEWORK_PATH/Python" \; 2>/dev/null || true
+          if [ ! -f "$FRAMEWORK_PATH/Python" ]; then
+            cp "$PYTHON_ROOT/bin/python$PYTHON_VERSION" "$FRAMEWORK_PATH/Python" 2>/dev/null || true
           fi
           
-          # Create proper framework structure with symbolic links
+          # Create framework structure
           if [ -f "$FRAMEWORK_PATH/Python" ]; then
             cd "$FRAMEWORK_ROOT"
             ln -sf "$PYTHON_VERSION" "Versions/Current"
             ln -sf "Versions/Current/Python" "Python"
             
-            # Create Info.plist for the framework
-            mkdir -p "$FRAMEWORK_PATH/Resources"
-            cat > "$FRAMEWORK_PATH/Resources/Info.plist" << 'EOF'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>CFBundleExecutable</key>
-              <string>Python</string>
-              <key>CFBundleIdentifier</key>
-              <string>org.python.python</string>
-              <key>CFBundleInfoDictionaryVersion</key>
-              <string>6.0</string>
-              <key>CFBundleName</key>
-              <string>Python</string>
-              <key>CFBundlePackageType</key>
-              <string>FMWK</string>
-              <key>CFBundleShortVersionString</key>
-              <string>$PYTHON_VERSION</string>
-              <key>CFBundleVersion</key>
-              <string>$PYTHON_VERSION</string>
-          </dict>
-          </plist>
-          EOF
-            
-            ln -sf "Versions/Current/Resources" "Resources"
-            
-            echo "Removing any existing signature from Python library"
-            codesign --remove-signature "$FRAMEWORK_PATH/Python" 2>/dev/null || true
-            codesign -s - "$FRAMEWORK_PATH/Python"
-            
-            echo "Removing any existing signature from Python framework"
-            codesign --remove-signature "$FRAMEWORK_ROOT" 2>/dev/null || true
+            # Sign the Python library with ad-hoc signature
+            echo "Signing Python library..."
+            codesign -f -s - "$FRAMEWORK_PATH/Python" 2>/dev/null || true
           fi
           
+          # Copy icon file to Resources
           if [ -f "assets/icons/app_icon.icns" ]; then
             cp "assets/icons/app_icon.icns" "$APP_PATH/Contents/Resources/icon.icns"
-          else
-            ICON_PATH=$(find . -name "app_icon.icns" -type f | head -1)
-            if [ -n "$ICON_PATH" ]; then
-              cp "$ICON_PATH" "$APP_PATH/Contents/Resources/icon.icns"
-            fi
           fi
           
-          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName 'Dream Launcher'" "$APP_PATH/Contents/Info.plist"
-          /usr/libexec/PlistBuddy -c "Set :CFBundleName 'Dream Launcher'" "$APP_PATH/Contents/Info.plist"
-          /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile icon.icns" "$APP_PATH/Contents/Info.plist"
+          # Update Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName 'Dream Launcher'" "$APP_PATH/Contents/Info.plist" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Set :CFBundleName 'Dream Launcher'" "$APP_PATH/Contents/Info.plist" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile icon.icns" "$APP_PATH/Contents/Info.plist" 2>/dev/null || true
           
+          # Update install names if Python framework exists
           EXECUTABLE="$APP_PATH/Contents/MacOS/DreamLauncher"
-          install_name_tool -change "/Library/Frameworks/Python.framework/Versions/3.13/Python" "@executable_path/../Frameworks/Python.framework/Versions/3.13/Python" "$EXECUTABLE"
+          if [ -f "$FRAMEWORK_PATH/Python" ]; then
+            install_name_tool -change "/Library/Frameworks/Python.framework/Versions/$PYTHON_VERSION/Python" "@executable_path/../Frameworks/Python.framework/Versions/$PYTHON_VERSION/Python" "$EXECUTABLE" 2>/dev/null || true
+          fi
           
-          codesign --remove-signature "$APP_PATH" 2>/dev/null || true
-          codesign --remove-signature "$EXECUTABLE" 2>/dev/null || true
+          # Sign everything step by step
+          echo "Signing executable..."
+          codesign -f -s - "$EXECUTABLE" 2>/dev/null || true
           
-          echo "Signing the application bundle"
+          echo "Signing application bundle..."
+          codesign -f -s - "$APP_PATH" 2>/dev/null || true
           
-          # Sign Python framework first
-          codesign -s - "$FRAMEWORK_ROOT"
+          # Create output directory
+          mkdir -p dmg-output
           
-          # Sign executable
-          codesign -s - "$EXECUTABLE"
+          # Create DMG
+          hdiutil create -volname "Dream Launcher" -srcfolder "$APP_PATH" -ov -format UDZO "dmg-output/DreamLauncher.dmg"
           
-          # Sign the entire app bundle with deep signing
-          codesign -s - --deep "$APP_PATH"
-          
-          mv "$APP_PATH" "/tmp/Dream Launcher.app"
-          
-          hdiutil create -volname "Dream Launcher" -srcfolder "/tmp/Dream Launcher.app" -ov -format UDZO "DreamLauncher.dmg"
-          
-          rm -rf "/tmp/Dream Launcher.app"
+          # Clean up
+          rm -rf "$APP_PATH"
 
       - name: Upload
         uses: actions/upload-artifact@v4
