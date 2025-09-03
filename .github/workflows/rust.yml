@@ -201,6 +201,9 @@ jobs:
           cp -R "$APP_SOURCE" "/tmp/DreamLauncher.app"
           APP_PATH="/tmp/DreamLauncher.app"
           
+          codesign --remove-signature "$APP_PATH" 2>/dev/null || true
+          codesign --remove-signature "$APP_PATH/Contents/MacOS/DreamLauncher" 2>/dev/null || true
+          
           # Create Frameworks directory
           mkdir -p "$APP_PATH/Contents/Frameworks"
           
@@ -292,8 +295,6 @@ jobs:
           EXECUTABLE="$APP_PATH/Contents/MacOS/DreamLauncher"
           install_name_tool -change "/Library/Frameworks/Python.framework/Versions/3.13/Python" "@executable_path/../Frameworks/Python.framework/Versions/3.13/Python" "$EXECUTABLE"
           
-
-          echo "Signing the application bundle"
           codesign --remove-signature "$APP_PATH" 2>/dev/null || true
           codesign --remove-signature "$EXECUTABLE" 2>/dev/null || true
           
