@@ -259,11 +259,9 @@ jobs:
           echo "Signing application bundle..."
           codesign -f -s - "$APP_PATH" 2>/dev/null || true
           
-          # Create output directory
-          mkdir -p dmg-output
-          
-          # Create DMG
-          hdiutil create -volname "Dream Launcher" -srcfolder "$APP_PATH" -ov -format UDZO "dmg-output/DreamLauncher.dmg"
+          # Create DMG in the workspace root
+          echo "Creating DMG..."
+          hdiutil create -volname "Dream Launcher" -srcfolder "$APP_PATH" -ov -format UDZO "DreamLauncher.dmg"
           
           # Clean up
           rm -rf "$APP_PATH"
@@ -272,4 +270,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dreamlauncher-macos-dmg
-          path: "*.dmg"
+          path: "DreamLauncher.dmg"
