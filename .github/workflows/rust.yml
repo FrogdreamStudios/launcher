@@ -276,7 +276,6 @@ jobs:
             
             echo "Removing any existing signature from Python framework"
             codesign --remove-signature "$FRAMEWORK_ROOT" 2>/dev/null || true
-            codesign -s - "$FRAMEWORK_ROOT"
           fi
           
           if [ -f "assets/icons/app_icon.icns" ]; then
