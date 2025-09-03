@@ -234,6 +234,9 @@ jobs:
             # Sign the Python library with ad-hoc signature
             echo "Signing Python library..."
             codesign -f -s - "$FRAMEWORK_PATH/Python" 2>/dev/null || true
+            
+            # Return to workspace directory
+            cd "$GITHUB_WORKSPACE"
           fi
           
           # Copy icon file to Resources
@@ -259,9 +262,18 @@ jobs:
           echo "Signing application bundle..."
           codesign -f -s - "$APP_PATH" 2>/dev/null || true
           
-          # Create DMG in the workspace root
-          echo "Creating DMG..."
+          # Ensure we're in the workspace directory before creating DMG
+          cd "$GITHUB_WORKSPACE"
+          echo "Creating DMG in $(pwd)..."
           hdiutil create -volname "Dream Launcher" -srcfolder "$APP_PATH" -ov -format UDZO "DreamLauncher.dmg"
+          
+          # Verify DMG was created
+          if [ -f "DreamLauncher.dmg" ]; then
+            echo "DMG created successfully: $(ls -la DreamLauncher.dmg)"
+          else
+            echo "ERROR: DMG was not created in the expected location"
+            find . -name "*.dmg" -type f 2>/dev/null || echo "No DMG files found"
+          fi
           
           # Clean up
           rm -rf "$APP_PATH"
