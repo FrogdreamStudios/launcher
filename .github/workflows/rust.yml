@@ -233,26 +233,24 @@ jobs:
             
             # Create Resources directory and Info.plist for proper framework structure
             mkdir -p "$FRAMEWORK_PATH/Resources"
-            cat > "$FRAMEWORK_PATH/Resources/Info.plist" << 'EOF'
-            <?xml version="1.0" encoding="UTF-8"?>
-            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-            <plist version="1.0">
-            <dict>
-              <key>CFBundleIdentifier</key>
-              <string>org.python.python</string>
-              <key>CFBundleName</key>
-              <string>Python</string>
-              <key>CFBundleVersion</key>
-              <string>$PYTHON_VERSION</string>
-              <key>CFBundleShortVersionString</key>
-              <string>$PYTHON_VERSION</string>
-              <key>CFBundlePackageType</key>
-              <string>FMWK</string>
-              <key>CFBundleExecutable</key>
-              <string>Python</string>
-            </dict>
-            </plist>
-            EOF
+            echo '<?xml version="1.0" encoding="UTF-8"?>' > "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '<plist version="1.0">' >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '<dict>' >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '  <key>CFBundleIdentifier</key>' >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '  <string>org.python.python</string>' >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '  <key>CFBundleName</key>' >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '  <string>Python</string>' >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '  <key>CFBundleVersion</key>' >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo "  <string>$PYTHON_VERSION</string>" >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '  <key>CFBundleShortVersionString</key>' >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo "  <string>$PYTHON_VERSION</string>" >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '  <key>CFBundlePackageType</key>' >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '  <string>FMWK</string>' >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '  <key>CFBundleExecutable</key>' >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '  <string>Python</string>' >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '</dict>' >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '</plist>' >> "$FRAMEWORK_PATH/Resources/Info.plist"
             
             # Create link to Resources
             ln -sf "Versions/Current/Resources" "Resources"
