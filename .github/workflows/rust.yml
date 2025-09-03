@@ -231,6 +231,32 @@ jobs:
             ln -sf "$PYTHON_VERSION" "Versions/Current"
             ln -sf "Versions/Current/Python" "Python"
             
+            # Create Resources directory and Info.plist for proper framework structure
+            mkdir -p "$FRAMEWORK_PATH/Resources"
+            cat > "$FRAMEWORK_PATH/Resources/Info.plist" << 'EOF'
+            <?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+            <plist version="1.0">
+            <dict>
+              <key>CFBundleIdentifier</key>
+              <string>org.python.python</string>
+              <key>CFBundleName</key>
+              <string>Python</string>
+              <key>CFBundleVersion</key>
+              <string>$PYTHON_VERSION</string>
+              <key>CFBundleShortVersionString</key>
+              <string>$PYTHON_VERSION</string>
+              <key>CFBundlePackageType</key>
+              <string>FMWK</string>
+              <key>CFBundleExecutable</key>
+              <string>Python</string>
+            </dict>
+            </plist>
+            EOF
+            
+            # Create link to Resources
+            ln -sf "Versions/Current/Resources" "Resources"
+            
             # Sign the Python library with ad-hoc signature
             echo "Signing Python library..."
             codesign -f -s - "$FRAMEWORK_PATH/Python" 2>/dev/null || true
@@ -255,12 +281,17 @@ jobs:
             install_name_tool -change "/Library/Frameworks/Python.framework/Versions/$PYTHON_VERSION/Python" "@executable_path/../Frameworks/Python.framework/Versions/$PYTHON_VERSION/Python" "$EXECUTABLE" 2>/dev/null || true
           fi
           
-          # Sign everything step by step
+          # Sign everything step by step in correct order
+          if [ -d "$FRAMEWORK_ROOT" ]; then
+            echo "Signing Python framework..."
+            codesign -f -s - "$FRAMEWORK_ROOT" 2>/dev/null || true
+          fi
+          
           echo "Signing executable..."
           codesign -f -s - "$EXECUTABLE" 2>/dev/null || true
           
-          echo "Signing application bundle..."
-          codesign -f -s - "$APP_PATH" 2>/dev/null || true
+          echo "Signing application bundle with deep flag..."
+          codesign -f --deep -s - "$APP_PATH" 2>/dev/null || true
           
           # Ensure we're in the workspace directory before creating DMG
           cd "$GITHUB_WORKSPACE"
