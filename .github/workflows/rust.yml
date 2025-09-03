@@ -1,6 +1,4 @@
-# Rust workflow to build and package the launcher for Windows, macOS, and Linux.
-
-name: Rust CI
+name: CI
 
 on: [push, pull_request]
 
@@ -9,92 +7,39 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  build-windows:
-    name: Windows x64
+  windows:
+    name: Windows
     runs-on: windows-2025
+    strategy:
+      matrix:
+        format: [ x64, arm64 ]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.13'
-
-      - name: Install Python dependencies
+      - name: Setup icon
         run: |
-          python -m pip install --upgrade pip
-          pip install -r python/requirements.txt
-
-      - name: Install dependencies
-        run: choco install upx
-
-      - name: Cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.rustup
-            ~/.cargo/bin
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: windows-x64-allcache-${{ hashFiles('rust-toolchain.toml') }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: windows-x64-allcache-
-
-      - name: Build Rust
-        run: cargo build --release --locked --features "desktop"
-
-      - name: Compress
-        run: |
-          upx --best --lzma target/release/DreamLauncher.exe
-
-      - name: Install NSIS
-        run: |
-          choco install nsis -y
-
-      - name: Create installer
-        run: |
-          mkdir dist
-          powershell -ExecutionPolicy Bypass -File scripts/windows/build_installer.ps1 -Version "${{ github.ref_name || 'dev' }}"
-
-      - name: Upload installer
-        uses: actions/upload-artifact@v4
-        with:
-          name: DreamLauncher-Windows-x64
-          path: |
-            dist/Dream Launcher Setup.exe
-
-  build-windows-arm64:
-    name: Windows ARM64
-    runs-on: windows-2025
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+          mkdir -p icons
+          cp assets/icons/app_icon.ico icons/icon.ico
+        shell: bash
 
       - name: Install Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.13'
+          python-version: "3.13"
 
-      - name: Install Python dependencies
+      - name: Install Python deps
         run: |
           python -m pip install --upgrade pip
           pip install -r python/requirements.txt
 
-      - name: Install Python libs path
+      - name: Setup Python libs
+        if: matrix.format == 'arm64'
         shell: pwsh
         run: |
           $pythonRoot = (python -c "import sys; print(sys.base_prefix)")
           $libPath = Join-Path $pythonRoot "libs"
-          echo "Python libs path: $libPath"
           echo "LIB=$libPath;$env:LIB" | Out-File -FilePath $env:GITHUB_ENV -Append
-          if (!(Test-Path (Join-Path $libPath "python3.lib"))) {
-            Write-Host "python3.lib not found in $libPath"
-            exit 1
-          }
-
-      - name: Install Rust ARM64 target
-        run: rustup target add aarch64-pc-windows-msvc
 
       - name: Cache
         uses: actions/cache@v4
@@ -105,31 +50,47 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: windows-arm64-allcache-${{ hashFiles('rust-toolchain.toml') }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: windows-arm64-allcache-
+          key: win-${{ matrix.format }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: win-${{ matrix.format }}-
 
-      - name: Build Rust for ARM64
-        run: cargo build --release --locked --features "desktop" --target aarch64-pc-windows-msvc
-
-      - name: Install NSIS
+      - name: Install cargo-binstall
+        shell: pwsh
         run: |
-          choco install nsis -y
+          $BinDir = "$env:USERPROFILE\.cargo\bin"
+          if (!(Test-Path $BinDir)) { New-Item -ItemType Directory -Path $BinDir | Out-Null }
+          iwr https://github.com/cargo-bins/cargo-binstall/releases/latest/download/cargo-binstall-x86_64-pc-windows-msvc.zip -OutFile binstall.zip
+          Expand-Archive binstall.zip -DestinationPath $BinDir -Force
+          echo "$BinDir" | Out-File -FilePath $env:GITHUB_PATH -Append
 
-      - name: Create ARM64 installer
+      - name: Install Rust
+        if: matrix.format == 'arm64'
         run: |
-          mkdir dist
-          powershell -ExecutionPolicy Bypass -File scripts/windows/build_installer.ps1 -Version "${{ github.ref_name || 'dev' }}" -Architecture "ARM64"
+          rustup update stable
+          rustup target add aarch64-pc-windows-msvc
+          rustup component add rust-src
 
-      - name: Upload ARM64 installer
+      - name: Install dx
+        shell: pwsh
+        run: cargo binstall dioxus-cli --version 0.7.0-rc.0 -y
+
+      - name: Build
+        run: |
+            dx bundle --release --platform desktop
+        shell: bash
+
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: DreamLauncher-Windows-ARM64
-          path: |
-            dist/Dream Launcher Setup ARM64.exe
+          name: dreamlauncher-windows-${{ matrix.format }}
+          path: target/dx/DreamLauncher/bundle/windows/*.exe
 
-  build-linux:
+  linux:
     name: Linux
     runs-on: ubuntu-24.04
+    continue-on-error: true
+    strategy:
+      matrix:
+        format: [ deb, rpm ]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -137,17 +98,24 @@ jobs:
       - name: Install Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.13'
+          python-version: "3.13"
 
-      - name: Install Python dependencies
+      - name: Install Python deps
         run: |
           python -m pip install --upgrade pip
           pip install -r python/requirements.txt
 
-      - name: Install dependencies
+      - name: Install cargo-binstall
+        run: |
+          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+
+      - name: Install dx
+        run: cargo binstall dioxus-cli --version 0.7.0-rc.0 -y
+
+      - name: Install deps
         uses: awalsh128/cache-apt-pkgs-action@v1
         with:
-          packages: libgtk-3-dev libglib2.0-dev libsoup-3.0-dev libssl-dev libjavascriptcoregtk-4.1-dev libwebkit2gtk-4.1-dev libxdo-dev pkg-config build-essential curl xdotool upx-ucl libfuse2
+          packages: libgtk-3-dev libglib2.0-dev libsoup-3.0-dev libssl-dev libjavascriptcoregtk-4.1-dev libwebkit2gtk-4.1-dev libxdo-dev pkg-config build-essential curl xdotool fuse libfuse2 desktop-file-utils appstream file
           version: 1
 
       - name: Cache
@@ -159,39 +127,29 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: linux-allcache-${{ hashFiles('rust-toolchain.toml') }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: linux-allcache-
+          key: linux-${{ hashFiles('**/Cargo.lock') }}-${{ matrix.format }}-${{ github.run_id }}
+          restore-keys: linux-
 
-      - name: Build Rust
-        run: cargo build --release --locked --features "desktop"
+      - name: Install Rust
+        run: rustup update stable
 
-      - name: Compress
+      - name: Build
         run: |
-          upx --best --lzma target/release/DreamLauncher
+          export NO_STRIP=true
+          dx bundle --verbose --trace --release --platform desktop --package-types ${{ matrix.format }}
 
-      - name: Install AppImage
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y file
-          wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
-          chmod +x appimagetool-x86_64.AppImage
-          sudo mv appimagetool-x86_64.AppImage /usr/local/bin/appimagetool
-
-      - name: Create AppImage
-        run: |
-          chmod +x scripts/linux/appimage.sh
-          ./scripts/linux/appimage.sh
-
-      - name: Upload AppImage
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: DreamLauncher-Linux-AppImage
-          path: |
-            *.AppImage
+          name: dreamlauncher-linux-${{ matrix.format }}
+          path: target/dx/DreamLauncher/bundle/linux/bundle/${{ matrix.format }}/*.${{ matrix.format }}
 
-  build-macos:
+  macos:
     name: macOS
     runs-on: macos-15
+    strategy:
+      matrix:
+        format: [ dmg ]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -199,65 +157,173 @@ jobs:
       - name: Install Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.13'
+          python-version: "3.13"
 
-      - name: Install Python dependencies
+      - name: Install Python deps
         run: |
           python -m pip install --upgrade pip
           pip install -r python/requirements.txt
-
-      - name: Install dependencies
-        run: brew install create-dmg upx
 
       - name: Cache
         uses: actions/cache@v4
         with:
           path: |
-            ~/.rustup
-            ~/.cargo/bin
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: macos-allcache-${{ hashFiles('rust-toolchain.toml') }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: macos-allcache-
+            ~/.cargo/bin/dx
+            ~/.cargo/bin/cargo-binstall
+          key: macos-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: macos-
 
-      - name: Build Rust
-        run: cargo build --release --locked --features "desktop"
-
-      - name: Compress
+      - name: Install cargo-binstall
         run: |
-          chmod +x scripts/macos/compress.sh
-          ./scripts/macos/compress.sh "target/release/DreamLauncher"
-
-      - name: Package
-        shell: bash
-        run: |
-          set -e
-          mkdir -p dist
-          chmod +x scripts/macos/bundle.sh
-          ./scripts/macos/bundle.sh
-
-          chmod +x scripts/macos/clean.sh
-          ./scripts/macos/clean.sh "target/release/Dream Launcher.app"
-
-          chmod +x scripts/macos/sign.sh
-          ./scripts/macos/sign.sh "target/release/Dream Launcher.app"
-
-          chmod +x scripts/macos/dmg.sh
-          ./scripts/macos/dmg.sh
-          if [[ -f "Dream Launcher.dmg" ]]; then
-            mv "Dream Launcher.dmg" "dist/Dream Launcher.dmg"
-            echo "DMG created successfully"
-          else
-            echo "No DMG file found"
-            exit 1
+          if [ ! -f ~/.cargo/bin/cargo-binstall ]; then
+            curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
           fi
 
-          echo "macOS packaging completed"
+      - name: Install dx
+        run: |
+          if [ ! -f ~/.cargo/bin/dx ]; then
+            cargo binstall dioxus-cli --version 0.7.0-rc.0 -y || cargo install dioxus-cli --version 0.7.0-rc.0
+          fi
 
-      - name: Upload macOS
+      - name: Build and Create DMG
+        run: |
+          # Build the app
+          dx bundle --release --platform desktop
+          
+          # Find the built .app file
+          APP_SOURCE=$(find target/dx/DreamLauncher/bundle/macos/bundle/macos -name "*.app" | head -1)
+          if [ -z "$APP_SOURCE" ]; then
+            echo "No .app file found after build"
+            exit 1
+          fi
+          
+          # Copy app to temporary location for modification
+          cp -R "$APP_SOURCE" "/tmp/DreamLauncher.app"
+          APP_PATH="/tmp/DreamLauncher.app"
+          
+          # Remove ALL existing signatures recursively first
+          echo "Removing all existing signatures..."
+          find "$APP_PATH" -name "*.dylib" -exec codesign --remove-signature {} \; 2>/dev/null || true
+          find "$APP_PATH" -name "*.so" -exec codesign --remove-signature {} \; 2>/dev/null || true
+          codesign --remove-signature "$APP_PATH/Contents/MacOS/DreamLauncher" 2>/dev/null || true
+          codesign --remove-signature "$APP_PATH" 2>/dev/null || true
+          
+          # Create Frameworks directory
+          mkdir -p "$APP_PATH/Contents/Frameworks"
+          
+          # Copy Python framework
+          PYTHON_VERSION=$(python3 --version | cut -d' ' -f2 | cut -d'.' -f1-2)
+          FRAMEWORK_ROOT="$APP_PATH/Contents/Frameworks/Python.framework"
+          FRAMEWORK_PATH="$FRAMEWORK_ROOT/Versions/$PYTHON_VERSION"
+          mkdir -p "$FRAMEWORK_PATH"
+          
+          # Use the Python from GitHub Actions
+          PYTHON_ROOT=$(python -c "import sys; print(sys.base_prefix)")
+          # Copy only the dynamic library, not everything
+          find "$PYTHON_ROOT" -name "libpython$PYTHON_VERSION*.dylib" -exec cp {} "$FRAMEWORK_PATH/Python" \; 2>/dev/null || true
+          if [ ! -f "$FRAMEWORK_PATH/Python" ]; then
+            cp "$PYTHON_ROOT/bin/python$PYTHON_VERSION" "$FRAMEWORK_PATH/Python" 2>/dev/null || true
+          fi
+          
+          # Create framework structure
+          if [ -f "$FRAMEWORK_PATH/Python" ]; then
+            cd "$FRAMEWORK_ROOT"
+            ln -sf "$PYTHON_VERSION" "Versions/Current"
+            ln -sf "Versions/Current/Python" "Python"
+            
+            # Create Resources directory and Info.plist for proper framework structure
+            mkdir -p "$FRAMEWORK_PATH/Resources"
+            echo '<?xml version="1.0" encoding="UTF-8"?>' > "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '<plist version="1.0">' >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '<dict>' >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '  <key>CFBundleIdentifier</key>' >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '  <string>org.python.python</string>' >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '  <key>CFBundleName</key>' >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '  <string>Python</string>' >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '  <key>CFBundleVersion</key>' >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo "  <string>$PYTHON_VERSION</string>" >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '  <key>CFBundleShortVersionString</key>' >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo "  <string>$PYTHON_VERSION</string>" >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '  <key>CFBundlePackageType</key>' >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '  <string>FMWK</string>' >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '  <key>CFBundleExecutable</key>' >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '  <string>Python</string>' >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '</dict>' >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            echo '</plist>' >> "$FRAMEWORK_PATH/Resources/Info.plist"
+            
+            # Create link to Resources
+            ln -sf "Versions/Current/Resources" "Resources"
+            
+            # Install Python modules into the framework
+            echo "Installing Python modules into framework..."
+            # Create site-packages directory
+            mkdir -p "$FRAMEWORK_PATH/lib/python$PYTHON_VERSION/site-packages"
+            
+            # Install modules using the framework's Python
+            PYTHONPATH="$FRAMEWORK_PATH/lib/python$PYTHON_VERSION/site-packages" \
+            "$FRAMEWORK_PATH/Python" -m pip install --target "$FRAMEWORK_PATH/lib/python$PYTHON_VERSION/site-packages" \
+            minecraft-launcher-lib==7.1 requests==2.31.0 packaging==23.2 2>/dev/null || {
+              echo "Failed to install with framework Python, trying alternative method..."
+              # Alternative: use system pip to install to framework location
+              pip install --target "$FRAMEWORK_PATH/lib/python$PYTHON_VERSION/site-packages" \
+              minecraft-launcher-lib==7.1 requests==2.31.0 packaging==23.2
+            }
+            
+            # Sign the Python library with ad-hoc signature
+            echo "Signing Python library..."
+            codesign -f -s - "$FRAMEWORK_PATH/Python" 2>/dev/null || true
+            
+            # Return to workspace directory
+            cd "$GITHUB_WORKSPACE"
+          fi
+          
+          # Copy icon file to Resources
+          if [ -f "assets/icons/app_icon.icns" ]; then
+            cp "assets/icons/app_icon.icns" "$APP_PATH/Contents/Resources/icon.icns"
+          fi
+          
+          # Update Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName 'Dream Launcher'" "$APP_PATH/Contents/Info.plist" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Set :CFBundleName 'Dream Launcher'" "$APP_PATH/Contents/Info.plist" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile icon.icns" "$APP_PATH/Contents/Info.plist" 2>/dev/null || true
+          
+          # Update install names if Python framework exists
+          EXECUTABLE="$APP_PATH/Contents/MacOS/DreamLauncher"
+          if [ -f "$FRAMEWORK_PATH/Python" ]; then
+            install_name_tool -change "/Library/Frameworks/Python.framework/Versions/$PYTHON_VERSION/Python" "@executable_path/../Frameworks/Python.framework/Versions/$PYTHON_VERSION/Python" "$EXECUTABLE" 2>/dev/null || true
+          fi
+          
+          # Sign everything step by step in correct order
+          if [ -d "$FRAMEWORK_ROOT" ]; then
+            echo "Signing Python framework..."
+            codesign -f -s - "$FRAMEWORK_ROOT" 2>/dev/null || true
+          fi
+          
+          echo "Signing executable..."
+          codesign -f -s - "$EXECUTABLE" 2>/dev/null || true
+          
+          echo "Signing application bundle with deep flag..."
+          codesign -f --deep -s - "$APP_PATH" 2>/dev/null || true
+          
+          # Ensure we're in the workspace directory before creating DMG
+          cd "$GITHUB_WORKSPACE"
+          echo "Creating DMG in $(pwd)..."
+          hdiutil create -volname "Dream Launcher" -srcfolder "$APP_PATH" -ov -format UDZO "DreamLauncher.dmg"
+          
+          # Verify DMG was created
+          if [ -f "DreamLauncher.dmg" ]; then
+            echo "DMG created successfully: $(ls -la DreamLauncher.dmg)"
+          else
+            echo "ERROR: DMG was not created in the expected location"
+            find . -name "*.dmg" -type f 2>/dev/null || echo "No DMG files found"
+          fi
+          
+          # Clean up
+          rm -rf "$APP_PATH"
+
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: DreamLauncher-macOS
-          path: |
-            dist/Dream Launcher.dmg
+          name: dreamlauncher-macos-dmg
+          path: "DreamLauncher.dmg"

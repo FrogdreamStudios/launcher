@@ -1,7 +1,5 @@
 //! Entry point of the application.
 
-// #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-
 pub mod backend;
 pub mod frontend;
 
@@ -22,22 +20,8 @@ static ARCHON: OnceLock<Arc<Archon>> = OnceLock::new();
 
 /// Main function for starting the application.
 fn main() {
-    // Change working directory to the executable directory on Windows
-    #[cfg(target_os = "windows")]
-    {
-        if let Ok(exe_path) = std::env::current_exe() {
-            if let Some(exe_dir) = exe_path.parent() {
-                let _ = std::env::set_current_dir(exe_dir);
-            }
-        }
-    }
-
     // Logging
     env_logger::init();
-
-    // Set icon on macOS
-    #[cfg(target_os = "macos")]
-    set_macos_icon();
 
     // Tokio runtime
     let runtime = RUNTIME.get_or_init(|| {
@@ -88,7 +72,7 @@ fn main() {
     let archon_shutdown = archon.clone();
     runtime.spawn(async move {
         if let Err(e) = tokio::signal::ctrl_c().await {
-            error!("Failed to listen for ctrl+c: {e}");
+            error!("Failed to listen for Ctrl + C: {e}");
             return;
         }
         info!("Received shutdown signal, shutting down Archon...");
@@ -99,9 +83,6 @@ fn main() {
     });
 
     // Dioxus
-    // Original size of the application is 1280x832, but we will change it in the future
-    // to 1280x832
-    // Added 24 px height to account for the custom titlebar
     let size = LogicalSize::new(1056.0, 709.0);
 
     let config = Config::default()
@@ -152,25 +133,7 @@ pub fn get_archon() -> Option<Arc<Archon>> {
     ARCHON.get().cloned()
 }
 
-/// Set icon on macOS.
-#[cfg(target_os = "macos")]
-fn set_macos_icon() {
-    if let Ok(exe_path) = std::env::current_exe() {
-        let icon_path =
-            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("assets/icons/app_icon.icns");
-        if icon_path.exists() {
-            let _ = std::process::Command::new("fileicon")
-                .arg("set")
-                .arg(&exe_path)
-                .arg(&icon_path)
-                .output();
-        }
-    }
-}
-
 /// Root component of the application.
-/// This component initializes the application state and provides context for authentication.
-/// If a user is authenticated, go to the main page.
 #[component]
 fn AppRoot() -> Element {
     let is_authenticated = use_signal(|| false);

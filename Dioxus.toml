@@ -1,36 +1,76 @@
 [application]
+version = "0.1.0"
 name = "Dream Launcher"
 default_platform = "desktop"
+author = "Frogdream Studios"
+description = "A powerful and lightweight Minecraft launcher"
+long_description = "A powerful and lightweight Minecraft launcher that will be perfect for every player"
+homepage = "https://github.com/frogdreamstudios/launcher"
+repository = "https://github.com/frogdreamstudios/launcher"
+license = "LGPL-3.0-only"
+keywords = ["minecraft", "launcher", "java", "gaming", "cross-platform"]
+categories = ["games"]
 
 [desktop]
-memory_limit = 512
-optimize_for_size = true
-disable_dev_tools = true
-
-[web.app]
 title = "Dream Launcher"
+memory_limit = "256MB"
+optimization = "size"
+dev_tools = false
+resizable = false
+fullscreen = false
+always_on_top = false
+decorations = false
+transparent = true
+
+[web]
+title = "Dream Launcher"
+base_path = "/"
+watch_path = ["src", "assets"]
 
 [bundle]
-identifier = "com.frogdream.dreamlauncher"
+version = "0.1.0"
+identifier = "com.dreamlauncher.app"
 publisher = "Frogdream Studios"
-icon = ["assets/icons/app_icon.icns"]
-resources = ["assets/**/*"]
+icon = ["assets/icons/app_icon.iconset/icon_256x256.png"]
+resources = ["assets", "python"]
 short_description = "A powerful and lightweight Minecraft launcher"
 long_description = "A powerful and lightweight Minecraft launcher that will be perfect for every player"
+copyright = "© 2025 Frogdream Studios"
 category = "Game"
+license_file = "LICENSE"
 
 [bundle.linux]
 app_name = "Dream Launcher"
-short_description = "A powerful and lightweight Minecraft launcher"
-long_description = "A powerful and lightweight Minecraft launcher that will be perfect for every player"
+icon = ["assets/icons/app_icon.iconset/icon_256x256.png"]
+short_description = "A modern Minecraft launcher"
+long_description = "Dream Launcher is a modern, fast, and user-friendly Minecraft launcher with advanced features"
+categories = ["Game"]
+generic_name = "Minecraft Launcher"
+keywords = ["minecraft", "launcher", "java", "gaming", "cross-platform"]
+startup_notify = true
+formats = ["deb", "rpm"]
 
 [bundle.macos]
 app_name = "Dream Launcher"
+icon = ["assets/icons/app_icon.icns"]
 files = {}
-hardened_runtime = false
+hardened_runtime = true
+entitlements = "entitlements.plist"
+info_plist_path = "Info.plist"
+minimum_system_version = "10.13"
+signing_identity = "-"
 
 [bundle.windows]
-webview2_install_mode = "embedbootstrapper"
-webview2_user_data_folder = ".dream-launcher"
-console_subsystem = false
-webview2_additional_args = "--memory-pressure-off --max_old_space_size=256 --optimize-for-size --no-sandbox --disable-dev-shm-usage"
+icon = ["assets/icons/app_icon.ico"]
+tsp = true
+allow_downgrades = false
+webview_user_data_folder = "DreamLauncher"
+console_subsystem = "windows"
+webview_additional_args = ["--disable-web-security"]
+install_mode = "passive"
+webview_fixed_runtime_path = ""
+digest_algorithm = "sha256"
+wix_language = "en-US"
+
+[bundle.windows.webview_install_mode.EmbedBootstrapper]
+silent = true
