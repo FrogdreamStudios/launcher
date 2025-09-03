@@ -297,9 +297,16 @@ jobs:
           codesign --remove-signature "$APP_PATH" 2>/dev/null || true
           codesign --remove-signature "$EXECUTABLE" 2>/dev/null || true
           
+          echo "Signing the application bundle"
+          
+          # Sign Python framework first
+          codesign -s - "$FRAMEWORK_ROOT"
+          
+          # Sign executable
           codesign -s - "$EXECUTABLE"
           
-          codesign -s - "$APP_PATH"
+          # Sign the entire app bundle with deep signing
+          codesign -s - --deep "$APP_PATH"
           
           mv "$APP_PATH" "/tmp/Dream Launcher.app"
           
