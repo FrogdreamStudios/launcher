@@ -255,6 +255,21 @@ jobs:
             # Create link to Resources
             ln -sf "Versions/Current/Resources" "Resources"
             
+            # Install Python modules into the framework
+            echo "Installing Python modules into framework..."
+            # Create site-packages directory
+            mkdir -p "$FRAMEWORK_PATH/lib/python$PYTHON_VERSION/site-packages"
+            
+            # Install modules using the framework's Python
+            PYTHONPATH="$FRAMEWORK_PATH/lib/python$PYTHON_VERSION/site-packages" \
+            "$FRAMEWORK_PATH/Python" -m pip install --target "$FRAMEWORK_PATH/lib/python$PYTHON_VERSION/site-packages" \
+            minecraft-launcher-lib==7.1 requests==2.31.0 packaging==23.2 2>/dev/null || {
+              echo "Failed to install with framework Python, trying alternative method..."
+              # Alternative: use system pip to install to framework location
+              pip install --target "$FRAMEWORK_PATH/lib/python$PYTHON_VERSION/site-packages" \
+              minecraft-launcher-lib==7.1 requests==2.31.0 packaging==23.2
+            }
+            
             # Sign the Python library with ad-hoc signature
             echo "Signing Python library..."
             codesign -f -s - "$FRAMEWORK_PATH/Python" 2>/dev/null || true
